@@ -180,7 +180,7 @@ Requester raises an assessment covering every open security finding in one IQ re
 
 | Check | Pass | Fail message must say |
 |---|---|---|
-| Report retrievable | ✓ with scan metadata | Report not found or purged — IQ keeps build-stage reports 14 days. Re-scan and try again |
+| Report retrievable | ✓ with scan metadata | Report not found or purged — build-stage reports are kept only briefly. Re-scan and try again |
 | Artifact retrievable | ✓ with size | Artifact not found at that coordinate |
 | Artifact matches report | ✓ *n/n* components matched | How many matched, how many did not, and that this usually means the artifact is a different build |
 

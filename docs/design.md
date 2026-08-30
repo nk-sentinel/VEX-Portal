@@ -4,8 +4,8 @@
 
 ## Context
 
-**Problem.** A 4-person AppSec team supports ~2,500 developers on Sonatype Nexus IQ
-Lifecycle 203.4. Requests arrive off-process (Teams, email, service requests) and are
+**Problem.** A small AppSec team supports several thousand developers on Sonatype Nexus IQ
+Lifecycle 203.x. Requests arrive off-process (Teams, email, service requests) and are
 reviewed with a hand-run Claude skill. Nothing is tracked, nothing is reused, and review
 quality depends on who runs it. This does not scale.
 
@@ -56,8 +56,8 @@ notifications, and reports use the left column only.
 1. Requester supplies: **IQ report URL** + **JFrog artifact coordinates** (image ref for
    containerised apps) + questionnaire answers
 2. **Admission checks** — request rejected up front if any fail:
-   - IQ report still exists and is retrievable (14-day purge window is the app team's
-     responsibility; requests are reviewed immediately)
+   - IQ report still exists and is retrievable (reports purge on a short window, so keeping
+     one alive is the app team's responsibility; requests are reviewed immediately)
    - Artifact exists in JFrog and is retrievable
    - **Artifact belongs to the report** — see Provenance below
 3. **Snapshot everything** — raw report JSON, vuln lookups, dependency data, artifact
@@ -167,7 +167,7 @@ in IQ** — accepted risk must not be made invisible.
   "unsure" bucket stays silently empty
 - **CVE-intrinsic cache:** what a CVE requires and which classes it implicates is
   app-independent — computed once, cached org-wide, reused. Only applicability is per-app.
-  This is what makes a 7-day cycle affordable at 2,500 developers
+  This is what makes a 7-day cycle affordable at several thousand developers
 - **Second refute-pass** on any auto-*Not Affected* path; disagreement → human
 - **`similarWaivers` is reviewer context, never a verdict.** Non-exploitable in app A
   implies nothing about app B
@@ -290,7 +290,7 @@ agreement bar. Then Tier 2 with mandatory second confirmation.
 
 - **Determinations** lapse at 7 days; no renewal. The IQ waiver is deleted on early
   revocation, left to lapse otherwise
-- **Evidence snapshots** retained for the audit window, independent of IQ's 14-day purge
+- **Evidence snapshots** retained for the audit window, independent of IQ's report purge
 - **Rules** are versioned; a rule's auto-determination privilege is revoked automatically
   if its agreement rate drops below the bar
 - **The hand-run Claude skill** is retired at Phase 6, kept read-only until then as the

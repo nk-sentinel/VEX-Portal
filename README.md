@@ -14,7 +14,7 @@ trail behind every outcome.
 
 ## The problem this solves
 
-A four-person AppSec team supports ~2,500 developers. Nexus IQ's reachability analysis is
+A small AppSec team supports several thousand developers. Nexus IQ's reachability analysis is
 not dependable enough to act on, so exploitability review happens off-pipeline: requests
 arrive by Teams, email, and service requests, and are worked by hand. Nothing is tracked,
 nothing is reused, and the outcome depends on who ran the review.
