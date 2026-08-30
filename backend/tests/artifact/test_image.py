@@ -104,3 +104,42 @@ def test_whiteout_entry_removes_an_earlier_archive():
 def test_malformed_layer_raises_rather_than_being_skipped():
     with pytest.raises(MalformedArtifact):
         find_application_archives([b"not a tar archive at all"])
+
+
+def test_corrupt_later_layer_raises_even_after_an_earlier_valid_find():
+    # A partial result must not mask a failure. If an early layer yields an
+    # archive and a later layer is unreadable, returning the early find would
+    # report a complete answer derived from an incomplete walk.
+    layers = [make_layer({"app/application.jar": APP_JAR}), b"not a tar archive at all"]
+    with pytest.raises(MalformedArtifact):
+        find_application_archives(layers)
+
+
+def test_leading_dot_slash_is_stripped_from_layer_paths():
+    # Many tar writers emit "./app/x.jar". The stored path must compare equal
+    # to the same path written bare, or layer shadowing silently stops working
+    # across writers.
+    found = find_application_archives([make_layer({"./app/application.jar": APP_JAR})])
+    assert [f.path for f in found] == ["app/application.jar"]
+
+
+def test_dot_slash_and_bare_paths_are_the_same_entry_across_layers():
+    older = make_spring_boot_jar(
+        app_classes={"com/example/Old.class": _incompressible(4096, b"old-build")},
+        libraries={},
+    )
+    layers = [
+        make_layer({"app/application.jar": older}),
+        make_layer({"./app/application.jar": APP_JAR}),
+    ]
+    found = find_application_archives(layers)
+    assert len(found) == 1
+    assert found[0].data == APP_JAR
+
+
+def test_results_are_ordered_by_path():
+    second = make_spring_boot_jar(
+        app_classes={"com/example/B.class": _incompressible(4096, b"second")}, libraries={}
+    )
+    layers = [make_layer({"zzz/last.jar": second, "aaa/first.jar": APP_JAR})]
+    assert [f.path for f in find_application_archives(layers)] == ["aaa/first.jar", "zzz/last.jar"]
