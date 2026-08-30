@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Versions are pinned deliberately and must not be floated. This portal exists
+# to review OSS vulnerability findings; an unpinned dependency tree here would
+# be an unforced irony as well as an unforced risk.
+name = "exposure-assessment-portal"
+version = "0.1.0"
+description = "Exploitability Assessment Portal — evidence-based CVE applicability determinations over Nexus IQ."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.136.3",
+  "uvicorn[standard]==0.48.0",
+  "sqlalchemy[asyncio]==2.0.50",
+  "asyncpg==0.31.0",
+  "alembic==1.18.4",
+  "pydantic==2.13.4",
+  "pydantic-settings==2.14.2",
+  "httpx==0.28.1",          # IQ / Bitbucket / JFrog adapters
+  "ldap3==2.9.1",           # AD-backed RBAC, mirroring DAST-Portal
+  "boto3==1.40.30",         # Bedrock adjudicator
+  "python-multipart==0.0.32",
+  "itsdangerous>=2.2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "httpx==0.28.1",
+  "coverage>=7,<8",
+  "ruff>=0.5",
+  "mypy>=1.10",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+  "error::DeprecationWarning",
+  "error::PendingDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "S"]
+ignore = ["S101"]  # assert is expected in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true

@@ -1,0 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Angular
+node_modules/
+web/dist/
+web/.angular/
+
+# Environment
+.env
+.env.local
+*.local
+
+# Evidence scratch — artifact downloads are large and never committed
+backend/.evidence-cache/

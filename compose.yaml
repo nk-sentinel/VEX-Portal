@@ -1,0 +1,27 @@
+# Dev-only compose. Production uses the shared postgres-prod instance per the
+# house convention; this file exists so the portal is self-contained during
+# development in the personal environment.
+#
+# Service names are stack-unique ("eap-") because the proxy/dev networks are
+# shared across every stack and Compose registers each service name as a DNS
+# alias on them. A generic name like "api" or "db" would collide with another
+# stack and Docker DNS would round-robin between them.
+services:
+  eap-postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: eap
+      POSTGRES_USER: eap
+      POSTGRES_PASSWORD: eap
+    ports:
+      - "5433:5432"   # 5433 on the host: 5432 belongs to the shared instances
+    volumes:
+      - eap-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eap -d eap"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  eap-pgdata: {}
