@@ -1,0 +1,2888 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="6e663231-074d-42c8-8d61-558be9ad1eee"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<style>/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("f9fceba7-709e-496d-9893-63132b19f870") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c6cc2e31-e947-45df-8029-99cf183f869d") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("ceb6a564-b0d9-4d2f-9a85-ce6a2b212da5") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("b8ef4eb7-4fc0-483c-a44d-5373bb716252") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e5070edf-4c55-4ab5-92c7-3e9847cb522a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("c568188a-27ff-44a9-92e9-87b1ce9fff4d") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("c5c704c0-2d77-46cf-a2fc-29fce377e65d") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("e2cd09fa-5aca-4fd8-9340-43da681e41ae") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("c1aea7ee-f52c-4d1a-9983-6422d1123db9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("9934ef74-ca36-42a0-8633-68cc19f789fc") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("778cff15-3db1-4a45-a4cd-25dec386d691") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("18b361d4-5559-4d98-a0a4-f7d66346cecb") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("26028bd2-deff-41f5-95fd-6685b4ac609a") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("6af8051d-80c5-43de-9e6e-0f573349e50f") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("0c7b9528-3697-4a6b-8b0c-e6aefcc608e4") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("8066e7e3-fd35-4c79-92e6-f36105d6b824") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("2e7543c0-40a3-45c4-9c66-917c7f683902") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a5e59126-ce3e-44a2-8a54-0b028da4089a") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a06ff251-fbf4-4a73-a6cc-8e59ec150de6") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("e8bf7692-0b6e-4db8-8212-256ea3221193") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("75492546-bbc4-40ea-b3bc-e8b1d5141b0a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("8066e7e3-fd35-4c79-92e6-f36105d6b824") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("2e7543c0-40a3-45c4-9c66-917c7f683902") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a5e59126-ce3e-44a2-8a54-0b028da4089a") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a06ff251-fbf4-4a73-a6cc-8e59ec150de6") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("e8bf7692-0b6e-4db8-8212-256ea3221193") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("75492546-bbc4-40ea-b3bc-e8b1d5141b0a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("8066e7e3-fd35-4c79-92e6-f36105d6b824") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("2e7543c0-40a3-45c4-9c66-917c7f683902") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a5e59126-ce3e-44a2-8a54-0b028da4089a") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a06ff251-fbf4-4a73-a6cc-8e59ec150de6") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("e8bf7692-0b6e-4db8-8212-256ea3221193") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("75492546-bbc4-40ea-b3bc-e8b1d5141b0a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("8066e7e3-fd35-4c79-92e6-f36105d6b824") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("2e7543c0-40a3-45c4-9c66-917c7f683902") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a5e59126-ce3e-44a2-8a54-0b028da4089a") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("a06ff251-fbf4-4a73-a6cc-8e59ec150de6") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("e8bf7692-0b6e-4db8-8212-256ea3221193") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("75492546-bbc4-40ea-b3bc-e8b1d5141b0a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>/* vex-portal.css — generated from styles/*.scss. Do not edit directly. */
+
+/* ===== tokens.scss ===== */
+:root {
+  /* ---------- Spacing scale ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+
+  /* ---------- Backgrounds ---------- */
+  --bg-page: #f4f6fb;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #eaeef7;
+  --bg-hover: #e6ebf5;
+  --bg-press: #dbe2f0;
+
+  /* The navigation rail is dark in both themes — the product's console
+     identity, and the one surface the two themes already shared. */
+  --bg-sidebar: #0b101c;
+  --bg-sidebar-hover: #18203a;
+  --bg-sidebar-active: #2c3623;
+
+  /* ---------- Foreground ---------- */
+  --fg-primary: #0d1424;
+  --fg-secondary: #47536f;
+  --fg-muted: #5a6782;
+  --fg-onAccent: #070a12;
+  --fg-sidebar: #94a3c0;
+  --fg-sidebar-active: #ffffff;
+
+  /* ---------- Borders ---------- */
+  --border-subtle: #d5dcea;
+  --border-strong: #a9b4cb;
+  --border-focus: #586f00;
+  --border-sidebar: #1e2940;
+
+  /* ---------- Accent — Signal lime, split by role ---------- */
+  --accent: #586f00;
+  --accent-hover: #46590a;
+  --accent-fill: #d8ff4a;
+  --accent-fill-hover: #e6ff7a;
+  --accent-soft: #eef8cf;
+  --accent-softer: #f7fce9;
+
+  /* ---------- Semantic ---------- */
+  --success: #1a7f37;
+  --success-soft: #dafbe1;
+  --warning: #9a6700;
+  --warning-soft: #fff8c5;
+  --danger: #cf222e;
+  --danger-soft: #ffebe9;
+
+  /* ---------- Severity scale ---------- */
+  --sev-critical: #cf222e;
+  --sev-critical-soft: #ffebe9;
+  --sev-high: #b54708;
+  --sev-high-soft: #fff4e5;
+  --sev-medium: #9a6700;
+  --sev-medium-soft: #fff8c5;
+  --sev-low: #0969da;
+  --sev-low-soft: #ddf4ff;
+  --sev-info: #59636e;
+  --sev-info-soft: #f2f4f7;
+
+  /* ---------- Radii ---------- */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* ---------- Shadows ---------- */
+  --shadow-sm: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+  --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+
+  /* ---------- Typography ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-sans-operative: "IBM Plex Sans", var(--font-sans);
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* ======================================================================
+     VEX-SPECIFIC
+     ====================================================================== */
+
+  /* ---------- Finding outcome ramp ----------
+     Four outcomes, three of which are determinations. `handoff` is Risk
+     Acceptance Required and is deliberately OUTSIDE the verdict hues: it is
+     not a determination, the IQ violation stays open, and styling it in the
+     green/red/amber ramp would make a hand-off look like a resolution.
+     It reuses DAST's --status-closed violet — "terminal, not a failure". */
+  --outcome-clear: #1a7f37;
+  --outcome-clear-soft: #dafbe1;
+  --outcome-affected: #cf222e;
+  --outcome-affected-soft: #ffebe9;
+  --outcome-review: #b54708;
+  --outcome-review-soft: #fff4e5;
+  --handoff: #6639ba;
+  --handoff-soft: #fbefff;
+  --handoff-border: #c9a8f0;
+
+  /* ---------- Evidence tier ramp ----------
+     Tier is what the evidence is ALLOWED to do, so the ramp descends in
+     authority rather than in severity. Tier 3 shares the muted signal
+     treatment because tier 3 evidence and escalation signals are the same
+     claim: routing, never resolution. */
+  --tier1: #0e6b52;
+  --tier1-soft: #d7f5ec;
+  --tier2: #1f5d9e;
+  --tier2-soft: #e0edfb;
+  --tier3: #5a6782;
+  --tier3-soft: #eaeef7;
+
+  /* ---------- Escalation signals ----------
+     Colourless on purpose. See the header. */
+  --signal-surface: #eef1f8;
+  --signal-border: #d5dcea;
+  --signal-fg: #47536f;
+  --signal-label: #5a6782;
+
+  /* ---------- Assessment state ramp ---------- */
+  --state-draft: #59636e;
+  --state-draft-soft: #f2f4f7;
+  --state-admission: #0969da;
+  --state-admission-soft: #ddf4ff;
+  --state-admission-failed: #cf222e;
+  --state-admission-failed-soft: #ffebe9;
+  --state-analysing: #0969da;
+  --state-analysing-soft: #ddf4ff;
+  --state-needs-review: #b54708;
+  --state-needs-review-soft: #fff4e5;
+  --state-awaiting-approval: #6639ba;
+  --state-awaiting-approval-soft: #fbefff;
+  --state-completed: #1a7f37;
+  --state-completed-soft: #dafbe1;
+  --state-expired: #9a6700;
+  --state-expired-soft: #fff8c5;
+
+  /* ---------- Determination validity ----------
+     Determinations last 7 days and are never auto-renewed, so expiry is a
+     first-class state in this product rather than a footnote. `--expiry-near`
+     is the 48-hour band the spec asks to make prominent. */
+  --expiry-ok: #47536f;
+  --expiry-near: #9a6700;
+  --expiry-near-soft: #fff8c5;
+  --expiry-lapsed: #cf222e;
+  --expiry-lapsed-soft: #ffebe9;
+
+  /* ---------- Rule trace ---------- */
+  --trace-rail: #d5dcea;
+  --trace-pass: #1a7f37;
+  --trace-neutral: #5a6782;
+  --trace-hatch: #b54708;
+  --trace-fail: #cf222e;
+}
+
+/* ==========================================================================
+   OPERATIVE DARK — same token names, dark values.
+   ========================================================================== */
+:root[data-theme="dark"] {
+  --bg-page: #070a12;
+  --bg-surface: #101727;
+  --bg-surface-2: #141d31;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-press: rgba(255, 255, 255, 0.08);
+  --bg-sidebar: #0b101c;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --bg-sidebar-active: #2c3623;
+
+  --fg-primary: #e8edf7;
+  --fg-secondary: #94a3c0;
+  --fg-muted: #7987a8;
+  --fg-onAccent: #070a12;
+  --fg-sidebar: #94a3c0;
+  --fg-sidebar-active: #ffffff;
+
+  --border-subtle: #1e2940;
+  --border-strong: #2c3b5e;
+  --border-focus: #d8ff4a;
+  --border-sidebar: #1e2940;
+
+  --accent: #d8ff4a;
+  --accent-hover: #e6ff7a;
+  --accent-fill: #d8ff4a;
+  --accent-fill-hover: #e6ff7a;
+  --accent-soft: rgba(216, 255, 74, 0.14);
+  --accent-softer: rgba(216, 255, 74, 0.06);
+
+  --success: #43e6a0;
+  --success-soft: rgba(67, 230, 160, 0.12);
+  --warning: #ffd166;
+  --warning-soft: rgba(255, 209, 102, 0.12);
+  --danger: #ff5d6e;
+  --danger-soft: rgba(255, 93, 110, 0.12);
+
+  --sev-critical: #ff5d6e;
+  --sev-critical-soft: rgba(255, 93, 110, 0.12);
+  --sev-high: #ff9e57;
+  --sev-high-soft: rgba(255, 158, 87, 0.12);
+  --sev-medium: #ffd166;
+  --sev-medium-soft: rgba(255, 209, 102, 0.12);
+  --sev-low: #57a9ff;
+  --sev-low-soft: rgba(87, 169, 255, 0.12);
+  --sev-info: #94a3c0;
+  --sev-info-soft: rgba(148, 163, 192, 0.12);
+
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 3px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  /* ---------- VEX-SPECIFIC (dark) ---------- */
+  --outcome-clear: #43e6a0;
+  --outcome-clear-soft: rgba(67, 230, 160, 0.12);
+  --outcome-affected: #ff5d6e;
+  --outcome-affected-soft: rgba(255, 93, 110, 0.12);
+  --outcome-review: #ff9e57;
+  --outcome-review-soft: rgba(255, 158, 87, 0.12);
+  --handoff: #b78cff;
+  --handoff-soft: rgba(183, 140, 255, 0.14);
+  --handoff-border: rgba(183, 140, 255, 0.45);
+
+  --tier1: #43e6a0;
+  --tier1-soft: rgba(67, 230, 160, 0.12);
+  --tier2: #57a9ff;
+  --tier2-soft: rgba(87, 169, 255, 0.12);
+  --tier3: #94a3c0;
+  --tier3-soft: rgba(148, 163, 192, 0.12);
+
+  --signal-surface: rgba(148, 163, 192, 0.07);
+  --signal-border: #1e2940;
+  --signal-fg: #94a3c0;
+  --signal-label: #7987a8;
+
+  --state-draft: #94a3c0;
+  --state-draft-soft: rgba(148, 163, 192, 0.12);
+  --state-admission: #57d7ff;
+  --state-admission-soft: rgba(87, 215, 255, 0.12);
+  --state-admission-failed: #ff5d6e;
+  --state-admission-failed-soft: rgba(255, 93, 110, 0.12);
+  --state-analysing: #57d7ff;
+  --state-analysing-soft: rgba(87, 215, 255, 0.12);
+  --state-needs-review: #ff9e57;
+  --state-needs-review-soft: rgba(255, 158, 87, 0.12);
+  --state-awaiting-approval: #b78cff;
+  --state-awaiting-approval-soft: rgba(183, 140, 255, 0.14);
+  --state-completed: #43e6a0;
+  --state-completed-soft: rgba(67, 230, 160, 0.12);
+  --state-expired: #ffd166;
+  --state-expired-soft: rgba(255, 209, 102, 0.12);
+
+  --expiry-ok: #94a3c0;
+  --expiry-near: #ffd166;
+  --expiry-near-soft: rgba(255, 209, 102, 0.12);
+  --expiry-lapsed: #ff5d6e;
+  --expiry-lapsed-soft: rgba(255, 93, 110, 0.12);
+
+  --trace-rail: #1e2940;
+  --trace-pass: #43e6a0;
+  --trace-neutral: #94a3c0;
+  --trace-hatch: #ff9e57;
+  --trace-fail: #ff5d6e;
+}
+
+/* ===== app-shell.scss ===== */
+.shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100%; }
+.shell.collapsed { grid-template-columns: 76px 1fr; }
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-sidebar);
+  padding: var(--space-4) var(--space-3);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-sidebar);
+}
+.brand .logo {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.04em;
+  background: var(--accent-fill);
+  color: var(--fg-onAccent);
+}
+.brand h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-sidebar-active); white-space: nowrap; }
+.brand span { font-family: var(--font-mono); font-size: 11px; color: var(--fg-sidebar); opacity: 0.7; }
+
+.nav { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-4); flex: 1; }
+.nav-group-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-sidebar);
+  opacity: 0.55;
+  padding: var(--space-3) var(--space-2) var(--space-1);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--fg-sidebar);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-item .icon {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  opacity: 0.9;
+}
+.nav-item:hover { background: var(--bg-sidebar-hover); color: var(--fg-sidebar-active); }
+.nav-item.active {
+  background: var(--bg-sidebar-active);
+  color: var(--fg-sidebar-active);
+  box-shadow: inset 2px 0 0 var(--accent-fill);
+}
+.nav-item__count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-sidebar);
+  opacity: 0.8;
+}
+
+.persona {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.persona .role {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-fill);
+}
+.persona .name { font-size: 14px; font-weight: 600; color: var(--fg-sidebar-active); }
+
+.main { min-width: 0; background: var(--bg-page); display: flex; flex-direction: column; }
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  flex: none;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 440px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+}
+.search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: 14px;
+}
+.search input:focus { outline: none; }
+.search:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--fg-primary); }
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  flex: none;
+}
+
+.page { padding: var(--space-4) var(--space-5) var(--space-6); display: grid; gap: var(--space-4); }
+.page__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.page__head h1 {
+  margin: var(--space-1) 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg-primary);
+}
+.page__head .sub { margin: var(--space-1) 0 0; font-size: 14px; color: var(--fg-secondary); }
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.card__title { font-size: 14px; font-weight: 600; color: var(--fg-primary); margin: 0; }
+.card__body { padding: var(--space-3); }
+
+.metric { display: grid; gap: 2px; }
+.metric__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.metric__value {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+.metric__delta { font-size: 12px; color: var(--fg-secondary); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== controls.scss ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.btn:disabled,
+.btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn--primary {
+  background: var(--accent-fill);
+  color: var(--fg-onAccent);
+  border-color: var(--accent);
+}
+.btn--primary:hover:not(:disabled):not([disabled]) {
+  background: var(--accent-fill-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--fg-primary);
+  border-color: var(--border-subtle);
+}
+.btn--ghost:hover:not(:disabled):not([disabled]) { background: var(--bg-hover); }
+
+.btn--danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+.btn--danger:hover:not(:disabled):not([disabled]) { filter: brightness(0.92); }
+
+.btn--handoff {
+  background: transparent;
+  color: var(--handoff);
+  border-color: var(--handoff-border);
+}
+.btn--handoff:hover:not(:disabled):not([disabled]) { background: var(--handoff-soft); }
+
+.btn--sm { padding: var(--space-1) var(--space-2); font-size: 13px; }
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--accent-hover); }
+.link-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.field > span { color: var(--fg-secondary); font-weight: 500; }
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  font-size: 14px;
+  color: var(--fg-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+}
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+.field textarea { resize: vertical; min-height: 72px; }
+.field__help { color: var(--fg-muted); font-size: 12px; }
+.field-error { display: block; margin-top: 4px; color: var(--danger); font-size: 12px; }
+.form-error { color: var(--danger); font-size: 14px; margin: var(--space-2) 0 0; }
+.field-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  font: inherit;
+  font-size: 13px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--fg-secondary);
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--border-strong); color: var(--fg-primary); }
+.chip.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+.chip__count {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-2);
+  color: var(--fg-secondary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 700;
+}
+.chip.is-active .chip__count { background: var(--accent-fill); color: var(--fg-onAccent); }
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.segmented button:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
+}
+.segmented button:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+.segmented button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  border-inline-end: 1px solid var(--border-subtle);
+}
+.segmented button:last-child { border-inline-end: 0; }
+.segmented button.is-active {
+  background: var(--accent-soft);
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--border-subtle);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-2);
+  color: var(--fg-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ===== data-table.scss ===== */
+.data-table-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+}
+.data-table th.is-sorted { color: var(--fg-primary); }
+.data-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  color: var(--fg-primary);
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table .row { transition: background 0.12s ease; }
+.data-table .row:hover { background: var(--bg-hover); }
+.data-table .row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.data-table--clickable .row { cursor: pointer; }
+.data-table .empty td { text-align: center; color: var(--fg-muted); padding: var(--space-5); }
+
+.data-table .row.is-open {
+  background: var(--accent-softer);
+  box-shadow: inset 3px 0 0 var(--accent-fill);
+}
+.data-table .row.is-selected { background: var(--accent-softer); }
+
+.data-table .row.is-handoff { box-shadow: inset 3px 0 0 var(--handoff); }
+.data-table .row.is-handoff td:first-child { position: relative; }
+
+.data-table .mono { font-family: var(--font-mono); font-size: 13px; }
+.data-table .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.data-table .group-head td {
+  background: var(--bg-surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-secondary);
+  padding: 6px var(--space-3);
+}
+
+.skeleton {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-surface-2), var(--bg-hover), var(--bg-surface-2));
+  background-size: 200% 100%;
+  animation: vex-shimmer 1.2s linear infinite;
+}
+@keyframes vex-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ===== outcome.scss ===== */
+.outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.outcome__icon { font-family: var(--font-mono); font-size: 12px; line-height: 1; }
+
+.outcome--clear { background: var(--outcome-clear-soft); color: var(--outcome-clear); }
+.outcome--affected { background: var(--outcome-affected-soft); color: var(--outcome-affected); }
+.outcome--review { background: var(--outcome-review-soft); color: var(--outcome-review); }
+
+.outcome--handoff {
+  background: transparent;
+  color: var(--handoff);
+  border: 1px dashed var(--handoff-border);
+  border-radius: var(--radius-sm);
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.state--DRAFT { background: var(--state-draft-soft); color: var(--state-draft); }
+.state--ADMISSION { background: var(--state-admission-soft); color: var(--state-admission); }
+.state--ADMISSION_FAILED { background: var(--state-admission-failed-soft); color: var(--state-admission-failed); }
+.state--ANALYSING { background: var(--state-analysing-soft); color: var(--state-analysing); }
+.state--NEEDS_REVIEW { background: var(--state-needs-review-soft); color: var(--state-needs-review); }
+.state--AWAITING_APPROVAL { background: var(--state-awaiting-approval-soft); color: var(--state-awaiting-approval); }
+.state--COMPLETED { background: var(--state-completed-soft); color: var(--state-completed); }
+.state--EXPIRED { background: var(--state-expired-soft); color: var(--state-expired); }
+
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tier--1 { background: var(--tier1-soft); color: var(--tier1); }
+.tier--2 { background: var(--tier2-soft); color: var(--tier2); }
+.tier--3 { background: var(--tier3-soft); color: var(--tier3); }
+
+.signals {
+  background: var(--signal-surface);
+  border: 1px solid var(--signal-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  color: var(--signal-fg);
+}
+.signals__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.signals__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--signal-label);
+}
+.signals__disclaimer {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--signal-label);
+}
+.signals__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-2) var(--space-3);
+  font-size: 12px;
+}
+.signals__k { color: var(--signal-label); font-size: 11px; }
+.signals__v { font-family: var(--font-mono); font-size: 13px; color: var(--signal-fg); }
+
+.trace { display: grid; gap: 2px; }
+.trace__row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.trace__row:hover { background: var(--bg-hover); }
+.trace__tier {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--trace-neutral);
+}
+.trace__name { color: var(--fg-secondary); }
+.trace__result {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.trace__result--pass { color: var(--trace-pass); }
+.trace__result--neutral { color: var(--trace-neutral); }
+.trace__result--hatch { color: var(--trace-hatch); }
+.trace__result--fail { color: var(--trace-fail); }
+.trace__detail {
+  grid-column: 2 / -1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.trace__row--degraded {
+  border: 1px dashed var(--trace-fail);
+  background: var(--danger-soft);
+}
+
+.expiry { font-size: 12px; color: var(--expiry-ok); }
+.expiry--near {
+  color: var(--expiry-near);
+  font-weight: 700;
+  background: var(--expiry-near-soft);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+.expiry--lapsed {
+  color: var(--expiry-lapsed);
+  font-weight: 700;
+  background: var(--expiry-lapsed-soft);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.sla { font-family: var(--font-mono); font-size: 12px; color: var(--fg-secondary); }
+.sla--breach { color: var(--danger); font-weight: 700; }
+.sla--soon { color: var(--warning); font-weight: 700; }
+
+.callout {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  font-size: 13px;
+  color: var(--fg-secondary);
+}
+.callout__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-primary);
+}
+.callout--handoff {
+  background: var(--handoff-soft);
+  border-color: var(--handoff-border);
+  border-left: 3px solid var(--handoff);
+}
+.callout--handoff .callout__title { color: var(--handoff); }
+.callout--danger { background: var(--danger-soft); border-color: var(--danger); }
+.callout--danger .callout__title { color: var(--danger); }
+.callout--warning { background: var(--warning-soft); border-color: var(--warning); }
+.callout--warning .callout__title { color: var(--warning); }
+.callout--info { background: var(--sev-low-soft); border-color: var(--sev-low); }
+.callout--info .callout__title { color: var(--sev-low); }
+
+.check { display: flex; align-items: flex-start; gap: var(--space-2); font-size: 12px; }
+.check__mark { font-family: var(--font-mono); font-weight: 700; flex: none; }
+.check--pass .check__mark { color: var(--success); }
+.check--pass { color: var(--fg-secondary); }
+.check--fail .check__mark { color: var(--danger); }
+.check--fail { color: var(--danger); }
+.check--busy .check__mark { color: var(--fg-muted); }
+.check--busy { color: var(--fg-muted); }
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-surface-2);
+  overflow: hidden;
+}
+.progress__fill { height: 100%; background: var(--accent-fill); border-radius: 999px; }
+.progress__fill--split { background: var(--outcome-clear); }
+
+/* ===== evidence-drawer.scss ===== */
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 460px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg);
+  z-index: 40;
+}
+.drawer__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex: none;
+}
+.drawer__cve {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+}
+.drawer__ident { font-size: 12px; color: var(--fg-secondary); margin-top: 2px; }
+.drawer__close {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  flex: none;
+  font: inherit;
+  line-height: 1;
+}
+.drawer__close:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.drawer__body { flex: 1; overflow-y: auto; padding: var(--space-3); display: grid; gap: var(--space-3); }
+.drawer__section { display: grid; gap: var(--space-2); }
+.drawer__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.drawer__rule {
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  margin: 0;
+}
+.drawer__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  flex: none;
+}
+
+.radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fg-primary);
+  background: var(--bg-surface);
+}
+.radio-row:hover { background: var(--bg-hover); }
+.radio-row.is-active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.radio-row__hint { display: block; font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+
+.second-conf {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--tier2);
+  background: var(--tier2-soft);
+  font-size: 12px;
+  color: var(--fg-secondary);
+}
+.second-conf strong { color: var(--tier2); }
+
+@media (max-width: 1100px) {
+  .drawer { width: 100%; border-left: 0; }
+}
+</style>
+<script src="cbb82d0d-4327-4b12-9a35-109ec196fba3"></script>
+<style>
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg-page); color: var(--fg-primary); font-family: var(--font-sans-operative); }
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+*, *::before, *::after { box-sizing: border-box; }
+.has-drawer { padding-right: 460px; }
+@media (max-width: 1100px) { .has-drawer { padding-right: 0; } }
+</style>
+</helmet>
+<div class="shell" style="height:100vh;overflow:hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">VEX</div>
+      <div style="min-width:0">
+        <h1>VEX Portal</h1>
+        <span>exploitability</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group-title">Persona</div>
+      <sc-raw-select class="nav-item" style="background:#18203a;color:#fff;border:1px solid #1e2940;font-size:13px;padding:6px 8px" value="{{ role }}" sc-camel-on-change="{{ onRole }}">
+        <option value="Requester">Requester</option>
+        <option value="Reviewer">Reviewer</option>
+        <option value="Approver">Approver</option>
+        <option value="Auditor">Auditor / Management</option>
+        <option value="Risk Manager">Risk Manager</option>
+        <option value="Admin">Admin</option>
+      </sc-raw-select>
+      <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="0">
+        <div class="nav-group-title">{{ g.title }}</div>
+        <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="0">
+          <button type="button" class="{{ it.cls }}" sc-camel-on-click="{{ it.go }}">
+            <span class="icon">{{ it.icon }}</span>
+            <span>{{ it.label }}</span>
+            <span class="nav-item__count">{{ it.count }}</span>
+          </button>
+        </sc-for>
+      </sc-for>
+    </nav>
+    <div class="persona">
+      <div style="display:flex;flex-direction:column">
+        <span class="role">{{ role }}</span>
+        <span class="name">{{ userName }}</span>
+      </div>
+      <button type="button" class="nav-item" sc-camel-on-click="{{ goNotes }}" style="border:1px solid #1e2940">
+        <span class="icon">§</span><span>Design notes</span>
+      </button>
+    </div>
+  </aside>
+  <main class="main" style="position:relative;overflow:hidden">
+    <header class="topbar">
+      <form class="search" sc-camel-on-submit="{{ noSubmit }}">
+        <span style="color:var(--fg-muted);font-family:var(--font-mono);font-size:13px">⌕</span>
+        <input type="search" placeholder="Search CVE or component  /" value="{{ search }}" sc-camel-on-change="{{ onSearch }}">
+      </form>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div class="segmented" title="Screen state">
+          <sc-for list="{{ stateModes }}" as="m" hint-placeholder-count="5">
+            <button type="button" class="{{ m.cls }}" sc-camel-on-click="{{ m.go }}">{{ m.label }}</button>
+          </sc-for>
+        </div>
+        <button type="button" class="icon-btn" sc-camel-on-click="{{ toggleTheme }}">{{ themeLabel }}</button>
+        <button type="button" class="icon-btn" sc-camel-on-click="{{ toggleHelp }}">?</button>
+        <div class="avatar">{{ initials }}</div>
+      </div>
+    </header>
+    <div class="{{ scrollCls }}" style="flex:1;overflow-y:auto" id="vex-scroll">
+      <sc-if value="{{ isReview }}" hint-placeholder-val="{{ true }}">
+        <section class="page" data-screen-label="05 Review Queue">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">Review Queue</p>
+              <h1>{{ openCount }} findings need review</h1>
+              <p class="sub">Finding-level rows across every assessment. Sorted by SLA, most urgent first.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:12px;color:var(--fg-muted)">group by</span>
+              <button type="button" class="{{ groupNone }}" sc-camel-on-click="{{ setGroupingNone }}">finding</button>
+              <button type="button" class="{{ groupAsm }}" sc-camel-on-click="{{ setGroupingAsm }}">assessment</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+            <sc-for list="{{ filters }}" as="fl" hint-placeholder-count="4">
+              <label class="field" style="width:158px">
+                <span class="field-label">{{ fl.label }}</span>
+                <sc-raw-select value="{{ fl.value }}" sc-camel-on-change="{{ fl.onChange }}">
+                  <sc-for list="{{ fl.options }}" as="o" hint-placeholder-count="2">
+                    <option value="{{ o }}">{{ o }}</option>
+                  </sc-for>
+                </sc-raw-select>
+              </label>
+            </sc-for>
+            <label class="field" style="width:158px">
+              <span class="field-label">sort</span>
+              <sc-raw-select value="{{ sortBy }}" sc-camel-on-change="{{ onSort }}">
+                <option value="sla">SLA remaining</option>
+                <option value="age">age</option>
+                <option value="app">application</option>
+              </sc-raw-select>
+            </label>
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--fg-muted)">
+              <span class="kbd">j</span><span class="kbd">k</span> move · <span class="kbd">a</span> accept · <span class="kbd">d</span> affected · <span class="kbd">esc</span> close
+            </div>
+          </div>
+
+          <sc-if value="{{ hasBulkBlock }}">
+            <div class="callout callout--danger" role="alert">
+              <span class="callout__title">Accept recommendations refused</span>
+              <span>These rows require individual attention, so the whole selection was rejected rather than partially applied.</span>
+              <sc-for list="{{ bulkBlock }}" as="b" hint-placeholder-count="1">
+                <span style="font-size:12px"><span style="font-family:var(--font-mono);font-weight:600">{{ b.cve }}</span> — {{ b.why }}</span>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasSaved }}">
+            <div class="callout callout--info" role="status">
+              <span class="callout__title">Saved</span><span>{{ savedMsg }}</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isError }}">
+            <div class="callout callout--warning" role="alert">
+              <span class="callout__title">Could not refresh</span>
+              <span>Nexus IQ did not respond at 09:42. The table below is the last good result and has not been blanked — nothing you were working on has been lost.</span>
+              <span><button type="button" class="link-btn">Retry</button></span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isLoading }}">
+            <div class="data-table-wrap">
+              <sc-raw-table class="data-table">
+                <sc-raw-thead><sc-raw-tr><sc-raw-th style="width:30px"></sc-raw-th><sc-raw-th>CVE</sc-raw-th><sc-raw-th>Application</sc-raw-th><sc-raw-th>Recommended</sc-raw-th><sc-raw-th>SLA</sc-raw-th><sc-raw-th>Age</sc-raw-th></sc-raw-tr></sc-raw-thead>
+                <sc-raw-tbody>
+                  <sc-for list="{{ skeletonRows }}" as="sk" hint-placeholder-count="6">
+                    <sc-raw-tr><sc-raw-td><span class="skeleton" style="width:14px"></span></sc-raw-td><sc-raw-td><span class="skeleton" style="width:120px"></span></sc-raw-td><sc-raw-td><span class="skeleton" style="width:90px"></span></sc-raw-td><sc-raw-td><span class="skeleton" style="width:100px"></span></sc-raw-td><sc-raw-td><span class="skeleton" style="width:30px"></span></sc-raw-td><sc-raw-td><span class="skeleton" style="width:24px"></span></sc-raw-td></sc-raw-tr>
+                  </sc-for>
+                </sc-raw-tbody>
+              </sc-raw-table>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isEmpty }}">
+            <div class="card" style="padding:48px;text-align:center">
+              <p style="margin:0;font-size:18px;font-weight:600;color:var(--fg-primary)">Nothing needs review.</p>
+              <p style="margin:8px 0 0;font-size:14px;color:var(--fg-secondary)">Every finding in every open assessment has a determination. This is good news, not an error.</p>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isNormal }}" hint-placeholder-val="{{ true }}">
+            <div class="data-table-wrap">
+              <sc-raw-table class="data-table data-table--clickable">
+                <sc-raw-thead>
+                  <sc-raw-tr>
+                    <sc-raw-th style="width:34px"></sc-raw-th>
+                    <sc-raw-th style="width:26px"></sc-raw-th>
+                    <sc-raw-th style="width:64px">ASM</sc-raw-th>
+                    <sc-raw-th>Application</sc-raw-th>
+                    <sc-raw-th>CVE</sc-raw-th>
+                    <sc-raw-th>Component</sc-raw-th>
+                    <sc-raw-th>Recommended</sc-raw-th>
+                    <sc-raw-th style="width:76px" class="is-sorted">SLA</sc-raw-th>
+                    <sc-raw-th style="width:58px">Age</sc-raw-th>
+                  </sc-raw-tr>
+                </sc-raw-thead>
+                <sc-raw-tbody>
+                  <sc-if value="{{ showFlat }}" hint-placeholder-val="{{ true }}">
+                    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+                      <sc-raw-tr class="{{ r.rowCls }}" sc-camel-on-click="{{ r.onOpen }}">
+                        <sc-raw-td sc-camel-on-click="{{ r.onCheck }}"><input type="checkbox" checked="{{ r.checked }}" aria-label="select finding"></sc-raw-td>
+                        <sc-raw-td><span class="{{ r.outcomeCls }}" style="border:0;background:transparent;padding:0" title="{{ r.outcomeLabel }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span></span></sc-raw-td>
+                        <sc-raw-td class="mono"><button type="button" class="link-btn" sc-camel-on-click="{{ r.goAsm }}">{{ r.asmShort }}</button></sc-raw-td>
+                        <sc-raw-td>{{ r.app }}</sc-raw-td>
+                        <sc-raw-td class="mono" style="font-weight:600">{{ r.cve }}</sc-raw-td>
+                        <sc-raw-td class="mono" style="color:var(--fg-secondary);font-size:12px">{{ r.component }} {{ r.version }}</sc-raw-td>
+                        <sc-raw-td>
+                          <span style="display:inline-flex;align-items:center;gap:6px">
+                            <span class="{{ r.outcomeCls }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span>{{ r.shortLabel }}</span>
+                            <span class="{{ r.tierCls }}">{{ r.tierLabel }}</span>
+                          </span>
+                        </sc-raw-td>
+                        <sc-raw-td class="{{ r.slaCls }}">{{ r.slaText }}</sc-raw-td>
+                        <sc-raw-td class="num" style="color:var(--fg-secondary);font-size:12px">{{ r.age }}</sc-raw-td>
+                      </sc-raw-tr>
+                    </sc-for>
+                  </sc-if>
+                  <sc-if value="{{ showGrouped }}">
+                    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="0">
+                      <sc-raw-tr class="group-head"><sc-raw-td colspan="9">{{ g.asm }} · {{ g.app }} · {{ g.n }}</sc-raw-td></sc-raw-tr>
+                      <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="0">
+                        <sc-raw-tr class="{{ r.rowCls }}" sc-camel-on-click="{{ r.onOpen }}">
+                          <sc-raw-td sc-camel-on-click="{{ r.onCheck }}"><input type="checkbox" checked="{{ r.checked }}" aria-label="select finding"></sc-raw-td>
+                          <sc-raw-td><span class="{{ r.outcomeCls }}" style="border:0;background:transparent;padding:0" title="{{ r.outcomeLabel }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span></span></sc-raw-td>
+                          <sc-raw-td class="mono">{{ r.asmShort }}</sc-raw-td>
+                          <sc-raw-td>{{ r.app }}</sc-raw-td>
+                          <sc-raw-td class="mono" style="font-weight:600">{{ r.cve }}</sc-raw-td>
+                          <sc-raw-td class="mono" style="color:var(--fg-secondary);font-size:12px">{{ r.component }} {{ r.version }}</sc-raw-td>
+                          <sc-raw-td>
+                            <span style="display:inline-flex;align-items:center;gap:6px">
+                              <span class="{{ r.outcomeCls }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span>{{ r.shortLabel }}</span>
+                              <span class="{{ r.tierCls }}">{{ r.tierLabel }}</span>
+                            </span>
+                          </sc-raw-td>
+                          <sc-raw-td class="{{ r.slaCls }}">{{ r.slaText }}</sc-raw-td>
+                          <sc-raw-td class="num" style="color:var(--fg-secondary);font-size:12px">{{ r.age }}</sc-raw-td>
+                        </sc-raw-tr>
+                      </sc-for>
+                    </sc-for>
+                  </sc-if>
+                </sc-raw-tbody>
+              </sc-raw-table>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="font-size:13px;color:var(--fg-secondary)">{{ selCount }} selected</span>
+              <button type="button" class="btn btn--primary btn--sm" disabled="{{ noSelection }}" sc-camel-on-click="{{ acceptRecs }}">Accept recommendations</button>
+              <button type="button" class="btn btn--ghost btn--sm" disabled="{{ noSelection }}" sc-camel-on-click="{{ sendToReview }}">Send to review</button>
+              <span style="margin-left:auto;font-size:12px;color:var(--fg-muted)">{{ rowCount }} rows shown</span>
+              <sc-if value="{{ isFiltered }}">
+                <button type="button" class="link-btn" sc-camel-on-click="{{ clearFilters }}">Clear filters</button>
+              </sc-if>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ drawerOpen }}">
+        <aside class="drawer" aria-label="Evidence" style="position:fixed;right:0;bottom:0;top: {{ drawerTop }}">
+          <div class="drawer__head">
+            <div style="min-width:0">
+              <p class="drawer__cve">{{ f.cve }}</p>
+              <p class="drawer__ident">{{ f.component }} {{ f.version }} · threat {{ f.threat }}</p>
+              <p class="drawer__ident" style="color:var(--fg-muted)">{{ f.path }}</p>
+            </div>
+            <button type="button" class="drawer__close" sc-camel-on-click="{{ closeDrawer }}" aria-label="Close">✕</button>
+          </div>
+          <div class="drawer__body">
+            <div class="drawer__section">
+              <span class="drawer__label">Recommendation</span>
+              <span style="display:inline-flex;align-items:center;gap:6px">
+                <span class="{{ f.outcomeCls }}"><span class="outcome__icon">{{ f.outcomeIcon }}</span>{{ f.outcomeLabel }}</span>
+                <span class="{{ f.tierCls }}">{{ f.tierLabel }}</span>
+              </span>
+              <p style="margin:0;font-size:13px;line-height:1.5;color:var(--fg-secondary);text-wrap:pretty">{{ f.reason }}</p>
+            </div>
+
+            <sc-if value="{{ isHandoffOpen }}">
+              <div class="callout callout--handoff">
+                <span class="callout__title">This left the portal</span>
+                <span>No fix is available, so this finding did not receive a determination. The Nexus IQ violation stays open. Take the evidence package to your risk manager.</span>
+                <span><button type="button" class="btn btn--handoff btn--sm">↗ Download evidence package</button></span>
+              </div>
+            </sc-if>
+
+            <hr class="drawer__rule">
+            <div class="drawer__section">
+              <span class="drawer__label">Rule trace</span>
+              <div class="trace">
+                <sc-for list="{{ fTrace }}" as="t" hint-placeholder-count="3">
+                  <div class="{{ t.rowCls }}">
+                    <span class="trace__tier">{{ t.tier }}</span>
+                    <span class="trace__name">{{ t.name }}</span>
+                    <span class="{{ t.resCls }}">{{ t.result }}</span>
+                    <span class="trace__detail">{{ t.detail }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <sc-if value="{{ hasDegraded }}">
+              <div class="callout callout--danger">
+                <span class="callout__title">Collector degraded</span>
+                <span>{{ degraded }}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasMissing }}">
+              <div class="callout">
+                <span class="callout__title">The adjudicator abstained — evidence missing</span>
+                <sc-for list="{{ fMissing }}" as="m" hint-placeholder-count="1">
+                  <span style="font-size:12px">· {{ m }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <hr class="drawer__rule">
+            <div class="signals">
+              <div class="signals__head">
+                <span class="signals__title">Escalation signals</span>
+                <span class="signals__disclaimer">not a basis for clearing</span>
+              </div>
+              <div class="signals__grid">
+                <div><div class="signals__k">EPSS</div><div class="signals__v">{{ fSignals.epss }}</div></div>
+                <div><div class="signals__k">KEV</div><div class="signals__v">{{ fSignals.kev }}</div></div>
+                <div><div class="signals__k">CVSS</div><div class="signals__v">{{ fSignals.cvss }}</div></div>
+                <div><div class="signals__k">Fix available</div><div class="signals__v">{{ fSignals.fix }}</div></div>
+              </div>
+            </div>
+
+            <sc-if value="{{ canDetermine }}">
+              <hr class="drawer__rule">
+              <div class="drawer__section">
+                <span class="drawer__label">Determination</span>
+                <sc-for list="{{ verdictRows }}" as="v" hint-placeholder-count="3">
+                  <button type="button" class="{{ v.cls }}" sc-camel-on-click="{{ v.go }}" style="text-align:left;font:inherit;font-size:13px;width:100%">
+                    <span>{{ v.label }}<span class="radio-row__hint">{{ v.hint }}</span></span>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ needsJust }}">
+                  <label class="field">
+                    <span class="field-label">justification</span>
+                    <sc-raw-select value="{{ justValue }}" sc-camel-on-change="{{ onJust }}">
+                      <option value="">select a justification…</option>
+                      <sc-for list="{{ justOptions }}" as="j" hint-placeholder-count="2">
+                        <option value="{{ j.value }}">{{ j.label }}</option>
+                      </sc-for>
+                    </sc-raw-select>
+                    <span class="field__help">Only justifications permitted at the achieved evidence tier are listed. Perimeter and mitigating-control justifications are never available.</span>
+                  </label>
+                </sc-if>
+                <sc-if value="{{ needsSecond }}">
+                  <div class="second-conf">
+                    <strong>Tier 2 — second confirmation required</strong>
+                    <span>{{ secondBy }}</span>
+                  </div>
+                </sc-if>
+                <label class="field">
+                  <span class="field-label">note</span>
+                  <textarea placeholder="Anything the next reviewer needs to know" value="{{ noteValue }}" sc-camel-on-change="{{ onNote }}"></textarea>
+                </label>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ readOnlyDrawer }}">
+              <div class="callout">
+                <span class="callout__title">Read-only</span>
+                <span>Determinations are made by a reviewer or approver. This view carries the evidence only.</span>
+              </div>
+            </sc-if>
+          </div>
+          <div class="drawer__foot">
+            <button type="button" class="btn btn--primary btn--sm" disabled="{{ cannotSave }}" sc-camel-on-click="{{ saveDet }}">Save</button>
+            <span style="margin-left:auto;display:flex;gap:6px">
+              <button type="button" class="btn btn--ghost btn--sm" sc-camel-on-click="{{ prevF }}">↑ prev</button>
+              <button type="button" class="btn btn--ghost btn--sm" sc-camel-on-click="{{ nextF }}">next ↓</button>
+            </span>
+          </div>
+        </aside>
+      </sc-if>
+      <sc-if value="{{ isAssessments }}">
+        <section class="page" data-screen-label="03 My Assessments">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">My Assessments</p>
+              <h1>7 assessments</h1>
+              <p class="sub">One assessment covers every open security finding in one Nexus IQ report.</p>
+            </div>
+            <button type="button" class="btn btn--primary" sc-camel-on-click="{{ goNew }}">+ New assessment</button>
+          </div>
+
+          <sc-if value="{{ isEmpty }}">
+            <div class="card" style="padding:48px;max-width:640px">
+              <p style="margin:0;font-size:18px;font-weight:600">You have not raised an assessment yet.</p>
+              <p style="margin:8px 0 16px;font-size:14px;line-height:1.6;color:var(--fg-secondary);text-wrap:pretty">An exploitability assessment asks the portal to determine, on evidence, whether each open finding in a Nexus IQ report actually applies to your application. Before you start, have two things to hand: the Nexus IQ report URL, and the coordinate of the artifact that report was produced from.</p>
+              <button type="button" class="btn btn--primary" sc-camel-on-click="{{ goNew }}">Raise your first assessment</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isError }}">
+            <div class="callout callout--warning" role="alert">
+              <span class="callout__title">Could not load your assessments</span>
+              <span>The portal is reachable but Nexus IQ did not answer. Nothing has been lost — retry when you are ready.</span>
+              <span><button type="button" class="link-btn">Retry</button></span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isLoading }}">
+            <div class="card">
+              <sc-for list="{{ skeletonRows }}" as="sk" hint-placeholder-count="4">
+                <div style="padding:16px;border-bottom:1px solid var(--border-subtle);display:grid;gap:8px">
+                  <span class="skeleton" style="width:260px"></span>
+                  <span class="skeleton" style="width:180px"></span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isNormal }}">
+            <div class="card">
+              <sc-for list="{{ assessments }}" as="a" hint-placeholder-count="4">
+                <div class="row" style="padding:14px 16px;border-bottom:1px solid var(--border-subtle);display:grid;gap:8px;cursor:pointer" sc-camel-on-click="{{ a.go }}">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <span class="mono" style="font-family:var(--font-mono);font-weight:600;font-size:13px">{{ a.id }}</span>
+                    <span style="font-weight:600">{{ a.app }}</span>
+                    <span class="{{ a.stateCls }}">{{ a.stateLabel }}</span>
+                    <span style="font-size:13px;color:var(--fg-secondary)">{{ a.findings }}</span>
+                    <span style="margin-left:auto;font-size:12px;color:var(--fg-muted);font-family:var(--font-mono)">{{ a.age }}</span>
+                  </div>
+                  <sc-if value="{{ a.showProgress }}">
+                    <div style="display:grid;gap:5px;max-width:420px">
+                      <div class="progress"><div class="progress__fill" style="width: {{ a.pct }}"></div></div>
+                      <span style="font-size:12px;color:var(--fg-secondary)">{{ a.sub }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ a.showCounts }}">
+                    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;align-items:center">
+                      <span style="color:var(--outcome-clear);font-weight:600">✓ {{ a.counts.clear }} not affected</span>
+                      <span style="color:var(--outcome-affected);font-weight:600">✗ {{ a.counts.affected }} affected</span>
+                      <span style="color:var(--handoff);font-weight:600">⚑ {{ a.counts.handoff }} risk acceptance</span>
+                      <sc-if value="{{ a.hasExpiry }}">
+                        <span class="{{ a.expiryCls }}">expires {{ a.expiry }}</span>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ a.showReassess }}">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                      <span class="{{ a.expiryCls }}">determination {{ a.expiry }}</span>
+                      <button type="button" class="btn btn--ghost btn--sm" sc-camel-on-click="{{ a.goNew }}">Raise reassessment</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ a.showFix }}">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                      <span style="font-size:12px;color:var(--danger);font-weight:600">{{ a.failNote }}</span>
+                      <button type="button" class="btn btn--ghost btn--sm" sc-camel-on-click="{{ a.goNew }}">Fix and resubmit</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <p style="margin:0;font-size:12px;color:var(--fg-muted)">Determinations last 7 days and are not renewed automatically. All branches scan into the same Nexus IQ application, so a determination made against one branch is not assumed valid for another.</p>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ isDetail }}">
+        <section class="page" data-screen-label="06 Assessment Detail">
+          <div class="card">
+            <div style="padding:16px;display:grid;gap:10px;border-bottom:1px solid var(--border-subtle)">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <button type="button" class="link-btn" sc-camel-on-click="{{ goReview }}">← Review Queue</button>
+                <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.02em">{{ asm.id }} · {{ asm.app }}</h1>
+                <span class="{{ asmStateCls }}" style="margin-left:auto">{{ asmStateLabel }}</span>
+              </div>
+              <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--fg-secondary);font-family:var(--font-mono)">
+                <span>report {{ asm.report }}</span><span>{{ asm.branch }} @ {{ asm.commit }}</span><span>submitted {{ asm.age }}</span><span>artifact {{ asm.artifact }}</span>
+              </div>
+              <div class="callout callout--info" style="padding:10px 12px">
+                <span class="callout__title">Provenance ✓ {{ asm.provenance }}</span>
+                <span>Every determination below rests on this. If the artifact were a different build, none of the evidence beneath would apply.</span>
+              </div>
+              <p style="margin:0;font-size:13px;color:var(--fg-secondary)">requester {{ asm.requester }} — “{{ asm.justification }}”</p>
+            </div>
+            <div style="padding:16px;display:grid;gap:10px">
+              <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px">
+                <span style="color:var(--outcome-clear);font-weight:600">{{ asmCounts.clear }} not affected</span>
+                <span style="color:var(--outcome-review);font-weight:600">{{ asmCounts.review }} need review</span>
+                <span style="color:var(--handoff);font-weight:600">{{ asmCounts.handoff }} risk acceptance</span>
+              </div>
+              <div class="progress" style="max-width:520px"><div class="progress__fill progress__fill--split" style="width: {{ asmProgressPct }}"></div></div>
+            </div>
+          </div>
+
+          <div class="data-table-wrap">
+            <sc-raw-table class="data-table data-table--clickable">
+              <sc-raw-thead>
+                <sc-raw-tr><sc-raw-th style="width:26px"></sc-raw-th><sc-raw-th>CVE</sc-raw-th><sc-raw-th>Component</sc-raw-th><sc-raw-th>Recommended</sc-raw-th><sc-raw-th style="width:76px">SLA</sc-raw-th><sc-raw-th style="width:58px">Age</sc-raw-th></sc-raw-tr>
+              </sc-raw-thead>
+              <sc-raw-tbody>
+                <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+                  <sc-raw-tr class="{{ r.rowCls }}" sc-camel-on-click="{{ r.onOpen }}">
+                    <sc-raw-td><span class="{{ r.outcomeCls }}" style="border:0;background:transparent;padding:0" title="{{ r.outcomeLabel }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span></span></sc-raw-td>
+                    <sc-raw-td class="mono" style="font-weight:600">{{ r.cve }}</sc-raw-td>
+                    <sc-raw-td class="mono" style="color:var(--fg-secondary);font-size:12px">{{ r.component }} {{ r.version }}</sc-raw-td>
+                    <sc-raw-td>
+                      <span style="display:inline-flex;align-items:center;gap:6px">
+                        <span class="{{ r.outcomeCls }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span>{{ r.shortLabel }}</span>
+                        <span class="{{ r.tierCls }}">{{ r.tierLabel }}</span>
+                      </span>
+                    </sc-raw-td>
+                    <sc-raw-td class="{{ r.slaCls }}">{{ r.slaText }}</sc-raw-td>
+                    <sc-raw-td class="num" style="color:var(--fg-secondary);font-size:12px">{{ r.age }}</sc-raw-td>
+                  </sc-raw-tr>
+                </sc-for>
+              </sc-raw-tbody>
+            </sc-raw-table>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <sc-if value="{{ canApprove }}">
+              <button type="button" class="btn btn--primary">Approve all reviewed</button>
+            </sc-if>
+            <button type="button" class="btn btn--ghost">Return to requester</button>
+          </div>
+          <sc-if value="{{ isSelfRequested }}">
+            <div class="callout callout--warning">
+              <span class="callout__title">Approval is not available to you on this assessment</span>
+              <span>You raised {{ asm.id }}. Separation of duties means the approver must be someone else, so the commit control is absent rather than disabled — a greyed-out button would imply it could be turned on.</span>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+      <sc-if value="{{ isNew }}">
+        <section class="page" data-screen-label="02 New Assessment" style="max-width:760px">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">New assessment</p>
+              <h1>New Exploitability Assessment</h1>
+              <p class="sub">Covers every open security finding in one Nexus IQ report.</p>
+            </div>
+          </div>
+          <div class="chips">
+            <sc-for list="{{ admissionModes }}" as="m" hint-placeholder-count="3">
+              <button type="button" class="{{ m.cls }}" sc-camel-on-click="{{ m.go }}">{{ m.label }}</button>
+            </sc-for>
+          </div>
+
+          <div class="card">
+            <div class="card__body" style="display:grid;gap:20px">
+              <label class="field">
+                <span class="field-label">Application</span>
+                <sc-raw-select><option>payments-api</option><option>ledger-svc</option><option>auth-gateway</option><option>batch-runner</option></sc-raw-select>
+                <span class="field__help">Only applications you can access in Nexus IQ are listed.</span>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Nexus IQ report URL</span>
+                <input value="https://iq.example.com/assets/index.html#/applicationReport/payments-api/38ef4d1f" readonly="">
+                <span class="check check--pass"><span class="check__mark">✓</span><span>Report found · build stage · scanned 2026-08-29 14:02</span></span>
+                <span class="check check--pass"><span class="check__mark">✓</span><span>12 open security findings</span></span>
+              </label>
+
+              <div class="field">
+                <span class="field-label">Build artifact</span>
+                <div style="display:flex;gap:10px">
+                  <button type="button" class="{{ artifactBin }}" sc-camel-on-click="{{ setArtifactBinary }}" style="flex:1">Binary</button>
+                  <button type="button" class="{{ artifactImg }}" sc-camel-on-click="{{ setArtifactImage }}" style="flex:1">Container image</button>
+                </div>
+                <input placeholder="{{ artifactPlaceholder }}" style="margin-top:8px">
+                <sc-if value="{{ admissionPass }}">
+                  <span class="check check--pass"><span class="check__mark">✓</span><span>Image found · 412 MB · 6 layers</span></span>
+                  <span class="check check--pass"><span class="check__mark">✓</span><span>Artifact matches report · 118/118 components matched</span></span>
+                </sc-if>
+                <sc-if value="{{ admissionBusy }}">
+                  <span class="check check--pass"><span class="check__mark">✓</span><span>Image found · 412 MB · 6 layers</span></span>
+                  <span class="check check--busy"><span class="check__mark">⏳</span><span>Verifying artifact matches report… the form stays usable while this runs</span></span>
+                </sc-if>
+                <sc-if value="{{ admissionBlocked }}">
+                  <span class="check check--pass"><span class="check__mark">✓</span><span>Image found · 388 MB · 6 layers</span></span>
+                  <span class="check check--fail"><span class="check__mark">✗</span><span>Artifact does not match report · 71 of 96 components matched, 25 did not</span></span>
+                </sc-if>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <label class="field">
+                  <span class="field-label">Branch assessed</span>
+                  <input value="release/1.14" readonly="">
+                </label>
+                <label class="field">
+                  <span class="field-label">Commit</span>
+                  <input value="4a9f1c2" readonly="">
+                  <span class="check check--pass"><span class="check__mark">✓</span><span>matches git.properties</span></span>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Why is this needed?</span>
+                <textarea placeholder="Feeds the reviewer's context. Not read by the rule engine.">upgrade blocked until Q4 platform release</textarea>
+              </label>
+
+              <sc-if value="{{ admissionBlocked }}">
+                <div class="callout callout--danger">
+                  <span class="callout__title">Blocked — provenance mismatch</span>
+                  <span>25 of 96 components in the artifact are not in the report. This usually means the artifact is a different build from the one that was scanned. Evidence taken from it would not describe what the report found, so the assessment cannot proceed.</span>
+                  <span><button type="button" class="btn btn--ghost btn--sm">Use a different artifact</button></span>
+                </div>
+              </sc-if>
+
+              <div style="border-top:1px solid var(--border-subtle);padding-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--fg-muted);max-width:340px">Determinations last 7 days and are not renewed automatically.</span>
+                <span style="margin-left:auto;display:flex;gap:8px">
+                  <button type="button" class="btn btn--ghost">Cancel</button>
+                  <button type="button" class="btn btn--primary" disabled="{{ submitBlocked }}">Submit</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ isResult }}">
+        <section class="page" data-screen-label="04 Assessment Result" style="max-width:900px">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">Result · read only</p>
+              <h1>{{ asm.id }} · {{ asm.app }}</h1>
+              <p class="sub">{{ asm.branch }} @ {{ asm.commit }} · provenance ✓ {{ asm.provenance }}</p>
+            </div>
+            <span class="{{ asmStateCls }}">{{ asmStateLabel }}</span>
+          </div>
+
+          <sc-if value="{{ isLoading }}">
+            <div class="card"><div class="card__body" style="display:grid;gap:14px">
+              <sc-for list="{{ skeletonRows }}" as="sk" hint-placeholder-count="4">
+                <span class="skeleton" style="width:70%"></span>
+              </sc-for>
+            </div></div>
+          </sc-if>
+
+          <sc-if value="{{ isNormal }}">
+            <div style="display:grid;gap:12px">
+              <sc-for list="{{ resultRows }}" as="r" hint-placeholder-count="4">
+                <div class="card"><div class="card__body" style="display:grid;gap:8px">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span class="mono" style="font-family:var(--font-mono);font-weight:700;font-size:14px">{{ r.cve }}</span>
+                    <span style="font-family:var(--font-mono);font-size:12px;color:var(--fg-secondary)">{{ r.component }}</span>
+                    <span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">
+                      <span class="{{ r.outcomeCls }}"><span class="outcome__icon">{{ r.outcomeIcon }}</span>{{ r.outcomeLabel }}</span>
+                      <span class="{{ r.tierCls }}">{{ r.tierLabel }}</span>
+                    </span>
+                  </div>
+                  <p style="margin:0;font-size:13px;line-height:1.55;color:var(--fg-secondary);text-wrap:pretty">{{ r.reason }}</p>
+                  <sc-if value="{{ r.isHandoff }}">
+                    <div class="callout callout--handoff">
+                      <span class="callout__title">No determination was made</span>
+                      <span>No fix is available. This did not receive a determination and the Nexus IQ violation stays open. Take the evidence package to your risk manager.</span>
+                      <span><button type="button" class="btn btn--handoff btn--sm">↗ Download evidence package</button></span>
+                    </div>
+                  </sc-if>
+                  <div>
+                    <button type="button" class="link-btn" sc-camel-on-click="{{ r.toggleTrace }}">{{ r.traceLabel }}</button>
+                  </div>
+                  <sc-if value="{{ r.traceOpen }}">
+                    <div class="trace" style="border-top:1px solid var(--border-subtle);padding-top:8px">
+                      <sc-for list="{{ r.trace }}" as="t" hint-placeholder-count="2">
+                        <div class="{{ t.rowCls }}">
+                          <span class="trace__tier">{{ t.tier }}</span>
+                          <span class="trace__name">{{ t.name }}</span>
+                          <span class="{{ t.resCls }}">{{ t.result }}</span>
+                          <span class="trace__detail">{{ t.detail }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div></div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ isLogin }}">
+        <section data-screen-label="01 Login" style="display:grid;place-items:center;min-height:100%;padding:64px 24px">
+          <div class="card" style="width:100%;max-width:400px">
+            <div class="card__body" style="display:grid;gap:16px;padding:28px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="logo" style="width:38px;height:38px;border-radius:6px;display:grid;place-items:center;font-family:var(--font-mono);font-weight:700;font-size:13px;background:var(--accent-fill);color:var(--fg-onAccent)">VEX</div>
+                <div>
+                  <h1 style="margin:0;font-size:18px;font-weight:600">VEX Portal</h1>
+                  <p style="margin:0;font-size:12px;color:var(--fg-muted);font-family:var(--font-mono)">exploitability determinations</p>
+                </div>
+              </div>
+              <p style="margin:0;font-size:13px;line-height:1.55;color:var(--fg-secondary)">Evidence-based CVE applicability determinations, recorded in CycloneDX VEX format.</p>
+              <button type="button" class="btn btn--primary" sc-camel-on-click="{{ goLanding }}">Sign in with corporate SSO</button>
+              <sc-if value="{{ isLoading }}">
+                <p style="margin:0;font-size:12px;color:var(--fg-muted)">Redirecting to the identity provider…</p>
+              </sc-if>
+              <sc-if value="{{ isError }}">
+                <div class="callout callout--danger">
+                  <span class="callout__title">Signed in, but no portal role</span>
+                  <span>Authentication succeeded. Your account is not in a group that grants access. Access is granted by <span style="font-family:var(--font-mono)">appsec-vex-requester</span>, <span style="font-family:var(--font-mono)">appsec-vex-reviewer</span>, <span style="font-family:var(--font-mono)">appsec-vex-approver</span>, <span style="font-family:var(--font-mono)">appsec-vex-auditor</span>, <span style="font-family:var(--font-mono)">appsec-vex-risk</span> or <span style="font-family:var(--font-mono)">appsec-vex-admin</span>. Request membership from the AppSec team.</span>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+      <sc-if value="{{ isDashboard }}">
+        <section class="page" data-screen-label="07 Dashboard">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">Dashboard · auditor</p>
+              <h1>78% of findings determined without a human</h1>
+              <p class="sub">Every number links through to the findings behind it.</p>
+            </div>
+            <div style="display:flex;gap:10px">
+              <sc-raw-select class="icon-btn" style="height:32px"><option>last 90 days</option><option>last 30 days</option><option>last 7 days</option></sc-raw-select>
+              <sc-raw-select class="icon-btn" style="height:32px"><option>all applications</option><option>payments-api</option><option>ledger-svc</option></sc-raw-select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px">
+            <div class="card"><div class="card__body metric">
+              <span class="metric__label">Automation split</span>
+              <span class="metric__value">78%</span>
+              <span class="metric__delta">auto-determined · up 6 pts on last quarter</span>
+            </div></div>
+            <div class="card"><div class="card__body metric">
+              <span class="metric__label">Time to determination</span>
+              <span class="metric__value">3.2h</span>
+              <span class="metric__delta">median · p90 11.4h · <span style="color:var(--danger);font-weight:600">3 breaching</span></span>
+            </div></div>
+            <div class="card"><div class="card__body metric">
+              <span class="metric__label">Agreement rate</span>
+              <span class="metric__value">95.4%</span>
+              <span class="metric__delta"><span style="color:var(--warning);font-weight:600">1 rule below its bar</span></span>
+            </div></div>
+            <div class="card"><div class="card__body metric">
+              <span class="metric__label">Expiring in 7 days</span>
+              <span class="metric__value">14</span>
+              <span class="metric__delta">incoming reassessment load</span>
+            </div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+            <div class="card">
+              <div class="card__head"><h2 class="card__title">Volume over time</h2><span style="font-size:11px;color:var(--fg-muted)">findings by outcome, weekly</span></div>
+              <div class="card__body">
+                <div style="display:flex;align-items:flex-end;gap:14px;height:190px">
+                  <sc-for list="{{ volume }}" as="v" hint-placeholder-count="8">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
+                      <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;border-radius:3px;overflow:hidden">
+                        <div style="background:var(--handoff)" title="risk acceptance"><div style="height: {{ v.hHand }}"></div></div>
+                        <div style="background:var(--outcome-review)" title="needs review"><div style="height: {{ v.hRev }}"></div></div>
+                        <div style="background:var(--outcome-affected)" title="affected"><div style="height: {{ v.hAff }}"></div></div>
+                        <div style="background:var(--outcome-clear)" title="not affected"><div style="height: {{ v.hClear }}"></div></div>
+                      </div>
+                      <span style="font-size:10px;color:var(--fg-muted);font-family:var(--font-mono)">{{ v.d }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:14px;margin-top:12px;font-size:11px;color:var(--fg-secondary);flex-wrap:wrap">
+                  <span>■ not affected</span><span style="color:var(--outcome-affected)">■ affected</span><span style="color:var(--outcome-review)">■ needs review</span><span style="color:var(--handoff)">■ risk acceptance</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__head"><h2 class="card__title">Agreement rate per rule</h2><span style="font-size:11px;color:var(--fg-muted)">the trust metric</span></div>
+              <div class="card__body" style="display:grid;gap:12px">
+                <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;gap:4px">
+                    <div style="display:flex;align-items:baseline;gap:8px">
+                      <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-secondary)">{{ r.id }}</span>
+                      <span style="margin-left:auto;font-family:var(--font-mono);font-size:12px;font-weight:600">{{ r.agreement }}</span>
+                    </div>
+                    <div class="progress"><div class="{{ r.barCls }}" style="width: {{ r.barPct }}"></div></div>
+                    <sc-if value="{{ r.suspended }}">
+                      <span style="font-size:11px;color:var(--warning);font-weight:600">below its bar — auto-determination suspended</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="card">
+              <div class="card__head"><h2 class="card__title">Outcome mix by application</h2></div>
+              <div class="card__body" style="display:grid;gap:12px">
+                <sc-for list="{{ mix }}" as="m" hint-placeholder-count="5">
+                  <div style="display:grid;gap:4px">
+                    <div style="display:flex;font-size:12px"><span>{{ m.app }}</span><span style="margin-left:auto;font-family:var(--font-mono);color:var(--fg-muted)">{{ m.label }}</span></div>
+                    <div style="display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--bg-surface-2)">
+                      <div style="background:var(--outcome-clear);width: {{ m.clear }}"></div>
+                      <div style="background:var(--outcome-affected);width: {{ m.affected }}"></div>
+                      <div style="background:var(--handoff);width: {{ m.handoff }}"></div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card__head"><h2 class="card__title">Determination expiry</h2><span style="font-size:11px;color:var(--fg-muted)">next 7 days</span></div>
+              <div class="card__body" style="display:grid;gap:10px">
+                <div style="display:flex;align-items:baseline;gap:10px"><span class="expiry expiry--near">within 48 hours</span><span style="margin-left:auto;font-family:var(--font-display);font-size:22px;font-weight:600">4</span></div>
+                <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:13px;color:var(--fg-secondary)">3 to 7 days</span><span style="margin-left:auto;font-family:var(--font-display);font-size:22px;font-weight:600">10</span></div>
+                <div style="display:flex;align-items:baseline;gap:10px"><span class="expiry expiry--lapsed">already lapsed</span><span style="margin-left:auto;font-family:var(--font-display);font-size:22px;font-weight:600">2</span></div>
+                <p style="margin:4px 0 0;font-size:12px;color:var(--fg-muted)">Determinations are never auto-renewed, so each of these becomes a reassessment the requester has to raise.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ isRisk }}">
+        <section class="page" data-screen-label="08 Risk Acceptance Queue">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">Risk acceptance · hand-off</p>
+              <h1>5 findings left the portal</h1>
+              <p class="sub">No fix exists for these. None received a determination.</p>
+            </div>
+          </div>
+
+          <div class="callout callout--handoff">
+            <span class="callout__title">These are not determinations</span>
+            <span>Every Nexus IQ violation below is still open, and the portal does not enforce the outcome. Status is set by hand and tracks only the point at which the evidence package left the portal.</span>
+          </div>
+
+          <div class="data-table-wrap">
+            <sc-raw-table class="data-table">
+              <sc-raw-thead>
+                <sc-raw-tr><sc-raw-th>Application</sc-raw-th><sc-raw-th>CVE</sc-raw-th><sc-raw-th>Component</sc-raw-th><sc-raw-th>Why no fix</sc-raw-th><sc-raw-th style="width:120px">Signals</sc-raw-th><sc-raw-th style="width:60px">Apps</sc-raw-th><sc-raw-th style="width:56px">Age</sc-raw-th><sc-raw-th style="width:150px">Hand-off</sc-raw-th><sc-raw-th></sc-raw-th></sc-raw-tr>
+              </sc-raw-thead>
+              <sc-raw-tbody>
+                <sc-for list="{{ riskRows }}" as="r" hint-placeholder-count="5">
+                  <sc-raw-tr class="{{ r.rowCls }}" style="{{ r.rowStyle }}" sc-camel-on-click="{{ r.onOpen }}">
+                    <sc-raw-td>{{ r.app }}</sc-raw-td>
+                    <sc-raw-td class="mono" style="font-weight:600">{{ r.cve }}</sc-raw-td>
+                    <sc-raw-td class="mono" style="font-size:12px;color:var(--fg-secondary)">{{ r.component }}</sc-raw-td>
+                    <sc-raw-td style="font-size:12px;color:var(--fg-secondary);max-width:290px">{{ r.why }}</sc-raw-td>
+                    <sc-raw-td style="font-family:var(--font-mono);font-size:11px;color:var(--signal-label)">CVSS {{ r.cvss }} · EPSS {{ r.epss }} · {{ r.kev }}</sc-raw-td>
+                    <sc-raw-td class="num">{{ r.apps }}</sc-raw-td>
+                    <sc-raw-td class="num" style="font-size:12px;color:var(--fg-secondary)">{{ r.age }}</sc-raw-td>
+                    <sc-raw-td><span class="{{ r.statusCls }}">{{ r.status }}</span></sc-raw-td>
+                    <sc-raw-td><button type="button" class="btn btn--handoff btn--sm">↗ Package</button></sc-raw-td>
+                  </sc-raw-tr>
+                </sc-for>
+              </sc-raw-tbody>
+            </sc-raw-table>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--fg-muted)">There is no integration with the GRC system. This is a deliberate hand-off, tracked only to the point of leaving the portal.</p>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ isRules }}">
+        <section class="page" data-screen-label="09 Rules and Thresholds">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">Administration</p>
+              <h1>Rules &amp; Thresholds</h1>
+              <p class="sub">Tier 3 rules have no auto-determination capability, so they carry no toggle.</p>
+            </div>
+          </div>
+
+          <div class="data-table-wrap">
+            <sc-raw-table class="data-table">
+              <sc-raw-thead>
+                <sc-raw-tr><sc-raw-th>Rule</sc-raw-th><sc-raw-th style="width:80px">Tier</sc-raw-th><sc-raw-th style="width:64px">Version</sc-raw-th><sc-raw-th style="width:180px">Auto-determination</sc-raw-th><sc-raw-th style="width:200px">Agreement</sc-raw-th><sc-raw-th style="width:110px">30-day volume</sc-raw-th><sc-raw-th></sc-raw-th></sc-raw-tr>
+              </sc-raw-thead>
+              <sc-raw-tbody>
+                <sc-for list="{{ rules }}" as="r" hint-placeholder-count="8">
+                  <sc-raw-tr class="row">
+                    <sc-raw-td class="mono" style="font-weight:600;font-size:13px">{{ r.id }}</sc-raw-td>
+                    <sc-raw-td><span class="{{ r.tierCls }}">{{ r.tierLabel }}</span></sc-raw-td>
+                    <sc-raw-td class="mono" style="font-size:12px;color:var(--fg-secondary)">{{ r.version }}</sc-raw-td>
+                    <sc-raw-td>
+                      <sc-if value="{{ r.hasToggle }}">
+                        <button type="button" class="{{ r.autoCls }}" sc-camel-on-click="{{ r.toggle }}">{{ r.autoLabel }}</button>
+                      </sc-if>
+                      <sc-if value="{{ r.note }}">
+                        <span style="font-size:11px;color:var(--fg-muted);font-style:italic">{{ r.note }}</span>
+                      </sc-if>
+                    </sc-raw-td>
+                    <sc-raw-td>
+                      <div style="display:grid;gap:4px">
+                        <div style="display:flex;gap:8px;font-size:12px"><span style="font-family:var(--font-mono);font-weight:600">{{ r.agreement }}</span><span style="color:var(--fg-muted)">{{ r.bar }}</span></div>
+                        <div class="progress"><div class="{{ r.barCls }}" style="width: {{ r.barPct }}"></div></div>
+                      </div>
+                    </sc-raw-td>
+                    <sc-raw-td class="num">{{ r.volume }}</sc-raw-td>
+                    <sc-raw-td><button type="button" class="link-btn">History</button></sc-raw-td>
+                  </sc-raw-tr>
+                </sc-for>
+              </sc-raw-tbody>
+            </sc-raw-table>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="card">
+              <div class="card__head"><h2 class="card__title">Escalation triggers</h2></div>
+              <div class="card__body" style="display:grid;gap:14px">
+                <label class="field">
+                  <span class="field-label">EPSS routing threshold</span>
+                  <input value="{{ epssThreshold }}" sc-camel-on-change="{{ onThreshold }}">
+                  <span class="field__help">Above this, a finding routes to a human regardless of tier 1 and tier 2 evidence.</span>
+                </label>
+                <div class="callout callout--info">
+                  <span class="callout__title">If you saved this now</span>
+                  <span>{{ thresholdImpact }}</span>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button type="button" class="btn btn--primary btn--sm" disabled="{{ thresholdClean }}">Save threshold</button>
+                  <button type="button" class="btn btn--ghost btn--sm">Reset</button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card__head"><h2 class="card__title">Why Tier 3 has no toggle</h2></div>
+              <div class="card__body">
+                <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:var(--fg-secondary);text-wrap:pretty">Tier 3 evidence — CVSS vector, EPSS, KEV, exposure — may raise severity or route a finding to a human. It may never clear one. That is enforced in the domain layer, not by reviewer discipline.</p>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:var(--fg-secondary);text-wrap:pretty">A greyed-out toggle would imply the capability exists and is merely switched off, so the control is absent instead.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+      <sc-if value="{{ isNotes }}">
+        <section class="page" data-screen-label="Design notes" style="max-width:820px">
+          <div class="page__head">
+            <div>
+              <p class="eyebrow">Design notes</p>
+              <h1>Where this came from, and what the spec left open</h1>
+              <p class="sub">Read this before the screens.</p>
+            </div>
+          </div>
+
+          <div class="card"><div class="card__body" style="display:grid;gap:12px">
+            <h2 class="card__title">Design context</h2>
+            <p style="margin:0;font-size:13px;line-height:1.65;color:var(--fg-secondary);text-wrap:pretty">Nothing here is invented. The visual system is DAST-Portal's, lifted from <span style="font-family:var(--font-mono);font-size:12px">web/src/app/core/design/</span> — the Signal palette, IBM Plex Sans and Mono, the dark rail that stays dark in both themes, the one table style, the Operative control vocabulary. VEX Portal mirrors DAST-Portal so the same rotation maintains both, and that has to hold for the interface too.</p>
+            <p style="margin:0;font-size:13px;line-height:1.65;color:var(--fg-secondary);text-wrap:pretty">What is new is only what VEX needs and DAST has no concept of: an outcome ramp, an evidence-tier ramp, a deliberately colourless escalation-signal block, an assessment-state ramp and an expiry treatment. Those live in <span style="font-family:var(--font-mono);font-size:12px">styles/tokens.scss</span> under a VEX-SPECIFIC heading, and in <span style="font-family:var(--font-mono);font-size:12px">outcome.scss</span> and <span style="font-family:var(--font-mono);font-size:12px">evidence-drawer.scss</span>.</p>
+          </div></div>
+
+          <div class="card"><div class="card__body" style="display:grid;gap:14px">
+            <h2 class="card__title">Three rules the CSS enforces, not just the copy</h2>
+            <div style="display:grid;gap:10px;font-size:13px;line-height:1.6;color:var(--fg-secondary)">
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Risk Acceptance Required is never styled as a determination.</strong> It is the only outcome that is not a filled pill: dashed violet outline, an outbound arrow on its actions, a dashed row edge. Nothing about it borrows the green of a cleared finding.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Escalation signals carry no colour at all.</strong> EPSS 0.944 and a KEV listing sit in muted grey on a recessed surface with a permanent “not a basis for clearing” line. There is no red-EPSS token to reach for, so no future change can accidentally place a severity colour next to a Not Affected verdict.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">A cleared verdict always shows its tier.</strong> The tier badge is a sibling of the outcome pill everywhere the outcome appears — queue, detail, drawer, requester result.</p>
+            </div>
+          </div></div>
+
+          <div class="card"><div class="card__body" style="display:grid;gap:14px">
+            <h2 class="card__title">The three open questions, answered</h2>
+            <div style="display:grid;gap:10px;font-size:13px;line-height:1.6;color:var(--fg-secondary)">
+              <p style="margin:0"><strong style="color:var(--fg-primary)">1. Queue grouping.</strong> Both, remembered. Finding-level is the default because that is the working mode; the choice persists per user, so a first-time reviewer starts flat and a tracker who switches stays switched.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">2. Requester and the rule trace.</strong> Plain-language reason first, full trace behind a per-finding disclosure. The requester who wants to learn can open it; the requester who wants the answer is not made to read a trace to find it.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">3. Risk Acceptance in the queue.</strong> In both, visually set apart. Hiding it from the queue would make the reviewer's count disagree with reality; the dashed treatment carries the distinction instead.</p>
+            </div>
+          </div></div>
+
+          <div class="card"><div class="card__body" style="display:grid;gap:14px">
+            <h2 class="card__title">Gaps in the spec, and what I did about them</h2>
+            <div style="display:grid;gap:10px;font-size:13px;line-height:1.6;color:var(--fg-secondary)">
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Tier 2 second confirmation had no design.</strong> The spec requires the UI to show that one is needed and by whom, but not how. It is a dashed strip inside the determination block, in the tier 2 blue, naming the confirmer once given and stating plainly that you cannot provide both.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Bulk refusal had no surface.</strong> “Accept recommendations must refuse a selection and say which rows blocked it” — so the refusal is a red callout above the table listing every blocking CVE with its reason, and nothing is partially applied.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Keyboard model had no discoverability.</strong> A queue that is fully keyboard operable and never says so is keyboard operable for the person who wrote it. There is a persistent hint strip above the table and a <span class="kbd">?</span> panel.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Expiry was described but never drawn.</strong> Three bands: normal, within 48 hours, lapsed — each with its own token, used identically on the assessment list and the dashboard.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Abstention had no shape.</strong> Where the adjudicator abstained, the drawer lists what evidence was missing, as its own block, distinct from a failed collector. Those two look nothing alike on purpose: one is a limit of the evidence, the other is an outage.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">No persona switch existed, and a mock needs one.</strong> The rail carries a persona select. It is a mockup affordance, not a product feature — in the real portal the role comes from AD group membership.</p>
+              <p style="margin:0"><strong style="color:var(--fg-primary)">Threshold impact preview.</strong> Screen 9 requires showing how many of the last 30 days' findings would have routed differently before saving. Type a new EPSS value and the callout recomputes.</p>
+            </div>
+          </div></div>
+
+          <div class="card"><div class="card__body" style="display:grid;gap:10px">
+            <h2 class="card__title">Still open</h2>
+            <div style="display:grid;gap:8px;font-size:13px;line-height:1.6;color:var(--fg-secondary)">
+              <p style="margin:0">· Below 1100px the drawer goes full-screen. The back affordance is the close button; a dedicated back arrow may read better on a tablet.</p>
+              <p style="margin:0">· Dashboard drill-through is drawn but not wired — every number is meant to link to its rows.</p>
+              <p style="margin:0">· Notifications are absent. DAST has a feed; VEX's spec does not mention one, and expiry warnings are the obvious first candidate.</p>
+              <p style="margin:0">· Sample data is invented. Real CVE and component names, fabricated evidence.</p>
+            </div>
+          </div></div>
+        </section>
+      </sc-if>
+    </div>
+    {{ helpOverlay }}
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+const D = window.VEX || { assessments: [], findings: [], rules: [], riskRows: [], justifications: [], volume: [], outcomeMix: [] };
+
+const OUT = {
+  clear: { label: 'Not Affected', icon: '✓', cls: 'outcome outcome--clear' },
+  affected: { label: 'Affected', icon: '✗', cls: 'outcome outcome--affected' },
+  review: { label: 'Needs Review', icon: '▲', cls: 'outcome outcome--review' },
+  handoff: { label: 'Risk Acceptance Required', icon: '⚑', cls: 'outcome outcome--handoff' },
+};
+const SHORT = { clear: 'not affected', affected: 'affected', review: 'needs review', handoff: 'risk acceptance' };
+
+const NAV = [
+  { title: 'Assess', roles: ['Requester'], items: [
+    { route: 'assessments', label: 'My Assessments', icon: '≡' },
+    { route: 'new', label: 'New Assessment', icon: '+' },
+  ] },
+  { title: 'Review', roles: ['Reviewer', 'Approver'], items: [
+    { route: 'review', label: 'Review Queue', icon: '⚟' },
+    { route: 'detail', label: 'Assessment Detail', icon: '◫' },
+  ] },
+  { title: 'Oversight', roles: ['Auditor', 'Management'], items: [
+    { route: 'dashboard', label: 'Dashboard', icon: '▤' },
+  ] },
+  { title: 'Hand-off', roles: ['Risk Manager'], items: [
+    { route: 'risk', label: 'Risk Acceptance', icon: '⚑' },
+  ] },
+  { title: 'Administration', roles: ['Admin'], items: [
+    { route: 'rules', label: 'Rules & Thresholds', icon: '⚙' },
+  ] },
+  { title: 'Session', roles: ['*'], items: [
+    { route: 'login', label: 'Login screen', icon: '⎋' },
+  ] },
+];
+
+const LANDING = { Requester: 'assessments', Reviewer: 'review', Approver: 'review', Auditor: 'dashboard', 'Risk Manager': 'risk', Admin: 'rules' };
+const STATE_MODES = [
+  { key: 'normal', label: 'normal' },
+  { key: 'loading', label: 'loading' },
+  { key: 'empty', label: 'empty' },
+  { key: 'error', label: 'error' },
+  { key: 'partial', label: 'partial' },
+];
+
+class Component extends DCLogic {
+  state = {
+    route: 'review',
+    role: 'Reviewer',
+    theme: 'light',
+    mode: 'normal',
+    grouping: 'none',
+    search: '',
+    fOutcome: 'needs review',
+    fApp: 'all',
+    fSla: 'all',
+    fTier: 'all',
+    sort: 'sla',
+    selected: [],
+    openId: 'f1',
+    verdicts: {},
+    notes: {},
+    just: {},
+    bulkBlock: null,
+    saved: null,
+    help: false,
+    asm: 'ASM-2418',
+    artifactKind: 'image',
+    admission: 'pass',
+    ruleAuto: {},
+    thresholdDraft: null,
+    traceOpen: {},
+    reqTrace: {},
+    topbarH: 49,
+  };
+
+  componentDidMount() {
+    try {
+      const g = localStorage.getItem('vex.grouping');
+      if (g) this.setState({ grouping: g });
+      const t = localStorage.getItem('vex.theme');
+      if (t) this.setState({ theme: t });
+      document.documentElement.setAttribute('data-theme', t || 'light');
+    } catch (e) {}
+    this._key = (e) => this.onKey(e);
+    window.addEventListener('keydown', this._key);
+    // The topbar wraps on a narrow viewport, so the drawer cannot assume a
+    // fixed offset — it tracks the topbar's measured height.
+    this._measure = () => {
+      const tb = document.querySelector('.topbar');
+      if (tb && tb.offsetHeight !== this.state.topbarH) this.setState({ topbarH: tb.offsetHeight });
+    };
+    this._measure();
+    window.addEventListener('resize', this._measure);
+    this._raf = requestAnimationFrame(this._measure);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this._key);
+    window.removeEventListener('resize', this._measure);
+    cancelAnimationFrame(this._raf);
+  }
+  componentDidUpdate() { if (this._measure) this._measure(); }
+
+  set(patch) { this.setState(patch); }
+
+  go(route) {
+    return () => this.setState({ route, mode: 'normal', bulkBlock: null, saved: null, openId: route === 'review' ? 'f1' : null });
+  }
+
+  onKey(e) {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+      if (e.key === 'Escape') e.target.blur();
+      return;
+    }
+    if (e.key === '?') { this.setState((s) => ({ help: !s.help })); return; }
+    if (e.key === 'Escape') { this.setState({ openId: null, help: false }); return; }
+    const inQueue = this.state.route === 'review' || this.state.route === 'detail';
+    if (!inQueue) return;
+    const rows = this.visibleFindings();
+    const i = rows.findIndex((r) => r.id === this.state.openId);
+    if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); this.setState({ openId: rows[Math.min(rows.length - 1, i + 1)] ? rows[Math.min(rows.length - 1, i + 1)].id : this.state.openId }); }
+    else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); this.setState({ openId: rows[Math.max(0, i - 1)] ? rows[Math.max(0, i - 1)].id : this.state.openId }); }
+    else if (e.key === 'Enter' && rows[0] && this.state.openId == null) this.setState({ openId: rows[0].id });
+    else if (e.key === 'a') this.setVerdict('clear');
+    else if (e.key === 'd') this.setVerdict('affected');
+    else if (e.key === 's') { const n = rows[Math.min(rows.length - 1, i + 1)]; if (n) this.setState({ openId: n.id }); }
+    else if (e.key === '/') { e.preventDefault(); const el = document.querySelector('.search input'); if (el) el.focus(); }
+  }
+
+  setVerdict(v) {
+    const id = this.state.openId;
+    if (!id) return;
+    const f = D.findings.find((x) => x.id === id);
+    if (!f || f.outcome === 'handoff') return;
+    this.setState((s) => ({ verdicts: Object.assign({}, s.verdicts, { [id]: v }), saved: null }));
+  }
+
+  visibleFindings() {
+    const s = this.state;
+    const scope = s.route === 'detail' ? D.findings.filter((f) => f.asm === s.asm) : D.findings;
+    const q = s.search.trim().toLowerCase();
+    let rows = scope.filter((f) => {
+      if (s.fOutcome !== 'all' && SHORT[f.outcome] !== s.fOutcome) return false;
+      if (s.fApp !== 'all' && f.app !== s.fApp) return false;
+      if (s.fTier !== 'all' && String(f.tier) !== s.fTier) return false;
+      if (s.fSla === 'breaching' && f.slaBand !== 'breach') return false;
+      if (s.fSla === 'today' && !(f.slaBand === 'breach' || f.slaBand === 'soon')) return false;
+      if (q && !(f.cve.toLowerCase().includes(q) || f.component.toLowerCase().includes(q))) return false;
+      return true;
+    });
+    const rank = { breach: 0, soon: 1, '': 2 };
+    if (s.sort === 'sla') rows = rows.slice().sort((a, b) => (rank[a.slaBand] - rank[b.slaBand]) || a.cve.localeCompare(b.cve));
+    else if (s.sort === 'age') rows = rows.slice().sort((a, b) => parseInt(b.age) - parseInt(a.age));
+    else rows = rows.slice().sort((a, b) => a.app.localeCompare(b.app));
+    return rows;
+  }
+
+  decorate(f) {
+    const v = this.state.verdicts[f.id] || f.outcome;
+    const o = OUT[v];
+    const sel = this.state.selected.indexOf(f.id) >= 0;
+    let cls = 'row';
+    if (f.outcome === 'handoff') cls += ' is-handoff';
+    if (this.state.openId === f.id) cls += ' is-open';
+    else if (sel) cls += ' is-selected';
+    return Object.assign({}, f, {
+      view: v,
+      outcomeCls: o.cls,
+      outcomeIcon: o.icon,
+      outcomeLabel: o.label,
+      shortLabel: SHORT[v],
+      rowCls: cls,
+      tierCls: f.tier ? 'tier-badge tier--' + f.tier : 'sr-only',
+      tierLabel: f.tier ? 'Tier ' + f.tier : '',
+      slaCls: 'sla' + (f.slaBand === 'breach' ? ' sla--breach' : f.slaBand === 'soon' ? ' sla--soon' : ''),
+      slaText: f.slaBand === 'breach' ? f.sla + ' !' : f.sla,
+      asmShort: f.asm.replace('ASM-', ''),
+      checked: sel,
+      onOpen: () => this.setState({ openId: f.id, saved: null }),
+      onCheck: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleSel(f.id); },
+      goAsm: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ route: 'detail', asm: f.asm, openId: f.id }); },
+    });
+  }
+
+  toggleSel(id) {
+    this.setState((s) => {
+      const has = s.selected.indexOf(id) >= 0;
+      return { selected: has ? s.selected.filter((x) => x !== id) : s.selected.concat([id]), bulkBlock: null };
+    });
+  }
+
+  acceptRecommendations() {
+    const sel = this.state.selected.map((id) => D.findings.find((f) => f.id === id)).filter(Boolean);
+    if (!sel.length) return;
+    const blocked = sel.filter((f) => f.outcome === 'review' || f.outcome === 'handoff' || f.tier === 2);
+    if (blocked.length) {
+      this.setState({ bulkBlock: blocked.map((f) => ({
+        cve: f.cve,
+        why: f.outcome === 'handoff' ? 'Risk Acceptance Required — not a determination' : f.outcome === 'review' ? 'routed to a human; no recommendation to accept' : 'Tier 2 determination — needs an individual second confirmation',
+      })) });
+      return;
+    }
+    const v = {};
+    sel.forEach((f) => { v[f.id] = f.outcome; });
+    this.setState((s) => ({ verdicts: Object.assign({}, s.verdicts, v), selected: [], bulkBlock: null, saved: sel.length + ' recommendations accepted' }));
+  }
+
+  traceRows(f) {
+    return f.trace.map((t, i) => ({
+      key: f.id + '-' + i,
+      tier: t.tier,
+      name: t.name,
+      result: t.result,
+      detail: t.detail,
+      rowCls: 'trace__row' + (t.degraded ? ' trace__row--degraded' : ''),
+      resCls: 'trace__result trace__result--' + t.kind,
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const rows = s.mode === 'empty' ? [] : this.visibleFindings();
+    const dec = rows.map((f) => this.decorate(f));
+    const open = s.openId ? D.findings.find((f) => f.id === s.openId) : null;
+    const openDec = open ? this.decorate(open) : null;
+    const asm = D.assessments.find((a) => a.id === s.asm) || D.assessments[0];
+    // The drawer may only show a finding that belongs to the screen you are on.
+    // Screen 8's row set is the hand-offs; the queue's is everything in scope.
+    const scopeIds = s.route === 'risk'
+      ? D.findings.filter((f) => f.outcome === 'handoff').map((f) => f.id)
+      : s.route === 'detail'
+        ? D.findings.filter((f) => f.asm === s.asm).map((f) => f.id)
+        : s.route === 'review' ? D.findings.map((f) => f.id) : [];
+    const drawerOpen = !!openDec && scopeIds.indexOf(s.openId) >= 0;
+    const counts = { review: D.findings.filter((f) => f.outcome === 'review').length, handoff: D.riskRows.length, asm: D.assessments.length, rules: D.rules.length };
+
+    const navGroups = NAV.filter((g) => g.roles.indexOf('*') >= 0 || g.roles.indexOf(s.role) >= 0 || (s.role === 'Auditor' && g.title === 'Oversight')).map((g) => ({
+      title: g.title,
+      items: g.items.map((it) => ({
+        label: it.label,
+        icon: it.icon,
+        cls: 'nav-item' + (s.route === it.route ? ' active' : ''),
+        count: it.route === 'review' ? String(counts.review) : it.route === 'assessments' ? String(counts.asm) : it.route === 'risk' ? String(counts.handoff) : '',
+        go: this.go(it.route),
+      })),
+    }));
+
+    const openVerdict = open ? (s.verdicts[open.id] || open.outcome) : null;
+    const justList = open ? D.justifications.filter((j) => open.tier && j.tier <= open.tier) : [];
+
+    return {
+      role: s.role,
+      userName: s.role === 'Requester' ? 'Jane Doe' : s.role === 'Admin' ? 'Ade Okafor' : 'Kim Rahman',
+      initials: s.role === 'Requester' ? 'JD' : s.role === 'Admin' ? 'AO' : 'KR',
+      navGroups,
+      search: s.search,
+      onSearch: (e) => this.setState({ search: e.target.value }),
+      noSubmit: (e) => e.preventDefault(),
+      onRole: (e) => { const r = e.target.value; const rt = LANDING[r] || 'review'; this.setState({ role: r, route: rt, mode: 'normal', openId: rt === 'review' ? 'f1' : null }); },
+      themeLabel: s.theme === 'dark' ? '☀ light' : '☾ dark',
+      toggleTheme: () => {
+        const t = s.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        try { localStorage.setItem('vex.theme', t); } catch (e) {}
+        this.setState({ theme: t });
+      },
+      stateModes: STATE_MODES.map((m) => ({ label: m.label, cls: s.mode === m.key ? 'is-active' : '', go: () => this.setState({ mode: m.key }) })),
+      toggleHelp: () => this.setState({ help: !s.help }),
+      goNotes: this.go('notes'),
+      helpOverlay: s.help ? React.createElement('div', {
+        style: { position: 'absolute', right: '24px', top: '56px', zIndex: 60, width: '300px', padding: '16px', borderRadius: '8px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-lg)', fontSize: '13px', color: 'var(--fg-secondary)', display: 'grid', gap: '6px' },
+      }, [
+        React.createElement('div', { key: 'h', style: { fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)' } }, 'Keyboard'),
+        ['j / k — move down and up the queue', 'Enter — open the Evidence Drawer', 'a — Not Affected', 'd — Affected', 's — skip to next', '/ — focus search', 'Esc — close drawer', '? — this panel'].map((t, i) =>
+          React.createElement('div', { key: i }, t)),
+      ]) : null,
+
+      isLogin: s.route === 'login', isNew: s.route === 'new', isAssessments: s.route === 'assessments',
+      isResult: s.route === 'result', isReview: s.route === 'review', isDetail: s.route === 'detail',
+      isDashboard: s.route === 'dashboard', isRisk: s.route === 'risk', isRules: s.route === 'rules', isNotes: s.route === 'notes',
+      isLoading: s.mode === 'loading', isError: s.mode === 'error', isEmpty: s.mode === 'empty', isNormal: s.mode === 'normal' || s.mode === 'partial',
+      mode: s.mode,
+
+      rows: dec,
+      rowCount: String(rows.length),
+      openCount: String(D.findings.filter((f) => f.outcome === 'review').length),
+      grouping: s.grouping,
+      groupNone: 'chip' + (s.grouping === 'none' ? ' is-active' : ''),
+      groupAsm: 'chip' + (s.grouping === 'assessment' ? ' is-active' : ''),
+      setGroupingNone: () => { try { localStorage.setItem('vex.grouping', 'none'); } catch (e) {} this.setState({ grouping: 'none' }); },
+      setGroupingAsm: () => { try { localStorage.setItem('vex.grouping', 'assessment'); } catch (e) {} this.setState({ grouping: 'assessment' }); },
+      skeletonRows: [1, 2, 3, 4, 5, 6],
+      noSelection: s.selected.length === 0,
+      groups: (function (self) {
+        const by = {};
+        dec.forEach((f) => { (by[f.asm] = by[f.asm] || []).push(f); });
+        return Object.keys(by).map((k) => ({ asm: k, app: by[k][0].app, n: by[k].length === 1 ? '1 finding' : by[k].length + ' findings', rows: by[k] }));
+      })(this),
+      showFlat: s.grouping === 'none',
+      showGrouped: s.grouping === 'assessment',
+
+      filters: [
+        { key: 'fOutcome', label: 'outcome', value: s.fOutcome, options: ['all', 'needs review', 'not affected', 'affected', 'risk acceptance'] },
+        { key: 'fApp', label: 'application', value: s.fApp, options: ['all', 'payments-api', 'ledger-svc', 'auth-gateway', 'batch-runner', 'notify-worker'] },
+        { key: 'fSla', label: 'SLA', value: s.fSla, options: ['all', 'breaching', 'today'] },
+        { key: 'fTier', label: 'tier', value: s.fTier, options: ['all', '1', '2', '3'] },
+      ].map((f) => Object.assign({}, f, { onChange: (e) => this.setState({ [f.key]: e.target.value }) })),
+      isFiltered: s.fOutcome !== 'all' || s.fApp !== 'all' || s.fSla !== 'all' || s.fTier !== 'all' || s.search.trim() !== '',
+      clearFilters: () => this.setState({ fOutcome: 'all', fApp: 'all', fSla: 'all', fTier: 'all', search: '' }),
+      sortBy: s.sort,
+      onSort: (e) => this.setState({ sort: e.target.value }),
+
+      selCount: String(s.selected.length),
+      hasSelection: s.selected.length > 0,
+      acceptRecs: () => this.acceptRecommendations(),
+      sendToReview: () => this.setState({ selected: [], saved: 'sent to review' }),
+      bulkBlock: s.bulkBlock,
+      hasBulkBlock: !!s.bulkBlock,
+      savedMsg: s.saved,
+      hasSaved: !!s.saved,
+
+      drawerOpen: drawerOpen,
+      drawerTop: (s.topbarH || 49) + 'px',
+      scrollCls: drawerOpen ? 'has-drawer' : '',
+      f: openDec,
+      fTrace: open ? this.traceRows(open) : [],
+      fSignals: open ? open.signals : null,
+      fMissing: open && open.missing ? open.missing : [],
+      hasMissing: !!(open && open.missing),
+      degraded: (open && open.degraded) || (s.mode === 'partial' ? 'The Bitbucket source collector did not respond. The recommendation was made without it.' : null),
+      hasDegraded: !!((open && open.degraded) || s.mode === 'partial'),
+      readOnlyDrawer: s.route === 'risk' || s.role === 'Auditor',
+      closeDrawer: () => this.setState({ openId: null }),
+      verdictRows: open ? [
+        { key: 'clear', label: 'Not Affected', hint: 'requires a justification permitted at the achieved tier', cls: 'radio-row' + (openVerdict === 'clear' ? ' is-active' : ''), go: () => this.setVerdict('clear') },
+        { key: 'affected', label: 'Affected', hint: 'remediation required', cls: 'radio-row' + (openVerdict === 'affected' ? ' is-active' : ''), go: () => this.setVerdict('affected') },
+        { key: 'review', label: 'Under Investigation', hint: 'insufficient evidence; stays with a human', cls: 'radio-row' + (openVerdict === 'review' ? ' is-active' : ''), go: () => this.setVerdict('review') },
+      ] : [],
+      needsJust: openVerdict === 'clear',
+      justOptions: justList,
+      justValue: open ? (s.just[open.id] || (open.justification || '')) : '',
+      onJust: (e) => this.setState((st) => ({ just: Object.assign({}, st.just, { [s.openId]: e.target.value }) })),
+      needsSecond: !!(open && open.tier === 2 && openVerdict === 'clear'),
+      secondBy: open && open.secondConfirmation ? 'Confirmed by ' + open.secondConfirmation : 'Needs a second confirmation from another reviewer — you cannot provide both.',
+      isHandoffOpen: !!(open && open.outcome === 'handoff'),
+      noteValue: open ? (s.notes[open.id] || '') : '',
+      onNote: (e) => this.setState((st) => ({ notes: Object.assign({}, st.notes, { [s.openId]: e.target.value }) })),
+      saveDet: () => this.setState({ saved: 'Determination saved for ' + (open ? open.cve : ''), }),
+      prevF: () => this.onKey({ key: 'k', target: {} }),
+      nextF: () => this.onKey({ key: 'j', target: {} }),
+      canDetermine: !!(open && open.outcome !== 'handoff') && !(s.route === 'risk' || s.role === 'Auditor'),
+      cannotSave: !(openVerdict && (openVerdict !== 'clear' || (open && (s.just[open.id] || open.justification)))),
+
+      asm: asm,
+      asmStateCls: 'state-pill state--' + asm.state,
+      asmStateLabel: asm.state.replace('_', ' '),
+      asmProgressPct: Math.round((asm.progress / Math.max(1, asm.findings)) * 100) + '%',
+      asmCounts: asm.counts,
+      hasAsmCounts: !!asm.counts,
+      assessments: D.assessments.map((a) => ({
+        id: a.id, app: a.app, findings: String(a.findings) + ' findings', age: a.age,
+        stateCls: 'state-pill state--' + a.state,
+        stateLabel: a.state.replace('_', ' '),
+        sub: a.progressLabel,
+        pct: Math.round((a.progress / Math.max(1, a.findings)) * 100) + '%',
+        showProgress: a.state === 'ANALYSING' || a.state === 'NEEDS_REVIEW',
+        showCounts: !!a.counts && a.state === 'COMPLETED',
+        counts: a.counts || { clear: 0, affected: 0, review: 0, handoff: 0 },
+        expiry: a.expiry || '',
+        expiryCls: a.expiryBand === 'near' ? 'expiry expiry--near' : a.expiryBand === 'lapsed' ? 'expiry expiry--lapsed' : 'expiry',
+        hasExpiry: !!a.expiry,
+        showReassess: a.state === 'EXPIRED',
+        showFix: a.state === 'ADMISSION_FAILED',
+        failNote: a.state === 'ADMISSION_FAILED' ? 'artifact did not match report — ' + a.provenance : '',
+        go: () => this.setState({ route: 'result', asm: a.id }),
+        goNew: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ route: 'new' }); },
+      })),
+
+      resultRows: D.findings.filter((f) => f.asm === (asm.state === 'COMPLETED' ? 'ASM-2417' : asm.id)).map((f) => {
+        const o = OUT[f.outcome];
+        return {
+          cve: f.cve, component: f.component + ' ' + f.version, reason: f.reason,
+          outcomeCls: o.cls, outcomeIcon: o.icon, outcomeLabel: o.label,
+          tierCls: f.tier ? 'tier-badge tier--' + f.tier : 'sr-only', tierLabel: f.tier ? 'Tier ' + f.tier : '',
+          isHandoff: f.outcome === 'handoff',
+          traceOpen: !!s.reqTrace[f.id],
+          toggleTrace: () => this.setState((st) => ({ reqTrace: Object.assign({}, st.reqTrace, { [f.id]: !st.reqTrace[f.id] }) })),
+          traceLabel: s.reqTrace[f.id] ? 'Hide rule trace' : 'Show rule trace',
+          trace: this.traceRows(f),
+        };
+      }),
+
+      artifactKind: s.artifactKind,
+      setArtifactBinary: () => this.setState({ artifactKind: 'binary' }),
+      setArtifactImage: () => this.setState({ artifactKind: 'image' }),
+      submitBlocked: s.admission !== 'pass',
+      artifactBin: 'radio-row' + (s.artifactKind === 'binary' ? ' is-active' : ''),
+      artifactImg: 'radio-row' + (s.artifactKind === 'image' ? ' is-active' : ''),
+      artifactPlaceholder: s.artifactKind === 'image' ? 'artifactory.example.com/docker/payments-api:1.14.2' : 'artifactory.example.com/libs-release/payments-api-1.14.2.jar',
+      admission: s.admission,
+      setAdmission: (k) => () => this.setState({ admission: k }),
+      admissionPass: s.admission === 'pass',
+      admissionBlocked: s.admission === 'blocked',
+      admissionBusy: s.admission === 'busy',
+      admissionModes: [
+        { label: 'checks pass', cls: 'chip' + (s.admission === 'pass' ? ' is-active' : ''), go: () => this.setState({ admission: 'pass' }) },
+        { label: 'verifying', cls: 'chip' + (s.admission === 'busy' ? ' is-active' : ''), go: () => this.setState({ admission: 'busy' }) },
+        { label: 'provenance mismatch', cls: 'chip' + (s.admission === 'blocked' ? ' is-active' : ''), go: () => this.setState({ admission: 'blocked' }) },
+      ],
+
+      riskRows: D.riskRows.map((r) => {
+        const match = D.findings.find((f) => f.cve === r.cve && f.outcome === 'handoff');
+        return {
+        app: r.app, cve: r.cve, component: r.component, why: r.why, cvss: r.cvss, epss: r.epss,
+        kev: r.kev ? 'KEV' : 'not KEV', apps: String(r.apps), age: r.age, status: r.status,
+        hasEvidence: !!match,
+        rowCls: 'row is-handoff' + (match && s.openId === match.id ? ' is-open' : ''),
+        rowStyle: match ? 'cursor:pointer' : '',
+        onOpen: match ? (() => this.setState({ openId: match.id })) : undefined,
+        statusCls: r.status === 'Accepted' ? 'state-pill state--COMPLETED' : r.status === 'Rejected' ? 'state-pill state--ADMISSION_FAILED' : r.status === 'With risk manager' ? 'state-pill state--AWAITING_APPROVAL' : 'state-pill state--NEEDS_REVIEW',
+      }; }),
+
+      rules: D.rules.map((r) => {
+        const on = r.id in s.ruleAuto ? s.ruleAuto[r.id] : r.auto;
+        return {
+          id: r.id, version: r.version, volume: String(r.volume),
+          tierCls: 'tier-badge tier--' + r.tier, tierLabel: 'Tier ' + r.tier,
+          hasToggle: r.tier !== 3,
+          autoLabel: r.suspended ? 'auto-suspended' : on ? 'auto-determine on' : 'auto-determine off',
+          autoCls: 'chip' + (on && !r.suspended ? ' is-active' : ''),
+          toggle: () => this.setState((st) => ({ ruleAuto: Object.assign({}, st.ruleAuto, { [r.id]: !on }) })),
+          agreement: r.agreement == null ? '—' : r.agreement.toFixed(1) + '%',
+          bar: r.bar == null ? 'escalation only' : 'bar ' + r.bar + '%',
+          below: r.agreement != null && r.bar != null && r.agreement < r.bar,
+          suspended: !!r.suspended,
+          barPct: r.agreement == null ? '0%' : r.agreement + '%',
+          barCls: r.agreement != null && r.bar != null && r.agreement < r.bar ? 'progress__fill' : 'progress__fill progress__fill--split',
+          note: r.note,
+        };
+      }),
+      epssThreshold: s.thresholdDraft == null ? '0.10' : s.thresholdDraft,
+      onThreshold: (e) => this.setState({ thresholdDraft: e.target.value }),
+      thresholdClean: !(s.thresholdDraft != null && s.thresholdDraft !== '0.10'),
+      thresholdImpact: (function (v) {
+        const n = parseFloat(v || '0.10');
+        const d = Math.round((0.1 - n) * 940);
+        return d === 0 ? 'No change to the last 30 days.' : d > 0 ? d + ' more findings would have been escalated to a human.' : Math.abs(d) + ' fewer findings would have been escalated to a human.';
+      })(s.thresholdDraft),
+
+      volume: D.volume.map((v) => {
+        const total = v.clear + v.affected + v.review + v.handoff;
+        return { d: v.d, total: String(total), h: (total * 1.7) + 'px', hClear: (v.clear * 1.7) + 'px', hAff: (v.affected * 1.7) + 'px', hRev: (v.review * 1.7) + 'px', hHand: (v.handoff * 1.7) + 'px' };
+      }),
+      mix: D.outcomeMix.map((m) => {
+        const t = m.clear + m.affected + m.handoff;
+        return { app: m.app, clear: (m.clear / t * 100) + '%', affected: (m.affected / t * 100) + '%', handoff: (m.handoff / t * 100) + '%', label: m.clear + ' / ' + m.affected + ' / ' + m.handoff };
+      }),
+      goNew: this.go('new'),
+      canApprove: s.role === 'Approver' && s.role !== 'Requester',
+      isSelfRequested: s.role === 'Reviewer',
+      goDetail: () => this.setState({ route: 'detail', asm: 'ASM-2418' }),
+      goResult: () => this.setState({ route: 'result' }),
+      goReview: this.go('review'),
+      goLanding: () => this.setState({ route: LANDING[s.role] || 'review' }),
+    };
+  }
+}
+</script>
+
+
+<div id="__claude_design_branding"><style>#__claude_design_branding{position:fixed;right:16px;bottom:16px;z-index:2147483646;display:flex;align-items:center;gap:7px;height:30px;padding:0 5px 0 10px;border-radius:999px;font-family:"Anthropic Sans",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12.5px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:#141413;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 0 0 .5px rgba(31,30,29,.14),0 2px 10px rgba(0,0,0,.09)}
+#__claude_design_branding *{box-sizing:border-box;margin:0}
+#__claude_design_branding a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+#__claude_design_branding a:hover span{text-decoration:underline}
+#__claude_design_branding svg{flex:none}
+#__claude_design_branding a svg{color:#D97757}
+#__claude_design_branding button{width:20px;height:20px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:currentColor;opacity:.55;border:0;background:none;cursor:pointer;flex:none;font:inherit;transition:opacity .14s}
+#__claude_design_branding button:hover{opacity:1;background:rgba(127,127,127,.22)}
+@media print{#__claude_design_branding{display:none}}</style><a href="https://claude.com/product/design" target="_blank" rel="noopener noreferrer"><svg width="14" height="14" viewBox="0 0 20 21" fill="none" aria-hidden="true"><path fill="currentColor" d="M9.99902 0C15.5258 0.000170936 19.999 4.50643 19.999 10.0547C19.999 11.7656 19.5863 12.9976 18.7861 13.8203C17.9924 14.6362 16.9465 14.9138 15.9854 15.0078C15.05 15.0993 14.0097 15.0262 13.2549 15.0186C12.8524 15.0145 12.5177 15.0267 12.2441 15.0703C11.9682 15.1144 11.8143 15.1813 11.7305 15.2432C11.4745 15.4322 11.3353 15.7121 11.2656 16.1602C11.2303 16.3875 11.2168 16.6362 11.209 16.9131C11.2017 17.1715 11.1986 17.4893 11.1807 17.7705C11.1469 18.2975 11.0495 19.0865 10.4199 19.5908C9.7846 20.0996 8.88652 20.1057 7.85449 19.877C7.36399 19.7682 6.88652 19.6232 6.42578 19.4453C2.66989 17.9949 0.000187748 14.3414 0 10.0547C0 4.50643 4.47223 0.000171048 9.99902 0ZM9.99902 1.60547C5.36781 1.60564 1.60547 5.38391 1.60547 10.0547C1.60566 13.6582 3.84823 16.7296 7.00391 17.9482C7.39027 18.0974 7.79085 18.2184 8.20215 18.3096C9.1375 18.5169 9.384 18.3633 9.41602 18.3379C9.4524 18.3087 9.54558 18.1915 9.5791 17.668C9.5947 17.4239 9.59473 17.1786 9.60352 16.8672C9.61179 16.5742 9.62831 16.2435 9.67969 15.9131C9.78359 15.2455 10.0474 14.4906 10.7764 13.9521C11.1479 13.6778 11.5842 13.5493 11.9912 13.4844C12.4007 13.4191 12.8434 13.4088 13.2705 13.4131C14.1753 13.4222 15.0071 13.4905 15.8291 13.4102C16.6257 13.3322 17.2249 13.1235 17.6357 12.7012C18.0401 12.2855 18.3935 11.5261 18.3936 10.0547C18.3936 5.38391 14.6302 1.60564 9.99902 1.60547ZM5.11621 9.86719C5.86386 9.91468 6.45486 10.5348 6.45508 11.2939C6.45506 12.0838 5.81519 12.7245 5.02539 12.7246C4.28481 12.7246 3.67573 12.1617 3.60254 11.4404L3.59473 11.2939L3.60156 11.1533C3.66942 10.4596 4.23282 9.91186 4.93359 9.86719H5.11621ZM14.9814 7.19141C15.729 7.23889 16.3199 7.85919 16.3203 8.61816C16.3203 9.40801 15.6804 10.0487 14.8906 10.0488C14.1501 10.0487 13.5409 9.48586 13.4678 8.76465L13.46 8.61816L13.4668 8.47754C13.5348 7.78403 14.0983 7.23618 14.7988 7.19141H14.9814ZM6.4541 4.93457C7.20161 4.9822 7.79275 5.60231 7.79297 6.36133C7.79288 7.151 7.15291 7.7917 6.36328 7.79199C5.62274 7.79199 5.01369 7.22903 4.94043 6.50781L4.93262 6.36133L4.93945 6.2207C5.00731 5.52698 5.5707 4.97922 6.27148 4.93457H6.4541ZM11.3867 3.59668C12.1343 3.64419 12.7253 4.26436 12.7256 5.02344C12.7256 5.81326 12.0857 6.45393 11.2959 6.4541C10.5553 6.4541 9.94622 5.89123 9.87305 5.16992L9.86523 5.02344L9.87207 4.88281C9.93996 4.18912 10.5033 3.64133 11.2041 3.59668H11.3867Z"></path></svg><span>Made with Claude Design</span></a><button type="button" aria-label="Dismiss" onclick="this.parentElement.remove()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></button></div></body></html>

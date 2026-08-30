@@ -482,10 +482,62 @@ show a partial answer as if it were complete.
 
 ---
 
-## 4. Open questions for the design pass
+## 4. Resolved by the design pass
 
-1. Should the Review Queue default to finding-level or assessment-level grouping for a first-
-   time reviewer?
-2. Does the requester need to see the rule trace, or only the plain-language reason?
-3. Should Risk Acceptance Required findings appear in the Review Queue at all, or only in
-   screen 8?
+Mockups: [`ui-mockups.html`](ui-mockups.html) — extracted from the Claude Design canvas.
+The visual system is DAST-Portal's, lifted from its `web/src/app/core/design/` (Signal
+palette, IBM Plex Sans and Mono, the dark rail, one table style). Only what VEX needs and
+DAST has no concept of is new.
+
+**The three open questions, answered:**
+
+1. **Queue grouping** — finding-level by default because that is the working mode, with the
+   choice persisted per user. A first-time reviewer starts flat; a tracker who switches
+   stays switched.
+2. **Requester and the rule trace** — plain-language reason first, full trace behind a
+   per-finding disclosure. The requester who wants to learn can open it; the one who wants
+   the answer is not made to read a trace to find it.
+3. **Risk Acceptance in the queue** — present in both, visually set apart. Hiding it would
+   make the reviewer's count disagree with reality; the dashed treatment carries the
+   distinction instead.
+
+**Gaps in this spec the design pass filled:**
+
+| Gap | Resolution |
+|---|---|
+| Tier 2 second confirmation had no design | Dashed strip inside the determination block, in tier 2 blue, naming the confirmer and stating you cannot provide both |
+| Bulk refusal had no surface | Red callout above the table listing every blocking CVE with its reason; nothing partially applied |
+| Keyboard model had no discoverability | Persistent hint strip above the table plus a `?` panel |
+| Expiry described but never drawn | Three bands — normal, within 48 hours, lapsed — each with its own token, used identically on the assessment list and dashboard |
+| Abstention had no shape | Missing-evidence list as its own block in the drawer, deliberately unlike a failed collector: one is a limit of the evidence, the other is an outage |
+| Threshold impact preview | Screen 9 recomputes the routing-difference callout as a new EPSS value is typed |
+
+**Constraints the CSS enforces, not just the copy** — these are the important ones, because
+they cannot be lost in a later visual edit:
+
+- **Risk Acceptance Required is the only outcome that is not a filled pill** — dashed violet
+  outline, outbound arrow on its actions, dashed row edge. It borrows nothing from the green
+  of a cleared finding.
+- **Escalation signals carry no colour at all.** Muted grey on a recessed surface with a
+  permanent "not a basis for clearing" line. There is no red-EPSS token in the system, so no
+  future change can accidentally place a severity colour beside a Not Affected verdict.
+- **A cleared verdict always shows its tier.** The tier badge is a sibling of the outcome
+  pill everywhere the outcome appears.
+
+VEX-specific tokens live under a `VEX-SPECIFIC` heading in the mockup stylesheet: an outcome
+ramp where `--handoff` sits deliberately outside the verdict hues, an evidence-tier ramp that
+descends in *authority* rather than severity (tier 3 shares the muted signal treatment,
+because tier 3 evidence and escalation signals are the same claim — routing, never
+resolution), an assessment-state ramp, and an expiry treatment.
+
+## 5. Still open
+
+1. Below 1100px the drawer goes full-screen and the close button is the back affordance. A
+   dedicated back arrow may read better on a tablet.
+2. Dashboard drill-through is drawn but not wired — every number should link to its rows.
+3. Notifications are absent. DAST has a feed; this spec does not mention one, and expiry
+   warnings are the obvious first candidate.
+4. Mockup sample data is invented — real CVE and component names, fabricated evidence. Do
+   not mistake it for a fixture set.
+5. The persona select in the rail is a mockup affordance only. In the portal the role comes
+   from AD group membership.
