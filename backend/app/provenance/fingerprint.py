@@ -27,6 +27,12 @@ _DEFAULT_THRESHOLD = 0.95
 #: coincidence, so the comparison abstains instead of asserting.
 _DEFAULT_MINIMUM_COMPONENTS = 5
 
+#: Proportion of an artifact's components that may be absent from the report
+#: before the two are treated as different builds. A scanner does not always
+#: identify every bundled JAR, so a small surplus is normal; a large one means
+#: the artifact carries content that was never scanned.
+_DEFAULT_SURPLUS_TOLERANCE = 0.05
+
 
 class Verdict(Enum):
     MATCH = "match"
@@ -43,14 +49,31 @@ class FingerprintResult:
     matched: int
     report_total: int
     unmatched_report_hashes: list[str]
+
+    #: Components present in the artifact but absent from the report. Surplus
+    #: is the direction an attacker controls: retaining a scanned build's
+    #: components while adding unscanned ones would otherwise read as a
+    #: perfect match.
+    unmatched_artifact_hashes: list[str]
+
+    #: Proportion of the artifact's components that the report does not
+    #: account for.
+    surplus_ratio: float
+
     ratio: float
 
     def summary(self) -> str:
         """A one-line description for the reviewer and the audit record."""
-        return (
+        base = (
             f"{self.matched}/{self.report_total} report components found in the artifact "
-            f"({self.ratio:.0%}) — {self.verdict.value}"
+            f"({self.ratio:.0%})"
         )
+        if self.unmatched_artifact_hashes:
+            base += (
+                f", {len(self.unmatched_artifact_hashes)} artifact components not in the "
+                f"report ({self.surplus_ratio:.0%})"
+            )
+        return f"{base} — {self.verdict.value}"
 
 
 def compare(
@@ -59,6 +82,7 @@ def compare(
     *,
     threshold: float = _DEFAULT_THRESHOLD,
     minimum_components: int = _DEFAULT_MINIMUM_COMPONENTS,
+    surplus_tolerance: float = _DEFAULT_SURPLUS_TOLERANCE,
 ) -> FingerprintResult:
     """Compare the report's component hashes against the artifact's libraries.
 
@@ -67,6 +91,9 @@ def compare(
         inventory: the artifact's inventory.
         threshold: proportion of report components that must be present.
         minimum_components: below this the result is INSUFFICIENT_DATA.
+        surplus_tolerance: proportion of the artifact's components that may be
+            absent from the report before the artifact is treated as a
+            different build.
 
     Returns:
         The verdict together with the counts a reviewer needs to judge it.
@@ -79,9 +106,12 @@ def compare(
     unmatched = sorted(report_component_sha1s - artifact_hashes)
     ratio = matched / report_total if report_total else 0.0
 
+    artifact_only = sorted(artifact_hashes - report_component_sha1s)
+    surplus_ratio = len(artifact_only) / len(artifact_hashes) if artifact_hashes else 0.0
+
     if report_total < minimum_components:
         verdict = Verdict.INSUFFICIENT_DATA
-    elif ratio >= threshold:
+    elif ratio >= threshold and surplus_ratio <= surplus_tolerance:
         verdict = Verdict.MATCH
     else:
         verdict = Verdict.MISMATCH
@@ -92,4 +122,6 @@ def compare(
         report_total=report_total,
         unmatched_report_hashes=unmatched,
         ratio=ratio,
+        unmatched_artifact_hashes=artifact_only,
+        surplus_ratio=surplus_ratio,
     )

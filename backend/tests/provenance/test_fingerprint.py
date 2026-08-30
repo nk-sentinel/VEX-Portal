@@ -92,3 +92,57 @@ def test_summary_is_human_readable():
     inventory = _inventory(payloads)
     report = {hashlib.sha1(p).hexdigest() for p in payloads.values()}
     assert "10/10" in compare(report, inventory).summary()
+
+
+def test_ratio_exactly_at_threshold_matches():
+    # The comparison is inclusive. Nothing currently pins this, so a refactor
+    # to a strict > would flip the boundary silently.
+    payloads = _libs(100)
+    inventory = _inventory(payloads)
+    hashes = [hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in payloads.values()]
+    report = set(hashes[:95]) | {hashlib.sha1(f"e{i}".encode(), usedforsecurity=False).hexdigest()
+                                 for i in range(5)}
+
+    result = compare(report, inventory)
+
+    assert result.ratio == 0.95
+    assert result.verdict is Verdict.MATCH
+
+
+def test_artifact_containing_unaccounted_components_is_a_mismatch():
+    # The attacker-controlled direction: keep a scanned build's components and
+    # add unscanned ones. Covering the whole report must not be sufficient.
+    reported = _libs(20)
+    extras = {
+        f"extra-{i}.jar": make_jar({f"x/E{i}.class": bytes([i]) * (i + 3)}) for i in range(200)
+    }
+    inventory = _inventory({**reported, **extras})
+    report = {hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in reported.values()}
+
+    result = compare(report, inventory)
+
+    assert result.matched == 20
+    assert result.ratio == 1.0
+    assert result.verdict is Verdict.MISMATCH
+    assert len(result.unmatched_artifact_hashes) == 200
+
+
+def test_small_surplus_is_tolerated():
+    # A scanner does not always identify every bundled JAR, so a little
+    # surplus must not fail an otherwise clean match.
+    reported = _libs(100)
+    inventory = _inventory({**reported, "unidentified.jar": make_jar({"u/U.class": b"u" * 32})})
+    report = {hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in reported.values()}
+
+    assert compare(report, inventory).verdict is Verdict.MATCH
+
+
+def test_summary_reports_surplus_when_present():
+    reported = _libs(10)
+    extras = {
+        f"x{i}.jar": make_jar({f"z/Z{i}.class": bytes([i]) * (i + 5)}) for i in range(10)
+    }
+    inventory = _inventory({**reported, **extras})
+    report = {hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in reported.values()}
+
+    assert "not in the report" in compare(report, inventory).summary()
