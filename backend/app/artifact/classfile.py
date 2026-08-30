@@ -99,7 +99,8 @@ def referenced_classes(data: bytes) -> set[str]:
                 # after this point can be trusted. Returning what we have would
                 # understate the references and could wrongly clear a finding.
                 raise MalformedClassFile(
-                    f"unknown tag {tag} at index {index}; cannot determine entry width"
+                    f"unknown constant pool tag {tag} at index {index}; "
+                    "cannot determine entry width"
                 )
             if offset + width > len(data):
                 raise MalformedClassFile(f"truncated entry (tag {tag}) at pool index {index}")
@@ -109,8 +110,17 @@ def referenced_classes(data: bytes) -> set[str]:
 
         index += 2 if tag in _DOUBLE_WIDTH_TAGS else 1
 
-    return {
-        utf8_by_index[name_index]
-        for name_index in class_name_indexes
-        if name_index in utf8_by_index
-    }
+    resolved: set[str] = set()
+    for name_index in class_name_indexes:
+        name = utf8_by_index.get(name_index)
+        if name is None:
+            # A Class entry whose name_index does not resolve to a Utf8 entry
+            # means the pool is malformed. Dropping the reference would return
+            # a plausible but short answer, and a short reference set reads
+            # downstream as "the application does not use this class".
+            raise MalformedClassFile(
+                f"CONSTANT_Class at pool index {name_index} does not "
+                "resolve to a Utf8 entry"
+            )
+        resolved.add(name)
+    return resolved

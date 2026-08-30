@@ -45,3 +45,34 @@ def test_rejects_unknown_constant_pool_tag():
     data[10] = 99  # first pool entry's tag
     with pytest.raises(MalformedClassFile):
         referenced_classes(bytes(data))
+
+
+def test_double_entry_does_not_desynchronise_the_pool():
+    # CONSTANT_Double claims two pool indices exactly as CONSTANT_Long does.
+    # The factory only exercises Long, so build a Double by hand.
+    import struct
+
+    pool = bytearray()
+    pool.extend(struct.pack(">B", 6) + b"\x00" * 8)  # Double at index 1, claims 1 and 2
+    name = b"com/example/Service"
+    pool.extend(struct.pack(">BH", 1, len(name)) + name)  # Utf8 at index 3
+    pool.extend(struct.pack(">BH", 7, 3))  # Class at index 4 -> Utf8 at 3
+    header = struct.pack(">IHHH", 0xCAFEBABE, 0, 52, 5)
+    trailer = struct.pack(">HHHHHHH", 0x0021, 0, 0, 0, 0, 0, 0)
+
+    assert referenced_classes(header + bytes(pool) + trailer) == {"com/example/Service"}
+
+
+def test_dangling_class_name_index_raises_rather_than_dropping_the_reference():
+    # A Class entry pointing at a non-Utf8 entry must raise. Returning a
+    # short set would read downstream as "this class is not referenced".
+    import struct
+
+    pool = bytearray()
+    pool.extend(struct.pack(">Bi", 3, 42))  # Integer at index 1
+    pool.extend(struct.pack(">BH", 7, 1))   # Class at index 2 -> Integer. Invalid.
+    header = struct.pack(">IHHH", 0xCAFEBABE, 0, 52, 3)
+    trailer = struct.pack(">HHHHHHH", 0x0021, 0, 0, 0, 0, 0, 0)
+
+    with pytest.raises(MalformedClassFile):
+        referenced_classes(header + bytes(pool) + trailer)
