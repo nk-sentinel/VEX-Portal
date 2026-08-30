@@ -1,3 +1,6 @@
+import zipfile
+import zlib
+
 import pytest
 
 from app.artifact.errors import MalformedArtifact
@@ -110,3 +113,36 @@ def test_layout_prefix_match_is_a_prefix_not_a_suffix():
     # from unrelated vendored trees.
     raw = make_jar({"vendor/BOOT-INF/classes/com/example/App.class": b"x"})
     assert contains_class(raw, "com/example/App.class") is False
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        zipfile.BadZipFile("corrupt central directory"),
+        zlib.error("Error -3 while decompressing data: invalid distance too far back"),
+        RuntimeError("File is encrypted, password required for extraction"),
+        NotImplementedError("compression type 99 (AES) is not supported"),
+        EOFError("Compressed file ended before the end-of-stream marker was reached"),
+        OSError("input/output error"),
+    ],
+    ids=lambda failure: type(failure).__name__,
+)
+def test_every_nested_read_failure_becomes_malformed_artifact(failure, monkeypatch):
+    """The documented contract: a read failure is always MalformedArtifact.
+
+    Callers are written as `except MalformedArtifact: route_to_human_review()`.
+    An untyped exception escaping instead crashes the pipeline rather than
+    degrading to review — and the caller can no longer tell "could not read"
+    from any other bug. Each of these is a failure zipfile raises in the wild:
+    truncated deflate streams, password-protected entries, and unsupported
+    compression methods all occur in real artifact stores.
+    """
+    raw = make_spring_boot_jar(app_classes={}, libraries={"dep.jar": make_jar({})})
+
+    def failing_read(self, name, pwd=None):
+        raise failure
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", failing_read)
+
+    with pytest.raises(MalformedArtifact):
+        contains_class(raw, TARGET)
