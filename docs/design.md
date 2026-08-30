@@ -88,7 +88,7 @@ If it is the scanned build, the sets match. Divergence beyond threshold → reje
 admission.
 
 **For containerised apps** the artifact is an image, not a binary: pull the image, walk
-the layers (`archive/tar` + `compress/gzip`), locate the app binary inside, then run the
+the layers (`tarfile` + `gzip`), locate the app binary inside, then run the
 same fingerprint match against it.
 
 **Supporting evidence, in descending strength:**
