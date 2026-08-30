@@ -1,4 +1,4 @@
-# Exploitability Assessment Portal task runner.
+# VEX Portal task runner.
 default:
     just --list
 

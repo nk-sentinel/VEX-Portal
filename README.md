@@ -1,4 +1,4 @@
-# Exploitability Assessment Portal
+# VEX Portal
 
 Evidence-based CVE applicability determinations over Sonatype Nexus IQ Lifecycle.
 
@@ -69,7 +69,7 @@ be floated.
 
 ```bash
 just install     # backend venv + deps
-just migrate     # creates backend/data/eap.db
+just migrate     # creates backend/data/vex.db
 just test        # run the suite
 just dev-api     # http://localhost:8000
 just dev-web     # http://localhost:4200

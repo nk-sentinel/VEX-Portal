@@ -1,4 +1,4 @@
-# UI Specification — Exploitability Assessment Portal
+# UI Specification — VEX Portal
 
 Input document for UI design. Defines every screen, what it covers, and how the screens
 relate. Layout and interaction only — no visual styling decisions here.

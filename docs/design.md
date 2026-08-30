@@ -1,6 +1,6 @@
-# Exploitability Assessment Portal — Design Plan
+# VEX Portal — Design Plan
 
-*(working directory: `nexusiq_Review_portal`)*
+*(repository: `VEX-Portal`)*
 
 ## Context
 

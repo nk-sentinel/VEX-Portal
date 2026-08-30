@@ -1,4 +1,4 @@
-# Exploitability Assessment Portal — working notes
+# VEX Portal — working notes
 
 Full design: `docs/design.md`. Read it before changing behaviour.
 

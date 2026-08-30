@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 # Versions are pinned deliberately and must not be floated. This portal exists
 # to review OSS vulnerability findings; an unpinned dependency tree here would
 # be an unforced irony as well as an unforced risk.
-name = "exposure-assessment-portal"
+name = "vex-portal"
 version = "0.1.0"
-description = "Exploitability Assessment Portal — evidence-based CVE applicability determinations over Nexus IQ."
+description = "VEX Portal — evidence-based CVE applicability determinations over Nexus IQ."
 requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.136.3",
