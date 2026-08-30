@@ -7,7 +7,7 @@ from app.artifact.image import find_application_archives
 from tests.artifact.factories import make_jar, make_layer, make_spring_boot_jar
 
 
-def _incompressible(size: int) -> bytes:
+def _incompressible(size: int, seed: bytes = b"vex-portal-test-filler") -> bytes:
     """Deterministic bytes that deflate poorly.
 
     The size floor in find_application_archives measures the STORED archive,
@@ -15,9 +15,12 @@ def _incompressible(size: int) -> bytes:
     how this fixture originally fell under the floor it was meant to clear.
     Hash output has no exploitable structure, so the packaged JAR stays near
     its uncompressed size, the way a real application JAR does.
+
+    ``seed`` distinguishes one caller's filler from another's: two calls with
+    the same size but different seeds produce different bytes, so a fixture
+    built from this is never accidentally identical to another one.
     """
     out = bytearray()
-    seed = b"vex-portal-test-filler"
     while len(out) < size:
         seed = hashlib.sha256(seed).digest()
         out.extend(seed)
@@ -75,7 +78,9 @@ def test_later_layer_shadows_an_earlier_one_at_the_same_path():
     # Image layers stack; a rebuild replacing the JAR leaves the old one in an
     # earlier layer. Analysing the stale copy would assess a build that is not
     # the one running, so the last write must win.
-    old = make_spring_boot_jar(app_classes={"com/example/Old.class": b"o" * 2048}, libraries={})
+    old = make_spring_boot_jar(
+        app_classes={"com/example/Old.class": _incompressible(4096, b"old-build")}, libraries={}
+    )
     layers = [
         make_layer({"app/application.jar": old}),
         make_layer({"app/application.jar": APP_JAR}),
@@ -83,6 +88,7 @@ def test_later_layer_shadows_an_earlier_one_at_the_same_path():
     found = find_application_archives(layers)
     assert len(found) == 1
     assert found[0].data == APP_JAR
+    assert found[0].data != old  # the stale copy must not survive
     assert found[0].layer_index == 1
 
 
