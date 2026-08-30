@@ -91,3 +91,4 @@ just dev-web     # http://localhost:4200
   layout and states; input document for the UI design pass
 - [`docs/naming.md`](docs/naming.md) — what VEX stands for, why the portal is named after it,
   and why the word "waiver" is banned from the interface
+- [`docs/plans/`](docs/plans/) — task-by-task implementation plans

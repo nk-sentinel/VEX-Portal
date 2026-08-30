@@ -54,6 +54,12 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 ## Current state
 
 Phase 1 (evidence pipeline). Domain vocabulary and its safety invariants are done and
-tested. Next: artifact inspector, provenance fingerprint, adapters with recorded fixtures.
-UI spec written: `docs/design/ui-spec.md` (9 screens + evidence drawer). Angular
-implementation not started.
+tested (46 tests).
+
+- UI spec: `docs/design/ui-spec.md` — 9 screens + evidence drawer. Angular not started.
+- **Next up:** `docs/plans/2026-08-31-evidence-foundation.md` — 8 TDD tasks building the
+  offline evidence engine (artifact inspection, constant-pool analysis, container layer
+  walking, provenance fingerprint). No third-party dependencies, no external systems, so
+  it is entirely buildable outside the work network.
+- Plans 2 (adapters + persistence) and 3 (rule engine + services + API) are outlined at
+  the end of that document.
