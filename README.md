@@ -1,6 +1,11 @@
 # VEX Portal
 
-Evidence-based CVE applicability determinations over Sonatype Nexus IQ Lifecycle.
+**VEX — Vulnerability Exploitability eXchange.** An open standard for recording whether a known
+vulnerability actually affects a specific product. An SBOM says a component is present; VEX
+says whether the vulnerability in it is exploitable in your context.
+
+Evidence-based CVE applicability determinations over Sonatype Nexus IQ Lifecycle, recorded in
+CycloneDX VEX format.
 
 App teams raise an assessment; the portal resolves most of them deterministically from
 artifact and source evidence, uses an evidence-bound AI adjudicator for a constrained
@@ -15,6 +20,8 @@ arrive by Teams, email, and service requests, and are worked by hand. Nothing is
 nothing is reused, and the outcome depends on who ran the review.
 
 ## Terminology
+
+Full rationale for the name and the vocabulary: [`docs/naming.md`](docs/naming.md).
 
 **This portal does not use the word "waiver."** Audit and management read it as suppressing
 a real finding. What the portal records is a *determination* that a vulnerability does not
@@ -82,3 +89,5 @@ just dev-web     # http://localhost:4200
 
 - [`docs/design/ui-spec.md`](docs/design/ui-spec.md) — screen inventory, navigation, per-screen
   layout and states; input document for the UI design pass
+- [`docs/naming.md`](docs/naming.md) — what VEX stands for, why the portal is named after it,
+  and why the word "waiver" is banned from the interface

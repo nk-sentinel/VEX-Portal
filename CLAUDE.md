@@ -1,6 +1,7 @@
 # VEX Portal — working notes
 
-Full design: `docs/design.md`. Read it before changing behaviour.
+Full design: `docs/design.md`. Naming and vocabulary rationale: `docs/naming.md`.
+Read both before changing behaviour.
 
 ## Non-negotiable rules
 
