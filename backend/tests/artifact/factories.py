@@ -96,3 +96,21 @@ def make_war(
     for name, payload in libraries.items():
         entries[f"WEB-INF/lib/{name}"] = payload
     return make_jar(entries)
+
+
+def make_layer(entries: dict[str, bytes], *, compress: bool = True) -> bytes:
+    """Build a container image layer: a TAR, gzipped by default.
+
+    Image layers are plain TARs; registries serve them gzipped. Both forms
+    occur in practice depending on how the image was pulled.
+    """
+    import tarfile
+
+    buffer = io.BytesIO()
+    mode = "w:gz" if compress else "w"
+    with tarfile.open(fileobj=buffer, mode=mode) as tf:  # type: ignore[call-overload]
+        for name, payload in entries.items():
+            info = tarfile.TarInfo(name=name)
+            info.size = len(payload)
+            tf.addfile(info, io.BytesIO(payload))
+    return buffer.getvalue()
