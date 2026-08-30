@@ -132,3 +132,22 @@ def test_canonical_git_properties_wins_regardless_of_archive_order():
          "BOOT-INF/classes/git.properties": canonical},
     ):
         assert inspect_archive(make_jar(entries)).commit_sha() == "aaaaaaa"
+
+
+def test_versioned_copy_of_tooling_is_excluded_like_its_unversioned_twin():
+    # A multi-release override of non-application code must not slip past the
+    # tooling exclusion. Tooling classes in app_classes would make the
+    # reference scan report classes the application never touches.
+    raw = make_jar(
+        {
+            "com/example/App.class": b"x",
+            "META-INF/versions/17/com/example/App.class": b"y",
+            "org/springframework/boot/loader/Launcher.class": b"z",
+            "META-INF/versions/17/org/springframework/boot/loader/Launcher.class": b"w",
+        }
+    )
+    app_classes = inspect_archive(raw).app_classes
+    assert "com/example/App.class" in app_classes
+    assert "META-INF/versions/17/com/example/App.class" in app_classes
+    assert "org/springframework/boot/loader/Launcher.class" not in app_classes
+    assert "META-INF/versions/17/org/springframework/boot/loader/Launcher.class" not in app_classes

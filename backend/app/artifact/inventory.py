@@ -180,9 +180,13 @@ def _is_application_class(name: str, class_prefix: str, layout: Layout) -> bool:
     """Distinguish the application's own compiled code from everything else."""
     if layout is not Layout.PLAIN_JAR:
         return name.startswith(class_prefix)
-    if _MULTI_RELEASE_PREFIX.match(name):
-        return True
-    return not name.startswith(_NON_APPLICATION_PREFIXES)
+    # Multi-release overrides live under META-INF/versions/<N>/ and ARE the
+    # application's own bytecode. Strip that prefix and apply the ordinary
+    # exclusion to the remainder, so a versioned copy of tooling is excluded
+    # exactly as the unversioned copy is — admitting it would make the
+    # reference scan report classes the application never touches.
+    remainder = _MULTI_RELEASE_PREFIX.sub("", name)
+    return not remainder.startswith(_NON_APPLICATION_PREFIXES)
 
 
 def _parse_properties(raw: bytes) -> dict[str, str]:
