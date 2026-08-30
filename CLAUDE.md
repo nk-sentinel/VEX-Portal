@@ -54,4 +54,5 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 
 Phase 1 (evidence pipeline). Domain vocabulary and its safety invariants are done and
 tested. Next: artifact inspector, provenance fingerprint, adapters with recorded fixtures.
-UI design not started.
+UI spec written: `docs/design/ui-spec.md` (9 screens + evidence drawer). Angular
+implementation not started.

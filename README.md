@@ -79,3 +79,6 @@ just dev-web     # http://localhost:4200
 
 - [`docs/design.md`](docs/design.md) — full design: architecture, evidence tiers, provenance,
   RBAC, phased delivery, verification
+
+- [`docs/design/ui-spec.md`](docs/design/ui-spec.md) — screen inventory, navigation, per-screen
+  layout and states; input document for the UI design pass
