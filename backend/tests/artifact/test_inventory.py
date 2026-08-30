@@ -89,3 +89,46 @@ def test_library_sha1s_maps_hash_to_name():
 def test_rejects_input_that_is_not_an_archive():
     with pytest.raises(MalformedArtifact):
         inspect_archive(b"not a zip at all")
+
+
+def test_spring_boot_layout_wins_when_both_prefixes_are_present():
+    # Spring Boot ships fat WARs, so an archive can carry both prefixes.
+    # Misclassifying one as a plain WAR would read BOOT-INF/lib JARs as
+    # application classes and poison the reference scan.
+    raw = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": b"x",
+            "BOOT-INF/lib/dep.jar": make_jar({}),
+            "WEB-INF/web.xml": b"<web-app/>",
+            "WEB-INF/classes/com/example/Legacy.class": b"y",
+        }
+    )
+    inventory = inspect_archive(raw)
+    assert inventory.layout is Layout.SPRING_BOOT_FAT
+    assert set(inventory.app_classes) == {"com/example/App.class"}
+
+
+def test_multi_release_classes_are_application_code():
+    raw = make_jar(
+        {
+            "com/example/App.class": b"x",
+            "META-INF/versions/17/com/example/App.class": b"y",
+            "META-INF/MANIFEST.MF": b"Manifest-Version: 1.0\n",
+        }
+    )
+    app_classes = inspect_archive(raw).app_classes
+    assert "com/example/App.class" in app_classes
+    assert "META-INF/versions/17/com/example/App.class" in app_classes
+    assert "META-INF/MANIFEST.MF" not in app_classes
+
+
+def test_canonical_git_properties_wins_regardless_of_archive_order():
+    canonical = b"git.commit.id.full=aaaaaaa\n"
+    module = b"git.commit.id.full=bbbbbbb\n"
+    for entries in (
+        {"BOOT-INF/classes/git.properties": canonical,
+         "BOOT-INF/classes/sub/module/git.properties": module},
+        {"BOOT-INF/classes/sub/module/git.properties": module,
+         "BOOT-INF/classes/git.properties": canonical},
+    ):
+        assert inspect_archive(make_jar(entries)).commit_sha() == "aaaaaaa"
