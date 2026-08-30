@@ -75,3 +75,38 @@ def test_war_layout_is_searched():
     lib = make_jar({TARGET: b"x"})
     raw = make_war(app_classes={}, libraries={"commons-text-1.9.jar": lib})
     assert contains_class(raw, TARGET) is True
+
+
+def test_finds_nested_class_via_dotted_ambiguous_name():
+    # com.example.Outer.Inner is ambiguous: it could name a top-level class
+    # Inner in package com.example.Outer, or the nested class Outer$Inner in
+    # package com.example. The class file is compiled as the latter; a caller
+    # passing the dotted form must still find it.
+    raw = make_jar({"com/example/Outer$Inner.class": b"x"})
+    assert contains_class(raw, "com.example.Outer.Inner") is True
+
+
+def test_corrupt_compressed_data_in_nested_jar_raises():
+    # Truncated deflate stream: the likeliest real-world corruption, and the
+    # one the original except clause did not catch.
+    import io
+    import zipfile
+
+    inner = make_jar({TARGET: b"x" * 4096})
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("BOOT-INF/lib/broken.jar", inner)
+    raw = bytearray(buffer.getvalue())
+    # Corrupt the middle of the compressed payload, leaving headers intact.
+    raw[60:80] = b"\x00" * 20
+
+    with pytest.raises(MalformedArtifact):
+        contains_class(bytes(raw), TARGET)
+
+
+def test_layout_prefix_match_is_a_prefix_not_a_suffix():
+    # A path merely ENDING in the layout prefix must not match. A loose
+    # endswith() would pass the other tests while silently matching classes
+    # from unrelated vendored trees.
+    raw = make_jar({"vendor/BOOT-INF/classes/com/example/App.class": b"x"})
+    assert contains_class(raw, "com/example/App.class") is False
