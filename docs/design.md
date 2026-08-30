@@ -196,8 +196,8 @@ recommends; approver commits. Every transition is written to an append-only audi
 
 ## Technology
 
-**Python + FastAPI backend · Angular frontend · Postgres**, mirroring DAST-Portal so the
-same rotation maintains both.
+**Python + FastAPI backend · Angular frontend · SQLite**, mirroring DAST-Portal's backend
+layout so the same rotation maintains both.
 
 Measured from the existing DAST-Portal estate rather than assumed:
 
@@ -320,3 +320,24 @@ agreement bar. Then Tier 2 with mandatory second confirmation.
 - Confirm whether IQ reports already carry commit hash + branch (one report inspection)
 - Confirm whether CI publishes JFrog Build Info (determines provenance strength)
 - Confirm the container registry path for image-based apps
+
+
+## Database revision (supersedes the Postgres assumption above)
+
+SQLite, not Postgres. Two things changed the calculus:
+
+1. **ELK already holds SBOM and vulnerability data per scan.** The portal references it
+   rather than copying it, and snapshots only the decision-relevant extract. That removes
+   the bulkiest thing the database was carrying.
+2. **A managed Postgres has real recurring cost in the work environment.** The remaining
+   workload — hundreds to low thousands of assessments a year, 10–50 findings each, small
+   JSON evidence extracts, an append-only audit log, and a CVE profile cache — stays under a
+   few GB indefinitely. It is not a Postgres-shaped workload.
+
+Accepted trade-offs: single writer and single replica, so no horizontal scaling and brief
+downtime on rolling deploys; a persistent volume is required; and some enterprise DBA
+policies prohibit embedded databases for auditable systems, which would be a hard block.
+
+Mitigation: the schema is kept strictly portable — generic `JSON` rather than `JSONB`
+operators, no array columns, no dialect-specific server defaults. Moving to a server
+database later is a connection-string change plus a migration, not a rewrite.

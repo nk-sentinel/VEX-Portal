@@ -31,8 +31,13 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 - Mirrors DAST-Portal layout: `app/{adapters,api,domain,repos,schemas,services,middleware,rules}`
 - Dependency versions are **pinned, never floated** — this portal reviews OSS vulnerability
   findings; an unpinned tree here would be an unforced risk as well as an unforced irony
-- Compose service names are prefixed `eap-`; the proxy/dev networks are shared across stacks
-  and a generic name collides via Docker DNS round-robin
+- **The database is SQLite, and the schema must stay portable.** No `JSONB` operators (use
+  generic `JSON`), no array columns, no dialect-specific server defaults (`gen_random_uuid()`,
+  `NOW()`) — generate IDs and timestamps in Python. Enable `PRAGMA foreign_keys=ON` and WAL
+  mode. A managed server DB has real monthly cost in the work environment and this workload
+  does not need one; keeping the schema portable means that decision stays reversible
+- Single replica only — SQLite cannot be shared across app instances. Rolling deploys take
+  brief downtime; that is an accepted trade
 - Do not add a `Co-Authored-By` trailer to commits
 
 ## External systems

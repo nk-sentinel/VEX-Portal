@@ -2,12 +2,8 @@
 default:
     just --list
 
-# --- Dev environment ---
-up:
-    docker compose up -d
-
-down:
-    docker compose down
+# No dev infrastructure to start: the database is a SQLite file under
+# backend/data/. `just migrate` creates it.
 
 # --- Backend ---
 install:

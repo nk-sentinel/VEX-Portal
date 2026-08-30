@@ -59,7 +59,7 @@ manager. The violation stays open in IQ — accepted risk must not be made invis
 |---|---|
 | Backend | Python 3.12 + FastAPI + SQLAlchemy (async) |
 | Frontend | Angular |
-| Database | Postgres |
+| Database | SQLite (schema kept portable — a server DB is a connection-string change) |
 | AI | Claude via AWS Bedrock (private VPC) |
 
 Mirrors DAST-Portal so the same rotation maintains both. Versions are pinned and must not
@@ -68,8 +68,8 @@ be floated.
 ## Quickstart
 
 ```bash
-just up          # dev Postgres
 just install     # backend venv + deps
+just migrate     # creates backend/data/eap.db
 just test        # run the suite
 just dev-api     # http://localhost:8000
 just dev-web     # http://localhost:4200
