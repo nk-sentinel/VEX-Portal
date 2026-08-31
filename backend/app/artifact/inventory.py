@@ -16,10 +16,12 @@ from enum import Enum
 
 from app.artifact._archive import (
     Budget,
+    duplicate_entry_names,
     enforce_limits,
     open_zip,
     read_entry,
     read_entry_ignoring_declared_size,
+    reject_duplicate_entry_name,
 )
 from app.artifact.errors import MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
@@ -197,6 +199,11 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
         git_properties: dict[str, str] = {}
         git_properties_is_canonical = False
         budget = Budget()
+        # See reject_duplicate_entry_name below: a raw name the ZIP central
+        # directory lists twice has no trustworthy read, by name or by
+        # ZipInfo object, because we cannot know which occurrence a JVM
+        # would resolve to. Computed once per archive, not per entry.
+        duplicate_names = duplicate_entry_names(archive)
 
         for info in archive.infolist():
             enforce_limits(info, budget, limits)
@@ -243,6 +250,13 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                 # while shipping real, fully loadable bytes is hashed from
                 # its true content instead of from a truncated empty read.
                 # See read_entry_ignoring_declared_size and the N1 fix.
+                #
+                # N3: a raw name the central directory lists twice cannot be
+                # read trustworthily even via the ZipInfo object above —
+                # that only fixes which occurrence THIS process reads, not
+                # which one a JVM classloader would. Refuse before reading
+                # rather than silently hash an occurrence we picked.
+                reject_duplicate_entry_name(info.filename, duplicate_names)
                 payload = read_entry_ignoring_declared_size(archive, info)
                 libraries.append(
                     Library(

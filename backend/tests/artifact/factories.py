@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import struct
+import warnings
 import zipfile
 
 # Java class file constants
@@ -65,6 +66,27 @@ def make_jar(entries: dict[str, bytes]) -> bytes:
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, payload in entries.items():
             zf.writestr(name, payload)
+    return buffer.getvalue()
+
+
+def make_jar_with_duplicate_entries(entries: list[tuple[str, bytes]]) -> bytes:
+    """Build a JAR from an ORDERED sequence of ``(name, payload)`` pairs.
+
+    Unlike :func:`make_jar`, which is backed by a dict and so can hold only
+    one payload per name, this accepts a list — so a test can genuinely
+    duplicate a raw central-directory entry name (the same name written
+    twice via two separate ``writestr`` calls), which a dict of entries
+    cannot represent. ``zipfile`` warns on this by design (a normal reader
+    can only resolve one of the two occurrences by name afterward); that
+    warning is expected here and is suppressed around the write, not
+    silenced project-wide.
+    """
+    buffer = io.BytesIO()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, payload in entries:
+                zf.writestr(name, payload)
     return buffer.getvalue()
 
 

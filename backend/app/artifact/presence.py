@@ -29,11 +29,13 @@ from collections.abc import Iterable
 
 from app.artifact._archive import (
     Budget,
+    duplicate_entry_names,
     enforce_limits,
     has_archive_suffix,
     open_zip,
     read_entry,
     read_entry_ignoring_declared_size,
+    reject_duplicate_entry_name,
 )
 from app.artifact.errors import MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
@@ -309,6 +311,10 @@ def _search(
     archive = open_zip(data)
 
     with archive:
+        # N3: a raw name the central directory lists twice has no
+        # trustworthy read — see reject_duplicate_entry_name below.
+        # Computed once per archive (this nesting level), not per entry.
+        duplicate_names = duplicate_entry_names(archive)
         # Second element: the entry's payload if it was already read to
         # settle whether it is genuinely empty (library-directory entries —
         # see below); None means read it lazily below, as before. Third
@@ -350,6 +356,14 @@ def _search(
                 # size) and exempt only when that read is actually empty.
                 # Entries under a library prefix are few, so this read is
                 # cheap; its result is reused below instead of read again.
+                #
+                # N3: reading via the ZipInfo object above reaches the exact
+                # occurrence THIS loop iteration is looking at even when the
+                # raw name recurs elsewhere in the archive — but that only
+                # settles what this process would read, not what a JVM
+                # classloader would resolve between the duplicates, which is
+                # implementation-defined regardless. Refuse before reading.
+                reject_duplicate_entry_name(info.filename, duplicate_names)
                 library_payload = read_entry_ignoring_declared_size(archive, info)
                 if library_payload == b"":
                     # A truly empty entry cannot contain a class under any
@@ -388,6 +402,13 @@ def _search(
 
         for name, payload, needs_library_hint in nested:
             if payload is None:
+                # N3: unlike the library-directory read above, this one
+                # addresses the entry BY NAME (read_entry takes a string,
+                # not a ZipInfo) — exactly the case zipfile.ZipFile.read
+                # resolves to whichever occurrence the central directory
+                # lists last, silently discarding an earlier one. Refuse
+                # before reading rather than search only that occurrence.
+                reject_duplicate_entry_name(name, duplicate_names)
                 payload = read_entry(archive, name)
             if needs_library_hint:
                 try:

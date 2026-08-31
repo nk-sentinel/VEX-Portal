@@ -17,6 +17,7 @@ import copy
 import io
 import zipfile
 import zlib
+from collections import Counter
 from dataclasses import dataclass
 
 from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
@@ -155,3 +156,46 @@ def read_entry_ignoring_declared_size(archive: zipfile.ZipFile, info: zipfile.Zi
         return archive.read(truthful)
     except READ_FAILURES as exc:
         raise MalformedArtifact(f"could not read {info.filename!r}: {exc}") from exc
+
+
+def duplicate_entry_names(archive: zipfile.ZipFile) -> frozenset[str]:
+    """Raw entry names that occur more than once in ``archive``'s central directory.
+
+    ``zipfile.ZipFile.read(name)`` — and everything built on it that
+    addresses an entry by its raw name string rather than by a specific
+    ``ZipInfo`` — resolves a repeated raw name to whichever occurrence the
+    central directory lists last; there is no public API to address an
+    earlier one. Reading via the exact ``ZipInfo`` object a caller already
+    holds from iterating ``infolist()`` (as :func:`read_entry_ignoring_declared_size`
+    does) happens to reach the specific occurrence that object came from —
+    but that is an implementation detail of this library, not a guarantee
+    about which occurrence a JVM classloader would pick between two
+    identically-named entries. That choice is implementation-defined
+    regardless of what this process is able to read, so a caller with two
+    identically-named entries has no trustworthy answer about which one
+    matters, however it reads them.
+
+    Callers pass this set to :func:`reject_duplicate_entry_name` immediately
+    before reading an entry whose bytes will be used as evidence, so that
+    case is refused outright rather than answered with an occurrence this
+    process happened to pick.
+    """
+    counts = Counter(info.filename for info in archive.infolist())
+    return frozenset(name for name, count in counts.items() if count > 1)
+
+
+def reject_duplicate_entry_name(name: str, duplicate_names: frozenset[str]) -> None:
+    """Raise MalformedArtifact if ``name`` names more than one entry in the archive.
+
+    Call this immediately before reading an entry whose bytes will be used
+    as evidence — hashed into a Library, or recursed into as a nested
+    archive — never before a plain name COMPARISON: iterating every entry
+    via ``infolist()`` and comparing names already sees every occurrence of
+    a duplicated name, so a duplicate there cannot hide a match the way it
+    can hide a read. See :func:`duplicate_entry_names`.
+    """
+    if name in duplicate_names:
+        raise MalformedArtifact(
+            f"duplicate archive entry {name!r}: which occurrence would be read is "
+            "implementation-defined, so it cannot be used as evidence"
+        )

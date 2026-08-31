@@ -1,3 +1,5 @@
+import io
+import re
 import zipfile
 import zlib
 
@@ -10,9 +12,19 @@ from app.artifact.presence import (
     contains_class,
     normalize_class_path,
 )
-from tests.artifact.factories import make_jar, make_spring_boot_jar, make_war
+from tests.artifact.factories import (
+    make_jar,
+    make_jar_with_duplicate_entries,
+    make_spring_boot_jar,
+    make_war,
+)
 
 TARGET = "org/apache/commons/text/StringSubstitutor.class"
+
+
+def _raw_entry_count(raw: bytes, name: str) -> int:
+    """How many central-directory records in ``raw`` are named ``name``."""
+    return sum(1 for info in zipfile.ZipFile(io.BytesIO(raw)).infolist() if info.filename == name)
 
 
 def test_normalizes_dotted_class_name():
@@ -217,3 +229,90 @@ def test_every_nested_read_failure_becomes_malformed_artifact(failure, monkeypat
 
     with pytest.raises(MalformedArtifact):
         contains_class(raw, TARGET)
+
+
+def test_duplicate_boot_inf_lib_entry_raises_rather_than_reporting_absence():
+    # N3: two central-directory records both named BOOT-INF/lib/commons-text.jar,
+    # the first holding the vulnerable class and the second a benign decoy.
+    # Which occurrence a JVM classloader would resolve between two
+    # identically-named entries is implementation-defined, so a False here
+    # would be manufactured proof, not Tier 1 evidence — see the module
+    # docstring. Must raise instead of silently searching only one occurrence.
+    vulnerable = make_jar({TARGET: b"y"})
+    decoy = make_jar({})
+    name = "BOOT-INF/lib/commons-text.jar"
+    raw = make_jar_with_duplicate_entries([(name, vulnerable), (name, decoy)])
+    assert _raw_entry_count(raw, name) == 2, "test setup must genuinely duplicate the entry"
+
+    with pytest.raises(MalformedArtifact, match=re.escape(name)):
+        contains_class(raw, TARGET)
+
+
+def test_duplicate_web_inf_lib_entry_raises_rather_than_reporting_absence():
+    # Same as above, for the WAR library prefix.
+    vulnerable = make_jar({TARGET: b"y"})
+    decoy = make_jar({})
+    name = "WEB-INF/lib/commons-text.jar"
+    raw = make_jar_with_duplicate_entries([(name, vulnerable), (name, decoy)])
+    assert _raw_entry_count(raw, name) == 2, "test setup must genuinely duplicate the entry"
+
+    with pytest.raises(MalformedArtifact, match=re.escape(name)):
+        contains_class(raw, TARGET)
+
+
+def test_duplicate_nested_archive_outside_library_directory_raises():
+    # Not every nested archive lives under BOOT-INF/lib or WEB-INF/lib — an
+    # EAR module, for instance, is a nested JAR at an arbitrary path. That
+    # recursion path reads the entry by its raw name (zipfile.ZipFile.read),
+    # which resolves a duplicated name to whichever occurrence the central
+    # directory lists last — so, unlike the library-directory case, this one
+    # silently searches only the decoy today. It must raise instead.
+    vulnerable = make_jar({TARGET: b"y"})
+    decoy = make_jar({})
+    name = "vendor/nested.jar"
+    raw = make_jar_with_duplicate_entries([(name, vulnerable), (name, decoy)])
+    assert _raw_entry_count(raw, name) == 2, "test setup must genuinely duplicate the entry"
+
+    with pytest.raises(MalformedArtifact, match=re.escape(name)):
+        contains_class(raw, TARGET)
+
+
+def test_duplicate_meta_inf_license_entries_do_not_raise():
+    # Shaded and shadowed JARs routinely carry duplicate META-INF/LICENSE
+    # entries from merged dependencies. Nothing in the presence walk ever
+    # reads one of these by name — they are not in a library directory and
+    # are not named like an archive — so a duplicate here cannot hide a
+    # class and must not make an otherwise legitimate shaded-JAR shape
+    # unanalysable.
+    name = "META-INF/LICENSE"
+    raw = make_jar_with_duplicate_entries(
+        [
+            (TARGET, b"y"),
+            (name, b"Apache License 2.0 (from dep A)"),
+            (name, b"Apache License 2.0 (from dep B)"),
+        ]
+    )
+    assert _raw_entry_count(raw, name) == 2, "test setup must genuinely duplicate the entry"
+
+    assert contains_class(raw, TARGET) is True
+
+
+def test_single_occurrence_library_entry_is_unaffected_by_duplicate_guard():
+    # The ordinary case: one entry, one name, nothing duplicated anywhere in
+    # the archive. The new guard must not fire on it.
+    lib = make_jar({TARGET: b"y"})
+    raw = make_spring_boot_jar(app_classes={}, libraries={"commons-text-1.9.jar": lib})
+    assert contains_class(raw, TARGET) is True
+
+
+def test_duplicate_target_class_name_is_still_matched_without_reading():
+    # The presence walk's matching test does NOT need this guard: it iterates
+    # every entry via infolist() and compares names, so it sees both
+    # occurrences of a duplicated name regardless of which one zipfile.read()
+    # would resolve to. A duplicated target class must therefore still be
+    # found, not raise.
+    name = TARGET
+    raw = make_jar_with_duplicate_entries([(name, b"first-copy"), (name, b"second-copy")])
+    assert _raw_entry_count(raw, name) == 2, "test setup must genuinely duplicate the entry"
+
+    assert contains_class(raw, TARGET) is True
