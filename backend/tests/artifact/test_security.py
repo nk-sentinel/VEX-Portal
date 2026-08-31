@@ -64,13 +64,24 @@ class TestEvasionByEntryNaming:
 
 class TestDecompressionBombs:
     def test_oversized_declared_entry_is_rejected(self):
+        # High-entropy payload so the compression ratio stays near 1:1 and this
+        # test isolates the per-entry size cap rather than passing via the
+        # ratio check.
+        import hashlib
+
+        blob = bytearray()
+        seed = b"entry-size-probe"
+        while len(blob) < 50_000:
+            seed = hashlib.sha256(seed).digest()
+            blob.extend(seed)
+
         tiny = Limits(
-            max_total_uncompressed=10_000,
+            max_total_uncompressed=10**9,
             max_entry_size=5_000,
-            max_entries=100,
-            max_compression_ratio=200,
+            max_entries=1000,
+            max_compression_ratio=10_000,
         )
-        artifact = _zip_with_raw_names({"big.class": b"\x00" * 50_000})
+        artifact = _zip_with_raw_names({"big.class": bytes(blob)})
         with pytest.raises(ArtifactTooLarge):
             contains_class(artifact, TARGET, limits=tiny)
 
@@ -142,6 +153,35 @@ class TestImageLayerSafety:
         found = find_application_archives([self._tar_with(build)])
         assert len(found) == 1
         assert not found[0].path.startswith("..")
+
+
+class TestTrailingSlashEvasion:
+    """ZipInfo.is_dir() trusts the name, not the content.
+
+    An entry named "…/Foo.class/" with a real payload is not a directory. If it
+    is skipped as one, a present class reports absent — which is Tier 1 proof
+    that clears a live finding.
+    """
+
+    def test_class_with_trailing_slash_entry_name_is_still_found(self):
+        artifact = _zip_with_raw_names({TARGET + "/": b"payload"})
+        assert contains_class(artifact, TARGET) is True
+
+    def test_application_class_with_trailing_slash_survives_inventory(self):
+        artifact = _zip_with_raw_names(
+            {
+                "BOOT-INF/classes/com/example/App.class/": b"x",
+                "BOOT-INF/lib/dep.jar": _zip_with_raw_names({"p/C.class": b"c" * 64}),
+            }
+        )
+        assert "com/example/App.class" in inspect_archive(artifact).app_classes
+
+    def test_genuine_empty_directory_entries_are_still_skipped(self):
+        # The fix must not start treating real directory entries as classes.
+        artifact = _zip_with_raw_names(
+            {"BOOT-INF/classes/com/example/": b"", "BOOT-INF/classes/com/example/App.class": b"x"}
+        )
+        assert sorted(inspect_archive(artifact).app_classes) == ["com/example/App.class"]
 
 
 class TestEvasionAgainstTheReferenceScan:

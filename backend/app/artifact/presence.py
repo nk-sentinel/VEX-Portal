@@ -314,7 +314,12 @@ def _search(
         nested: list[str] = []
         for info in archive.infolist():
             _enforce_limits(info, budget, limits)
-            if info.is_dir():
+            # zipfile.ZipInfo.is_dir() is a bare name.endswith("/") test that
+            # ignores file_size, so an entry named "…/Foo.class/" carrying real
+            # content reads as a directory and would be skipped before its name is
+            # ever compared. Treat anything with content as content: reporting a
+            # present class as absent is Tier 1 proof that clears a finding.
+            if info.is_dir() and info.file_size == 0:
                 continue
             entry = normalize_entry_name(info.filename)
             for key in _entry_match_keys(entry):
