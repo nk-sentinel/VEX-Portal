@@ -67,11 +67,25 @@ _NON_APPLICATION_PREFIXES = ("org/springframework/boot/loader/", "META-INF/")
 
 #: Every path at which a git.properties is treated as the application's own
 #: build metadata rather than a bundled module's — one of the known class
-#: directories, or the plain-JAR root. See the git.properties handling in
-#: :func:`inspect_archive`.
-_CANONICAL_GIT_PROPERTIES_PATHS = frozenset(
-    {f"{prefix}git.properties" for prefix in LAYOUT_CLASS_PREFIXES} | {"git.properties"}
-)
+#: directories, or the plain-JAR root — IN DELIBERATE PRECEDENCE ORDER, most
+#: specific layout first. LAYOUT_CLASS_PREFIXES is already ordered
+#: BOOT-INF/classes/ before WEB-INF/classes/, so this only appends the
+#: weakest signal, the plain-JAR root, last.
+#:
+#: A Spring Boot fat artifact's own build metadata lives under
+#: BOOT-INF/classes/, so that path is trusted first; WEB-INF/classes/ is next
+#: for the same reason on a WAR; a root-level git.properties is the weakest
+#: signal because nothing about its position marks it as the application's
+#: own file — anything packaged into the archive can drop one there. When
+#: more than one canonical path is present, :func:`inspect_archive` always
+#: takes the highest-precedence one present, by walking this tuple in order —
+#: NEVER by which one the ZIP happens to list last. Archive order must never
+#: influence the result. See the git.properties handling in
+#: :func:`inspect_archive` and Inventory.git_properties_ambiguous for what
+#: happens when more than one canonical file is present and they disagree.
+_CANONICAL_GIT_PROPERTIES_PATHS: tuple[str, ...] = tuple(
+    f"{prefix}git.properties" for prefix in LAYOUT_CLASS_PREFIXES
+) + ("git.properties",)
 
 _COMMIT_KEYS = ("git.commit.id.full", "git.commit.id", "git.commit.id.abbrev")
 
@@ -138,14 +152,33 @@ class Inventory:
     #: application's classes is not evidence about the ones skipped.
     excluded_class_count: int = 0
 
+    #: The git.properties belonging to the highest-precedence canonical path
+    #: present — see _CANONICAL_GIT_PROPERTIES_PATHS — or, when no canonical
+    #: path is present, the first non-canonical git.properties encountered.
     git_properties: dict[str, str] = field(default_factory=dict)
+
+    #: True when more than one canonical git.properties was present in the
+    #: archive AND they disagreed on git.commit.id.full or
+    #: git.remote.origin.url. commit_sha() and repository_url() still return
+    #: the highest-precedence value in this case — see
+    #: _CANONICAL_GIT_PROPERTIES_PATHS — because a build's own metadata is
+    #: attacker-authored either way and no determination rests on it, so
+    #: refusing the artifact over a metadata tie would cost availability for
+    #: no security gain. But an artifact claiming two different commits (or
+    #: two different remotes) is a fact a human reviewer should see rather
+    #: than have silently resolved and reported as *the* commit. False when
+    #: zero or one canonical git.properties was present, or when more than
+    #: one was present but they agreed.
+    git_properties_ambiguous: bool = False
 
     def commit_sha(self) -> str | None:
         """The git commit recorded inside the artifact, if the build embedded one.
 
         This is the strongest self-contained provenance signal available: the
         identifier travels inside the artifact being analysed, so it cannot
-        drift the way a branch pointer or an external property can.
+        drift the way a branch pointer or an external property can. See
+        git_properties_ambiguous when more than one canonical git.properties
+        disagreed on this value.
         """
         for key in _COMMIT_KEYS:
             value = self.git_properties.get(key)
@@ -154,7 +187,12 @@ class Inventory:
         return None
 
     def repository_url(self) -> str | None:
-        """The git remote recorded inside the artifact, if present."""
+        """The git remote recorded inside the artifact, if present.
+
+        Reads the same git_properties this module resolved for commit_sha() —
+        see git_properties_ambiguous when more than one canonical
+        git.properties disagreed on this value.
+        """
         return self.git_properties.get("git.remote.origin.url") or None
 
     def library_sha1s(self) -> dict[str, str]:
@@ -196,8 +234,16 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
         # app_classes[key] payload — see the duplicate-handling comment below.
         app_class_sources: dict[str, str] = {}
         excluded_class_count = 0
-        git_properties: dict[str, str] = {}
-        git_properties_is_canonical = False
+        # Every canonical git.properties encountered, keyed by its canonical
+        # path. The winner is picked by explicit PRECEDENCE
+        # (_CANONICAL_GIT_PROPERTIES_PATHS order) once the whole archive has
+        # been walked — see the resolution below the loop — never by which
+        # one this loop happens to visit last.
+        canonical_git_properties: dict[str, dict[str, str]] = {}
+        # The first non-canonical git.properties seen, used only if the
+        # archive turns out to carry no canonical path at all.
+        fallback_git_properties: dict[str, str] = {}
+        fallback_git_properties_seen = False
         budget = Budget()
         # See reject_duplicate_entry_name below: a raw name the ZIP central
         # directory lists twice has no trustworthy read, by name or by
@@ -334,12 +380,41 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                 # JAR can carry git.properties for bundled modules too, and
                 # picking by archive order would make provenance depend on ZIP
                 # layout rather than on the build. Every known canonical path
-                # is accepted, not just the one for the detected layout.
+                # is accepted, not just the one for the detected layout — and
+                # ALL of them present are collected here, so more than one
+                # can be compared once the walk is done; see the PRECEDENCE
+                # resolution below the loop. Only the first non-canonical
+                # file is kept: it is a fallback used solely when no
+                # canonical path turns out to be present anywhere in the
+                # archive, so which non-canonical file among several "wins"
+                # is moot.
                 if name in _CANONICAL_GIT_PROPERTIES_PATHS:
-                    git_properties = _parse_properties(read_entry(archive, info.filename))
-                    git_properties_is_canonical = True
-                elif not git_properties_is_canonical and not git_properties:
-                    git_properties = _parse_properties(read_entry(archive, info.filename))
+                    canonical_git_properties[name] = _parse_properties(
+                        read_entry(archive, info.filename)
+                    )
+                elif not fallback_git_properties_seen:
+                    fallback_git_properties = _parse_properties(
+                        read_entry(archive, info.filename)
+                    )
+                    fallback_git_properties_seen = True
+
+    # A canonical path always beats a non-canonical one, regardless of where
+    # either sits in the archive. Among canonical paths, PRECEDENCE — not
+    # archive order — decides the winner: _CANONICAL_GIT_PROPERTIES_PATHS is
+    # walked in its documented, most-specific-first order, and the first one
+    # present in this archive wins. When more than one canonical path was
+    # present and they disagree on the identifiers a reviewer would act on
+    # (the commit, the remote), that disagreement is recorded rather than
+    # silently resolved — see Inventory.git_properties_ambiguous.
+    canonical_present = [
+        path for path in _CANONICAL_GIT_PROPERTIES_PATHS if path in canonical_git_properties
+    ]
+    if canonical_present:
+        git_properties = canonical_git_properties[canonical_present[0]]
+        git_properties_ambiguous = _canonical_git_properties_disagree(canonical_git_properties)
+    else:
+        git_properties = fallback_git_properties
+        git_properties_ambiguous = False
 
     libraries.sort(key=lambda library: library.path)
     return Inventory(
@@ -348,6 +423,7 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
         app_classes=app_classes,
         excluded_class_count=excluded_class_count,
         git_properties=git_properties,
+        git_properties_ambiguous=git_properties_ambiguous,
     )
 
 
@@ -407,6 +483,35 @@ def _application_class_key(name: str) -> str | _Exclusion:
     if remainder.startswith(_NON_APPLICATION_PREFIXES):
         return _Exclusion.TOOLING
     return name
+
+
+#: The git.properties fields whose disagreement across canonical files is
+#: worth flagging: the two identifiers commit_sha() and repository_url()
+#: report to a reviewer. Other fields (git.branch, build timestamps, …) are
+#: not compared — this module makes no claim about them and a difference
+#: there is not the kind of disagreement Inventory.git_properties_ambiguous
+#: exists to surface.
+_DISAGREEMENT_FIELDS = ("git.commit.id.full", "git.remote.origin.url")
+
+
+def _canonical_git_properties_disagree(by_path: dict[str, dict[str, str]]) -> bool:
+    """Whether the canonical git.properties files present disagree on identity.
+
+    ``by_path`` holds one parsed git.properties per canonical path found in
+    the archive — see the PRECEDENCE resolution in :func:`inspect_archive`,
+    which always returns a value regardless of what this reports. This exists
+    only to decide whether that value should be reported as ambiguous: an
+    artifact whose files agree, or where only one file states a given field,
+    is not making a conflicting claim about that field. Two files present
+    with two DIFFERENT non-empty values for the same field are.
+    """
+    for field_name in _DISAGREEMENT_FIELDS:
+        values = {
+            properties[field_name] for properties in by_path.values() if properties.get(field_name)
+        }
+        if len(values) > 1:
+            return True
+    return False
 
 
 def _parse_properties(raw: bytes) -> dict[str, str]:

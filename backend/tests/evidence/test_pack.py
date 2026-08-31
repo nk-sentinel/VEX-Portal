@@ -203,3 +203,24 @@ def test_inventory_summary_reports_none_when_provenance_is_absent():
 
     assert summary["commit_sha"] is None
     assert summary["repository_url"] is None
+
+
+def test_inventory_summary_reports_git_properties_ambiguity():
+    # N4: an artifact carrying two disagreeing canonical git.properties files
+    # (BOOT-INF/classes/ and WEB-INF/classes/) must surface that disagreement
+    # in the evidence pack, not just resolve it silently inside Inventory.
+    real = b"git.commit.id.full=" + b"5" * 40 + b"\n"
+    decoy = b"git.commit.id.full=" + b"6" * 40 + b"\n"
+    artifact = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": make_class_file(["java/lang/String"]),
+            "BOOT-INF/lib/dep.jar": make_jar({"p/C.class": b"c" * 64}),
+            "BOOT-INF/classes/git.properties": real,
+            "WEB-INF/classes/git.properties": decoy,
+        }
+    )
+
+    summary = build_pack(artifact, set(), {}).inventory_summary
+
+    assert summary["commit_sha"] == "5" * 40
+    assert summary["git_properties_ambiguous"] is True

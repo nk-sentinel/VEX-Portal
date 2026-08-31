@@ -182,6 +182,84 @@ def test_canonical_git_properties_wins_regardless_of_archive_order():
         assert inspect_archive(make_jar(entries)).commit_sha() == "aaaaaaa"
 
 
+def test_boot_inf_git_properties_beats_web_inf_regardless_of_archive_order():
+    # N4: more than one canonical path can be present at once — a Boot fat
+    # WAR carries both BOOT-INF/ and WEB-INF/. Precedence must be decided by
+    # an explicit, documented rule (BOOT-INF/classes/ first), never by which
+    # one the ZIP happens to list last.
+    real = b"git.commit.id.full=" + b"a" * 40 + b"\n"
+    decoy = b"git.commit.id.full=" + b"b" * 40 + b"\n"
+    for entries in (
+        {
+            "BOOT-INF/classes/git.properties": real,
+            "WEB-INF/classes/git.properties": decoy,
+        },
+        {
+            "WEB-INF/classes/git.properties": decoy,
+            "BOOT-INF/classes/git.properties": real,
+        },
+    ):
+        inventory = inspect_archive(make_jar(entries))
+        assert inventory.commit_sha() == "a" * 40
+
+
+def test_web_inf_git_properties_beats_root_regardless_of_archive_order():
+    real = b"git.commit.id.full=" + b"c" * 40 + b"\n"
+    decoy = b"git.commit.id.full=" + b"d" * 40 + b"\n"
+    for entries in (
+        {"WEB-INF/classes/git.properties": real, "git.properties": decoy},
+        {"git.properties": decoy, "WEB-INF/classes/git.properties": real},
+    ):
+        inventory = inspect_archive(make_jar(entries))
+        assert inventory.commit_sha() == "c" * 40
+
+
+def test_disagreeing_canonical_git_properties_sets_ambiguous_flag():
+    # Two canonical files claiming two different commits is a fact a human
+    # reviewer should see, not something silently resolved. The precedence
+    # rule still picks a value to return — it just must not hide the
+    # disagreement.
+    higher_precedence = b"git.commit.id.full=" + b"1" * 40 + b"\n"
+    lower_precedence = b"git.commit.id.full=" + b"2" * 40 + b"\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": higher_precedence,
+                "WEB-INF/classes/git.properties": lower_precedence,
+            }
+        )
+    )
+    assert inventory.commit_sha() == "1" * 40
+    assert inventory.git_properties_ambiguous is True
+
+
+def test_agreeing_canonical_git_properties_does_not_set_ambiguous_flag():
+    same = b"git.commit.id.full=" + b"3" * 40 + b"\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": same,
+                "WEB-INF/classes/git.properties": same,
+            }
+        )
+    )
+    assert inventory.commit_sha() == "3" * 40
+    assert inventory.git_properties_ambiguous is False
+
+
+def test_single_canonical_git_properties_leaves_ambiguous_flag_unset():
+    # Regression pin: the common case (exactly one canonical git.properties)
+    # must behave exactly as before the N4 fix.
+    raw = make_spring_boot_jar(
+        app_classes={},
+        libraries={},
+        git_properties={"git.commit.id.full": "e" * 40},
+    )
+    inventory = inspect_archive(raw)
+    assert inventory.commit_sha() == "e" * 40
+    assert inventory.git_properties_ambiguous is False
+
+
 def test_non_jar_named_library_entry_is_counted_and_hashed():
     # Spring Boot puts every non-directory entry under BOOT-INF/lib/ on the
     # classpath regardless of extension. Filtering on ".jar" here left an

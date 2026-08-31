@@ -104,6 +104,7 @@ def build_pack(
             "unreadable_classes": len(scan.unreadable_classes),
             "commit_sha": inventory.commit_sha(),
             "repository_url": inventory.repository_url(),
+            "git_properties_ambiguous": inventory.git_properties_ambiguous,
         },
         components=components,
         escape_hatches=scan.escape_hatches,
