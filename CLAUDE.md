@@ -53,13 +53,37 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 
 ## Current state
 
-Phase 1 (evidence pipeline). Domain vocabulary and its safety invariants are done and
-tested (46 tests).
+**Branch `feat/evidence-foundation` — Tasks 1-8 of 10 complete. 138 tests, ruff + mypy clean.**
 
-- UI spec: `docs/design/ui-spec.md` — 9 screens + evidence drawer. Angular not started.
-- **Next up:** `docs/plans/2026-08-31-evidence-foundation.md` — 8 TDD tasks building the
-  offline evidence engine (artifact inspection, constant-pool analysis, container layer
-  walking, provenance fingerprint). No third-party dependencies, no external systems, so
-  it is entirely buildable outside the work network.
-- Plans 2 (adapters + persistence) and 3 (rule engine + services + API) are outlined at
-  the end of that document.
+Built: the offline evidence engine. Artifact inventory, Java constant-pool parsing, Tier 1
+class presence, Tier 2 reference scanning with dynamic-dispatch anti-checks, container image
+layer walking, provenance fingerprinting, the evidence pack, and an inspection CLI.
+
+**NOT built — Tasks 9 and 10 of the plan, stopped by a session usage limit:**
+- **Task 9 (security hardening).** Entry-name canonicalisation so `./x`, `a/../x`, backslash
+  separators and leading `/` all compare equal — WITHOUT it a crafted archive entry name can
+  hide a class from `contains_class`, which returns False, which is Tier 1 proof that clears
+  a real finding. Also decompression-bomb limits, symlink/device rejection in tar layers, and
+  the unguarded `archive.read()` calls in `inventory.py`. Brief is written and ready at
+  `docs/plans/2026-08-31-evidence-foundation.md`.
+- **Task 10 (performance).** `build_pack` calls `contains_class` per implicated class path,
+  re-walking the whole archive each time; a 40-finding report against a 300-library fat JAR
+  pays 40 full traversals. Brief written, includes the single-pass `collect_class_paths` fix
+  and benchmarks.
+
+**Known issue worth deciding before relying on Tier 2** (ledger Ruling 25): `java/lang/Class`
+is too broad an escape-hatch marker in `references.py`. `Object.getClass()` is ubiquitous, so
+`is_conclusive()` will return False on most real bytecode and Tier 2 evidence will rarely be
+actionable. Deliberately NOT changed unattended — narrowing markers makes `is_conclusive()`
+True more often, which is the unsafe direction. Fix is to resolve `CONSTANT_Methodref`
+entries so the marker can require `Class.forName` specifically.
+
+Escape-hatch markers have only ever been exercised against synthetic class files; there is no
+JDK in this environment, so nobody has confirmed they fire on real `javac` output.
+
+Full decision log with rationale and cost-if-wrong for all 30 rulings:
+`.superpowers/sdd/2026-08-31-evidence-foundation/progress.md` (git-ignored, local only).
+
+- UI spec: `docs/design/ui-spec.md`; mockups `docs/design/ui-mockups.html`. Angular not started.
+- Plans 2 (adapters + persistence) and 3 (rule engine + services + API) outlined at the end of
+  the plan document.
