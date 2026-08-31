@@ -1,4 +1,7 @@
 import hashlib
+import io
+import warnings
+import zipfile
 
 import pytest
 
@@ -132,6 +135,67 @@ def test_canonical_git_properties_wins_regardless_of_archive_order():
          "BOOT-INF/classes/git.properties": canonical},
     ):
         assert inspect_archive(make_jar(entries)).commit_sha() == "aaaaaaa"
+
+
+def test_non_jar_named_library_entry_is_counted_and_hashed():
+    # Spring Boot puts every non-directory entry under BOOT-INF/lib/ on the
+    # classpath regardless of extension. Filtering on ".jar" here left an
+    # entry like this fully loadable by the JVM but invisible to provenance.
+    payload = make_jar({"org/example/Thing.class": b"y"})
+    raw = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": b"x",
+            "BOOT-INF/lib/commons-text-1.9.zip": payload,
+        }
+    )
+    inventory = inspect_archive(raw)
+    assert len(inventory.libraries) == 1
+    library = inventory.libraries[0]
+    assert library.name == "commons-text-1.9.zip"
+    assert library.path == "BOOT-INF/lib/commons-text-1.9.zip"
+    assert library.sha1 == hashlib.sha1(payload).hexdigest()
+
+
+def test_uppercase_named_library_entry_is_counted_despite_case():
+    # A case-sensitive ".jar" test made EVIL.JAR provenance-invisible even
+    # though presence.py's suffix test already lowercases and would recurse
+    # into it — the two halves of the defence disagreed with each other.
+    payload = make_jar({})
+    raw = make_jar(
+        {"BOOT-INF/classes/com/example/App.class": b"x", "BOOT-INF/lib/EVIL.JAR": payload}
+    )
+    inventory = inspect_archive(raw)
+    assert len(inventory.libraries) == 1
+    assert inventory.libraries[0].name == "EVIL.JAR"
+    assert inventory.libraries[0].sha1 == hashlib.sha1(payload).hexdigest()
+
+
+def test_duplicate_application_class_entry_raises():
+    # Which entry a JVM's classloader picks between two identically-named
+    # entries is implementation-defined. Silently keeping "last wins" would
+    # scan bytecode that might not be what actually runs, while still
+    # reporting the scan as having examined everything.
+    # Built by hand so the ZIP genuinely carries the same name twice — a dict
+    # of entries can only hold one payload per key. zipfile warns on this by
+    # design; the warning is not the point of the test.
+    buffer = io.BytesIO()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("com/example/App.class", b"first-copy")
+            zf.writestr("com/example/App.class", b"second-copy")
+    with pytest.raises(MalformedArtifact, match="com/example/App.class"):
+        inspect_archive(buffer.getvalue())
+
+
+def test_empty_directory_entry_does_not_flip_a_plain_jar_to_spring_boot_layout():
+    # A zero-byte BOOT-INF/classes/ entry is inert to the JVM. Letting it
+    # decide layout flips a plain JAR to SPRING_BOOT_FAT, which then demands
+    # every real class carry that prefix and empties app_classes entirely.
+    raw = make_jar({"BOOT-INF/classes/": b"", "com/example/App.class": b"x"})
+    inventory = inspect_archive(raw)
+    assert inventory.layout is Layout.PLAIN_JAR
+    assert "com/example/App.class" in inventory.app_classes
 
 
 def test_versioned_copy_of_tooling_is_excluded_like_its_unversioned_twin():

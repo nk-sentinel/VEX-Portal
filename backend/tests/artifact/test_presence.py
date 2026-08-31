@@ -115,6 +115,21 @@ def test_layout_prefix_match_is_a_prefix_not_a_suffix():
     assert contains_class(raw, "com/example/App.class") is False
 
 
+def test_finds_class_present_only_under_a_multi_release_override():
+    # Multi-Release: true means a class only present under
+    # META-INF/versions/N/ loads on any Java 9+ JVM exactly as an unversioned
+    # copy would. A presence check that only compares the bare path
+    # manufactures Tier 1 proof out of packaging, not out of absence.
+    raw = make_jar({f"META-INF/versions/17/{TARGET}": b"x"})
+    assert contains_class(raw, TARGET) is True
+
+
+def test_finds_multi_release_override_inside_a_bundled_library():
+    lib = make_jar({f"META-INF/versions/17/{TARGET}": b"x"})
+    raw = make_spring_boot_jar(app_classes={}, libraries={"commons-text-1.9.jar": lib})
+    assert contains_class(raw, TARGET) is True
+
+
 @pytest.mark.parametrize(
     "failure",
     [

@@ -70,6 +70,19 @@ def test_scan_is_conclusive_when_no_escape_hatch_is_present():
     assert scan_references(inventory).is_conclusive() is True
 
 
+def test_scan_of_zero_classes_is_not_conclusive():
+    # Scanning nothing is not evidence of anything. Without this, a scan that
+    # saw no classes at all — no escape hatches, no unreadable classes — was
+    # vacuously "conclusive", which is indistinguishable from an exhaustive
+    # scan that genuinely found no reference.
+    inventory = _inventory_with({})
+    scan = scan_references(inventory)
+    assert scan.classes_scanned == 0
+    assert scan.escape_hatches == []
+    assert scan.unreadable_classes == []
+    assert scan.is_conclusive() is False
+
+
 def test_unreadable_class_is_recorded_and_makes_the_scan_inconclusive():
     # A class we could not parse might be the one that references the target.
     # Silently skipping it would understate the references and could clear a

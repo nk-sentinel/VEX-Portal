@@ -25,6 +25,7 @@ against one artifact — see :func:`app.evidence.pack.build_pack` — should cal
 from __future__ import annotations
 
 import io
+import re
 import zipfile
 import zlib
 from collections.abc import Iterable
@@ -34,7 +35,15 @@ from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
 
 _LAYOUT_CLASS_PREFIXES = ("BOOT-INF/classes/", "WEB-INF/classes/")
+_LIBRARY_DIR_PREFIXES = ("BOOT-INF/lib/", "WEB-INF/lib/")
 _NESTED_ARCHIVE_SUFFIXES = (".jar", ".war", ".ear")
+
+#: Multi-release JARs place version-specific overrides under this prefix; such
+#: a class loads on any Java 9+ JVM on a plain `java -jar`. Defined here (not
+#: in app.artifact.inventory, which imports it) so there is exactly one
+#: pattern for both the presence check and the inventory's class-admission
+#: rule to share — two independently-written copies is how they drift.
+MULTI_RELEASE_PREFIX = re.compile(r"^META-INF/versions/\d+/")
 
 #: Most nested-class nestings are shallow; this bounds candidate generation
 #: for a dotted name without exploding combinatorially.
@@ -258,16 +267,33 @@ def _entry_match_keys(normalized_entry: str) -> tuple[str, ...]:
     """Every normalised target key that ``normalized_entry`` should satisfy.
 
     Callers pass the bare JVM name; the artifact may store it under a layout
-    prefix depending on how it was packaged. The entry name has already been
-    normalised by the caller (see :func:`normalize_entry_name`) — entry names
-    are attacker-controlled, and canonicalising only the target would leave
-    the naming evasion open.
+    prefix depending on how it was packaged, or under a multi-release
+    override — a class there loads on any Java 9+ JVM just as its unversioned
+    twin would, so a target must match a versioned copy exactly as it would
+    match the unversioned one. The entry name has already been normalised by
+    the caller (see :func:`normalize_entry_name`) — entry names are
+    attacker-controlled, and canonicalising only the target would leave the
+    naming evasion open.
     """
     keys = [normalized_entry]
     for prefix in _LAYOUT_CLASS_PREFIXES:
         if normalized_entry.startswith(prefix):
             keys.append(normalized_entry.removeprefix(prefix))
+    multi_release_stripped = MULTI_RELEASE_PREFIX.sub("", normalized_entry)
+    if multi_release_stripped != normalized_entry:
+        keys.append(multi_release_stripped)
     return tuple(keys)
+
+
+def _in_library_directory(normalized_entry: str) -> bool:
+    """Whether ``normalized_entry`` lives under a fat-JAR library directory.
+
+    Spring Boot puts every bundled dependency under one of these prefixes as
+    a non-directory entry on the classpath, regardless of what it is named —
+    the framework's own loader does not check the extension, so neither can
+    this. See :func:`_search`.
+    """
+    return any(normalized_entry.startswith(prefix) for prefix in _LIBRARY_DIR_PREFIXES)
 
 
 def _search(
@@ -326,7 +352,14 @@ def _search(
                 if key in remaining:
                     remaining.discard(key)
                     found.add(key)
-            if info.filename.lower().endswith(_NESTED_ARCHIVE_SUFFIXES):
+            # Inside a library directory, every non-directory entry is a
+            # classpath member regardless of name or extension — Spring Boot's
+            # loader does not check either. Elsewhere, fall back to the
+            # extension test. Both tests run against the normalised name, not
+            # info.filename: a trailing-slash-with-content entry (see the
+            # is_dir() comment above) would otherwise never match the suffix
+            # test even though it carries a real nested archive's bytes.
+            if _in_library_directory(entry) or entry.lower().endswith(_NESTED_ARCHIVE_SUFFIXES):
                 nested.append(info.filename)
             if not remaining:
                 return

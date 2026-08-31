@@ -17,8 +17,11 @@ from app.artifact.image import find_application_archives
 from app.artifact.inventory import Layout, inspect_archive
 from app.artifact.limits import Limits
 from app.artifact.presence import contains_class, normalize_entry_name
+from app.artifact.references import scan_references
+from tests.artifact.factories import make_class_file
 
 TARGET = "org/apache/commons/text/StringSubstitutor.class"
+VULNERABLE = "org/apache/commons/text/StringSubstitutor"
 
 
 def _zip_with_raw_names(names: dict[str, bytes]) -> bytes:
@@ -182,6 +185,57 @@ class TestTrailingSlashEvasion:
             {"BOOT-INF/classes/com/example/": b"", "BOOT-INF/classes/com/example/App.class": b"x"}
         )
         assert sorted(inspect_archive(artifact).app_classes) == ["com/example/App.class"]
+
+
+class TestNonJarLibraryEntryEvasion:
+    """Spring Boot puts every non-directory entry under BOOT-INF/lib/ (or
+    WEB-INF/lib/) on the classpath regardless of extension. A presence check
+    that only recurses into names ending .jar/.war/.ear misses a renamed or
+    extensionless bundled dependency entirely: Tier 1 proof manufactured out
+    of a naming choice on content that ships and loads exactly the same.
+    """
+
+    def test_class_in_a_non_jar_named_library_entry_is_found(self):
+        lib = _zip_with_raw_names({TARGET: b"payload"})
+        artifact = _zip_with_raw_names({"BOOT-INF/lib/commons-text-1.9.zip": lib})
+        assert contains_class(artifact, TARGET) is True
+
+    def test_class_in_an_uppercase_named_library_entry_is_found(self):
+        lib = _zip_with_raw_names({TARGET: b"payload"})
+        artifact = _zip_with_raw_names({"BOOT-INF/lib/EVIL.JAR": lib})
+        assert contains_class(artifact, TARGET) is True
+
+    def test_non_archive_library_entry_raises_rather_than_being_skipped(self):
+        # We cannot distinguish "not an archive" from "a corrupt archive that
+        # contained the class". Skipping it would be exactly the
+        # failure-reported-as-absence bug this module exists to prevent.
+        artifact = _zip_with_raw_names({"BOOT-INF/lib/native-helper": b"not an archive at all"})
+        with pytest.raises(MalformedArtifact):
+            contains_class(artifact, TARGET)
+
+
+class TestEmptyDirectoryEntryDoesNotManufactureTier2Conclusiveness:
+    """A zero-byte BOOT-INF/classes/ entry is inert to the JVM but, before the
+    fix, flipped layout detection on a plain JAR to SPRING_BOOT_FAT and
+    emptied app_classes. scan_references then saw zero classes, and
+    is_conclusive() was vacuously True at zero classes scanned — a clean
+    CODE_NOT_REACHABLE on a class the app demonstrably references.
+    """
+
+    def test_reference_scan_survives_a_falsely_flipped_layout(self):
+        artifact = _zip_with_raw_names(
+            {
+                "BOOT-INF/classes/": b"",
+                "com/example/App.class": make_class_file([VULNERABLE]),
+            }
+        )
+        inventory = inspect_archive(artifact)
+        assert inventory.layout is Layout.PLAIN_JAR
+
+        scan = scan_references(inventory)
+        assert scan.classes_scanned == 1
+        assert scan.references(VULNERABLE) is True
+        assert scan.is_conclusive() is True
 
 
 class TestEvasionAgainstTheReferenceScan:

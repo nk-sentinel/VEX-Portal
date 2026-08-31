@@ -64,11 +64,15 @@ class ReferenceScan:
     def is_conclusive(self) -> bool:
         """Whether absence of a reference can be trusted as evidence.
 
-        False when any dynamic-dispatch escape hatch was found, or when any
-        class could not be read. In both cases the application may reach code
-        this scan did not observe.
+        False when any dynamic-dispatch escape hatch was found, when any class
+        could not be read, or when nothing was scanned at all. A scan of zero
+        classes is not evidence that a class is unreferenced — it is evidence
+        that nothing was examined, which a layout-detection bug (an inert
+        empty directory entry flipping the archive to a layout whose class
+        prefix matches nothing real) can produce with a clean escape-hatch and
+        unreadable-classes record.
         """
-        return not self.escape_hatches and not self.unreadable_classes
+        return self.classes_scanned > 0 and not self.escape_hatches and not self.unreadable_classes
 
 
 def scan_references(inventory: Inventory) -> ReferenceScan:

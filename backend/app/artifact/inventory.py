@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import io
 import posixpath
-import re
 import zipfile
 import zlib
 from dataclasses import dataclass, field
@@ -19,7 +18,7 @@ from enum import Enum
 
 from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
-from app.artifact.presence import normalize_entry_name
+from app.artifact.presence import MULTI_RELEASE_PREFIX, normalize_entry_name
 
 #: A corrupt archive can fail in any of these ways depending on where the
 #: corruption lands — a bad central directory, a truncated deflate stream, an
@@ -53,12 +52,6 @@ _PREFIXES: dict[Layout, tuple[str, str]] = {
 
 # Tooling shipped inside a Boot JAR that is not the application's own code.
 _NON_APPLICATION_PREFIXES = ("org/springframework/boot/loader/", "META-INF/")
-
-#: Multi-release JARs place version-specific overrides under this prefix. They
-#: are the application's own bytecode, not a library's, so they belong in
-#: app_classes — a class referenced only from a versioned variant would
-#: otherwise read as unreferenced.
-_MULTI_RELEASE_PREFIX = re.compile(r"^META-INF/versions/\d+/")
 
 _COMMIT_KEYS = ("git.commit.id.full", "git.commit.id", "git.commit.id.abbrev")
 
@@ -208,7 +201,15 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
             # address the entry as the ZIP itself names it.
             name = normalize_entry_name(info.filename)
 
-            if library_prefix and name.startswith(library_prefix) and name.endswith(".jar"):
+            if library_prefix and name.startswith(library_prefix):
+                # Spring Boot puts every non-directory entry under the library
+                # directory on the classpath regardless of extension — a
+                # renamed or extensionless bundled dependency is not exempt
+                # from the classpath, so it must not be exempt from provenance
+                # hashing either. Filtering by ".jar" here left an entry like
+                # "commons-text-1.9.zip" (or "EVIL.JAR", since this test used
+                # to be case-sensitive) invisible to provenance while it was
+                # still fully loadable by the JVM.
                 payload = _read_entry(archive, info.filename)
                 libraries.append(
                     Library(
@@ -227,7 +228,20 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                     )
                 )
             elif name.endswith(".class") and _is_application_class(name, class_prefix, layout):
-                app_classes[name.removeprefix(class_prefix)] = _read_entry(archive, info.filename)
+                key = name.removeprefix(class_prefix)
+                if key in app_classes:
+                    # Which entry a JVM's classloader picks between two
+                    # identically-named entries is implementation-defined, so
+                    # silently keeping "last wins" would report a scan of
+                    # bytecode that might not be the bytecode that actually
+                    # runs. That understates classes_scanned while still
+                    # reporting the scan as conclusive.
+                    raise MalformedArtifact(
+                        f"duplicate application class entry {key!r}: which copy the JVM "
+                        "would load is implementation-defined, so it cannot be scanned "
+                        "exhaustively"
+                    )
+                app_classes[key] = _read_entry(archive, info.filename)
             elif posixpath.basename(name) == "git.properties":
                 # Prefer the application's own file at the canonical path. A fat
                 # JAR can carry git.properties for bundled modules too, and
@@ -258,6 +272,13 @@ def _detect_layout(archive: zipfile.ZipFile) -> Layout:
     """
     has_web_inf = False
     for info in archive.infolist():
+        # A contentless directory entry ("BOOT-INF/classes/", zero bytes) is
+        # inert to the JVM — it asserts nothing about the archive's layout.
+        # Letting it decide layout would let one padding entry flip a plain
+        # JAR to SPRING_BOOT_FAT, which then demands the BOOT-INF/classes/
+        # prefix of every real class and empties app_classes entirely.
+        if info.is_dir() and info.file_size == 0:
+            continue
         name = normalize_entry_name(info.filename)
         if name.startswith("BOOT-INF/"):
             return Layout.SPRING_BOOT_FAT  # wins: a Boot fat WAR has both
@@ -275,7 +296,7 @@ def _is_application_class(name: str, class_prefix: str, layout: Layout) -> bool:
     # exclusion to the remainder, so a versioned copy of tooling is excluded
     # exactly as the unversioned copy is — admitting it would make the
     # reference scan report classes the application never touches.
-    remainder = _MULTI_RELEASE_PREFIX.sub("", name)
+    remainder = MULTI_RELEASE_PREFIX.sub("", name)
     return not remainder.startswith(_NON_APPLICATION_PREFIXES)
 
 
