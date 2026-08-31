@@ -13,10 +13,26 @@ import io
 import posixpath
 import re
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from enum import Enum
 
-from app.artifact.errors import MalformedArtifact
+from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
+from app.artifact.limits import DEFAULT_LIMITS, Limits
+
+#: A corrupt archive can fail in any of these ways depending on where the
+#: corruption lands — a bad central directory, a truncated deflate stream, an
+#: unsupported compression method, an encrypted entry. All of them are "we
+#: could not read this", never "the class is not present", so every one of
+#: them is converted to MalformedArtifact rather than left to escape raw.
+_READ_FAILURES: tuple[type[Exception], ...] = (
+    zipfile.BadZipFile,
+    zlib.error,
+    OSError,
+    RuntimeError,
+    NotImplementedError,
+    EOFError,
+)
 
 
 class Layout(Enum):
@@ -94,15 +110,72 @@ class Inventory:
         return {library.sha1: library.name for library in self.libraries}
 
 
-def inspect_archive(data: bytes) -> Inventory:
+@dataclass(slots=True)
+class _Budget:
+    """Running totals for one archive walk."""
+
+    entries: int = 0
+    total_uncompressed: int = 0
+
+
+def _enforce_limits(info: zipfile.ZipInfo, budget: _Budget, limits: Limits) -> None:
+    """Reject a declared-oversized or bomb-shaped entry before it is read.
+
+    Checked against declared metadata (``file_size`` / ``compress_size``)
+    before any entry is decompressed, so a bomb is refused rather than read
+    and then rejected.
+    """
+    budget.entries += 1
+    if budget.entries > limits.max_entries:
+        raise ArtifactTooLarge(f"archive has more than {limits.max_entries} entries")
+    if info.file_size > limits.max_entry_size:
+        raise ArtifactTooLarge(
+            f"entry {info.filename!r} declares {info.file_size} bytes, over the "
+            f"{limits.max_entry_size} byte limit"
+        )
+    ratio = info.file_size / max(info.compress_size, 1)
+    if ratio > limits.max_compression_ratio:
+        raise ArtifactTooLarge(
+            f"entry {info.filename!r} has compression ratio {ratio:.0f}:1, over the "
+            f"{limits.max_compression_ratio}:1 limit"
+        )
+    budget.total_uncompressed += info.file_size
+    if budget.total_uncompressed > limits.max_total_uncompressed:
+        raise ArtifactTooLarge(
+            f"archive exceeds {limits.max_total_uncompressed} total uncompressed bytes"
+        )
+
+
+def _read_entry(archive: zipfile.ZipFile, name: str) -> bytes:
+    """Read one entry, converting a corrupt-archive failure into MalformedArtifact.
+
+    An untyped exception escaping here would be handled by a caller as an
+    unknown error rather than as "evidence could not be collected", which is
+    a different decision — see the module docstring.
+    """
+    try:
+        return archive.read(name)
+    except _READ_FAILURES as exc:
+        raise MalformedArtifact(f"could not read {name!r}: {exc}") from exc
+
+
+def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventory:
     """Read a JAR or WAR and report what it contains.
 
+    Args:
+        data: the artifact bytes.
+        limits: resource bounds enforced while walking the archive. See
+            :mod:`app.artifact.limits`.
+
     Raises:
-        MalformedArtifact: the bytes are not a readable ZIP archive.
+        MalformedArtifact: the bytes are not a readable ZIP archive, or an
+            entry inside it could not be read.
+        ArtifactTooLarge: the archive exceeded a resource bound before it
+            could be read exhaustively.
     """
     try:
         archive = zipfile.ZipFile(io.BytesIO(data))
-    except zipfile.BadZipFile as exc:
+    except _READ_FAILURES as exc:
         raise MalformedArtifact(f"not a readable archive: {exc}") from exc
 
     with archive:
@@ -113,14 +186,16 @@ def inspect_archive(data: bytes) -> Inventory:
         app_classes: dict[str, bytes] = {}
         git_properties: dict[str, str] = {}
         git_properties_is_canonical = False
+        budget = _Budget()
 
         for info in archive.infolist():
+            _enforce_limits(info, budget, limits)
             if info.is_dir():
                 continue
             name = info.filename
 
             if library_prefix and name.startswith(library_prefix) and name.endswith(".jar"):
-                payload = archive.read(name)
+                payload = _read_entry(archive, name)
                 libraries.append(
                     Library(
                         path=name,
@@ -138,7 +213,7 @@ def inspect_archive(data: bytes) -> Inventory:
                     )
                 )
             elif name.endswith(".class") and _is_application_class(name, class_prefix, layout):
-                app_classes[name.removeprefix(class_prefix)] = archive.read(name)
+                app_classes[name.removeprefix(class_prefix)] = _read_entry(archive, name)
             elif posixpath.basename(name) == "git.properties":
                 # Prefer the application's own file at the canonical path. A fat
                 # JAR can carry git.properties for bundled modules too, and
@@ -146,10 +221,10 @@ def inspect_archive(data: bytes) -> Inventory:
                 # layout rather than on the build.
                 canonical = f"{class_prefix}git.properties" if class_prefix else "git.properties"
                 if name == canonical:
-                    git_properties = _parse_properties(archive.read(name))
+                    git_properties = _parse_properties(_read_entry(archive, name))
                     git_properties_is_canonical = True
                 elif not git_properties_is_canonical and not git_properties:
-                    git_properties = _parse_properties(archive.read(name))
+                    git_properties = _parse_properties(_read_entry(archive, name))
 
     libraries.sort(key=lambda library: library.path)
     return Inventory(

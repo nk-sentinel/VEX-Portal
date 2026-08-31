@@ -21,3 +21,11 @@ class NotAClassFile(ArtifactError):
 
 class MalformedClassFile(ArtifactError):
     """The class file header parsed but its constant pool did not."""
+
+
+class ArtifactTooLarge(ArtifactError):
+    """The artifact exceeded a resource bound and was not fully examined.
+
+    Raised rather than truncating, because a partial walk cannot distinguish
+    "the class is absent" from "we stopped before reaching it".
+    """
