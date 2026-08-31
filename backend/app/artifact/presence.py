@@ -308,7 +308,9 @@ def _search(
     archive = open_zip(data)
 
     with archive:
-        nested: list[str] = []
+        # Second element: whether this candidate is in a library directory
+        # but not named like an archive — see the "needs_hint" handling below.
+        nested: list[tuple[str, bool]] = []
         for info in archive.infolist():
             enforce_limits(info, budget, limits)
             # zipfile.ZipInfo.is_dir() is a bare name.endswith("/") test that
@@ -323,6 +325,20 @@ def _search(
                 if key in remaining:
                     remaining.discard(key)
                     found.add(key)
+            in_library_directory = _in_library_directory(entry)
+            if in_library_directory and info.file_size == 0:
+                # A zero-byte entry cannot contain a class under any reading
+                # of its bytes — provable from the declared size alone, not a
+                # heuristic about its name or extension. A `.gitkeep` left
+                # over from committing an empty library directory is common;
+                # without this carve-out it would be handed to open_zip()
+                # below and abort the whole determination on an empty file
+                # that plainly cannot hide anything. Deliberately narrow: a
+                # NON-empty non-archive here still raises, below.
+                if not remaining:
+                    return
+                continue
+            archive_named = has_archive_suffix(entry)
             # Inside a library directory, every non-directory entry is a
             # classpath member regardless of name or extension — Spring Boot's
             # loader does not check either. Elsewhere, fall back to the
@@ -330,13 +346,30 @@ def _search(
             # info.filename: a trailing-slash-with-content entry (see the
             # is_dir() comment above) would otherwise never match the suffix
             # test even though it carries a real nested archive's bytes.
-            if _in_library_directory(entry) or has_archive_suffix(entry):
-                nested.append(info.filename)
+            if in_library_directory or archive_named:
+                # An entry named like an archive is presumed to be one; if it
+                # turns out not to be, that is ordinary corruption and gets
+                # the generic "could not read" treatment below. An entry
+                # inside a library directory NOT named like an archive (a
+                # README, a `*.jar.sha1` checksum sidecar) gets the more
+                # specific message instead, because for that one the likely
+                # explanation is not corruption — it is a non-archive
+                # resource that does not belong in the library directory.
+                nested.append((info.filename, in_library_directory and not archive_named))
             if not remaining:
                 return
 
-        for name in nested:
+        for name, needs_library_hint in nested:
             payload = read_entry(archive, name)
+            if needs_library_hint:
+                try:
+                    open_zip(payload).close()
+                except MalformedArtifact as exc:
+                    raise MalformedArtifact(
+                        f"{name!r} is a non-archive resource inside a library directory "
+                        f"({exc}); move it out of the library directory — every entry there "
+                        "is treated as a bundled dependency regardless of its name"
+                    ) from exc
             try:
                 _search(
                     payload,

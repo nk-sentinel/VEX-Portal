@@ -316,6 +316,55 @@ class TestContentBearingDecoyDoesNotSuppressRealApplicationClasses:
         assert scan.is_conclusive() is True
 
 
+class TestLibraryDirectoryZeroByteEntryCarveOut:
+    """C1 (adopted from the reviewer's recommendation).
+
+    ANY non-archive entry under a library prefix used to raise
+    MalformedArtifact, which aborts the whole determination. A zero-byte
+    WEB-INF/lib/.gitkeep — left over from committing an empty lib directory
+    — did this, as would a README.txt or a `*.jar.sha1` checksum sidecar
+    some Maven/Ivy setups drop there. A zero-byte entry cannot contain a
+    class under any reading of its bytes, which is provable from the
+    declared size alone — not a heuristic about its name or extension — so
+    it may be skipped with no loss of soundness. Deliberately narrow: a
+    NON-empty non-archive in a library directory must still raise, so a
+    human reviewer gets a fast, unambiguous signal rather than a silently
+    degraded scan.
+    """
+
+    def test_zero_byte_gitkeep_in_library_directory_does_not_abort_the_scan(self):
+        artifact = _zip_with_raw_names(
+            {
+                "WEB-INF/classes/com/example/App.class": make_class_file([VULNERABLE]),
+                "WEB-INF/lib/.gitkeep": b"",
+            }
+        )
+        assert contains_class(artifact, TARGET) is False
+        inventory = inspect_archive(artifact)
+        assert "com/example/App.class" in inventory.app_classes
+
+    def test_non_empty_readme_in_the_same_library_directory_still_raises(self):
+        artifact = _zip_with_raw_names(
+            {
+                "WEB-INF/classes/com/example/App.class": b"x",
+                "WEB-INF/lib/README.txt": b"see the ops wiki for deployment notes",
+            }
+        )
+        with pytest.raises(MalformedArtifact, match="README.txt"):
+            contains_class(artifact, TARGET)
+
+    def test_non_empty_checksum_sidecar_in_a_library_directory_still_raises(self):
+        # A *.jar.sha1 sidecar: has no archive suffix, is not empty, and is
+        # exactly the kind of file some Maven/Ivy setups drop in a lib dir.
+        artifact = _zip_with_raw_names(
+            {
+                "WEB-INF/classes/com/example/App.class": b"x",
+                "WEB-INF/lib/commons-text-1.9.jar.sha1": b"5b7f3d9e2a1c4f8b6d0e3a2c1b0a9f",
+            }
+        )
+        with pytest.raises(MalformedArtifact, match="commons-text-1.9.jar.sha1"):
+            contains_class(artifact, TARGET)
+
 
 class TestEvasionAgainstTheReferenceScan:
     """The same evasion one tier down.
