@@ -14,7 +14,7 @@ import pytest
 
 from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
 from app.artifact.image import find_application_archives
-from app.artifact.inventory import inspect_archive
+from app.artifact.inventory import Layout, inspect_archive
 from app.artifact.limits import Limits
 from app.artifact.presence import contains_class, normalize_entry_name
 
@@ -142,6 +142,35 @@ class TestImageLayerSafety:
         found = find_application_archives([self._tar_with(build)])
         assert len(found) == 1
         assert not found[0].path.startswith("..")
+
+
+class TestEvasionAgainstTheReferenceScan:
+    """The same evasion one tier down.
+
+    Hiding a class from app_classes means its constant pool is never scanned,
+    so the vulnerable class reads as unreferenced — Tier 2 evidence that
+    contributes to clearing a live finding.
+    """
+
+    @pytest.mark.parametrize(
+        "entry",
+        [
+            "BOOT-INF/classes/com/example/App.class",
+            "./BOOT-INF/classes/com/example/App.class",
+            "BOOT-INF/classes/./com/example/App.class",
+            "BOOT-INF/lib/../classes/com/example/App.class",
+            "BOOT-INF\\classes\\com\\example\\App.class",
+        ],
+    )
+    def test_application_class_is_found_despite_hostile_entry_name(self, entry: str):
+        artifact = _zip_with_raw_names(
+            {entry: b"x", "BOOT-INF/lib/dep.jar": b"PK\x05\x06" + b"\x00" * 18}
+        )
+        assert "com/example/App.class" in inspect_archive(artifact).app_classes
+
+    def test_layout_detection_survives_a_hostile_prefix(self):
+        artifact = _zip_with_raw_names({"./BOOT-INF/classes/com/example/App.class": b"x"})
+        assert inspect_archive(artifact).layout is Layout.SPRING_BOOT_FAT
 
 
 class TestMalformedInputNeverLeaksUnexpectedExceptions:

@@ -19,6 +19,7 @@ from enum import Enum
 
 from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
+from app.artifact.presence import normalize_entry_name
 
 #: A corrupt archive can fail in any of these ways depending on where the
 #: corruption lands — a bad central directory, a truncated deflate stream, an
@@ -192,10 +193,18 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
             _enforce_limits(info, budget, limits)
             if info.is_dir():
                 continue
-            name = info.filename
+            # Canonicalise once and use this form for every subsequent decision
+            # (prefix tests, the app_classes key, the git.properties check).
+            # Entry names are attacker-controlled — see app.artifact.presence —
+            # and a raw-name comparison here is the same evasion one tier down:
+            # a hidden class is dropped from app_classes, so its constant pool
+            # is never scanned and it reads as unreferenced. `info.filename`
+            # (the raw name) is kept only for archive.read(), which must
+            # address the entry as the ZIP itself names it.
+            name = normalize_entry_name(info.filename)
 
             if library_prefix and name.startswith(library_prefix) and name.endswith(".jar"):
-                payload = _read_entry(archive, name)
+                payload = _read_entry(archive, info.filename)
                 libraries.append(
                     Library(
                         path=name,
@@ -213,7 +222,7 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                     )
                 )
             elif name.endswith(".class") and _is_application_class(name, class_prefix, layout):
-                app_classes[name.removeprefix(class_prefix)] = _read_entry(archive, name)
+                app_classes[name.removeprefix(class_prefix)] = _read_entry(archive, info.filename)
             elif posixpath.basename(name) == "git.properties":
                 # Prefer the application's own file at the canonical path. A fat
                 # JAR can carry git.properties for bundled modules too, and
@@ -221,10 +230,10 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                 # layout rather than on the build.
                 canonical = f"{class_prefix}git.properties" if class_prefix else "git.properties"
                 if name == canonical:
-                    git_properties = _parse_properties(_read_entry(archive, name))
+                    git_properties = _parse_properties(_read_entry(archive, info.filename))
                     git_properties_is_canonical = True
                 elif not git_properties_is_canonical and not git_properties:
-                    git_properties = _parse_properties(_read_entry(archive, name))
+                    git_properties = _parse_properties(_read_entry(archive, info.filename))
 
     libraries.sort(key=lambda library: library.path)
     return Inventory(
@@ -244,9 +253,10 @@ def _detect_layout(archive: zipfile.ZipFile) -> Layout:
     """
     has_web_inf = False
     for info in archive.infolist():
-        if info.filename.startswith("BOOT-INF/"):
+        name = normalize_entry_name(info.filename)
+        if name.startswith("BOOT-INF/"):
             return Layout.SPRING_BOOT_FAT  # wins: a Boot fat WAR has both
-        if info.filename.startswith("WEB-INF/"):
+        if name.startswith("WEB-INF/"):
             has_web_inf = True
     return Layout.WAR if has_web_inf else Layout.PLAIN_JAR
 

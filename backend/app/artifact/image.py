@@ -9,6 +9,15 @@ Layer ordering matters. Layers stack, so a later layer writing the same path
 replaces the earlier one, and a deletion appears as an OverlayFS whiteout
 marker. Analysing a shadowed copy would assess a build that is not the one
 running.
+
+Bomb limits here deliberately omit a per-entry compression-ratio check, unlike
+:mod:`app.artifact.presence` and :mod:`app.artifact.inventory`. A ZIP entry
+carries its own declared compressed size (``ZipInfo.compress_size``), so a
+per-entry ratio can be computed cheaply; a tar member has no such field — a
+layer's gzip wrapper compresses the whole stream, not per file, so there is no
+per-member compressed size to compare against. Entry count, per-entry declared
+size, and a running uncompressed total still bound a hostile layer; the
+asymmetry with the zip path is a property of the format, not an oversight.
 """
 
 from __future__ import annotations
