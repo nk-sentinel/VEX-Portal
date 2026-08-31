@@ -53,7 +53,7 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 
 ## Current state
 
-**Branch `feat/evidence-foundation` — all 10 plan tasks complete. 221 tests, ruff + mypy clean.**
+**Branch `feat/evidence-foundation` — all 10 plan tasks complete. 231 tests, ruff + mypy clean.**
 
 The offline evidence engine: artifact inventory, Java constant-pool parsing, Tier 1 class
 presence, Tier 2 reference scanning with dynamic-dispatch anti-checks, container image layer
@@ -63,24 +63,30 @@ performance benchmarks. Standard library only.
 Went through a whole-branch review plus three adversarial fix/re-review rounds. Five Criticals
 were found and fixed, four of them by attacking the seam a previous fix created.
 
+### Fixed since the review
+
+**Duplicate entry names (N3) — resolved.** An archive is rejected when a duplicated raw entry
+name would be READ as evidence: library-prefix entries, and nested archives the presence walk
+recurses into. Duplicates that are never read — `META-INF/LICENSE`, `META-INF/services/*`,
+routine in shaded JARs — are tolerated, because rejecting them buys no security and a control
+that fires on honest builds gets switched off. Note the finding's narrative was slightly wrong:
+reads via a captured `ZipInfo` happen to address the correct occurrence, but that is a CPython
+implementation detail rather than a guarantee. The genuinely exploitable case was the by-name
+read in nested-archive recursion outside a library directory (an EAR module), where duplication
+did make `contains_class` return False. Guarded at every read site regardless.
+
 ### Decide before merge
 
-1. **Duplicate entry names on the LIBRARY path (N3).** There is a duplicate-raw-name guard on
-   the application-class path but none for libraries. Two entries both named
-   `BOOT-INF/lib/x.jar` hide the first from BOTH presence and provenance. `zipfile` cannot
-   address the shadowed occurrence, so no content-comparison fix is possible — the answer is
-   rejecting archives with duplicate entry names outright. JVM exploitability unproven on a
-   plain JVM; plausible under Spring Boot's loader.
-2. **Declared metadata is untrusted — apply the rule everywhere.** `file_size` and
+1. **Declared metadata is untrusted — apply the rule everywhere.** `file_size` and
    `compress_size` are attacker-controlled. Fixed at the guards that gate evidence; still
    trusted by `enforce_limits`' budget arithmetic and the two `git.properties` reads. Consider
    a central-vs-local-header consistency check.
-3. **`git.properties` canonical-vs-canonical ties (N4)** resolve by ZIP order, reintroducing
+2. **`git.properties` canonical-vs-canonical ties (N4)** resolve by ZIP order, reintroducing
    the order dependence the code comment says it prevents. Nil security impact; the
    determinism claim is false as written.
-4. **Surplus tolerance (5%)** means a 100-component build tolerates five entirely unscanned
+3. **Surplus tolerance (5%)** means a 100-component build tolerates five entirely unscanned
    bundled JARs and still returns MATCH.
-5. **`java/lang/Class` marker breadth.** `Object.getClass()` is ubiquitous, so
+4. **`java/lang/Class` marker breadth.** `Object.getClass()` is ubiquitous, so
    `is_conclusive()` will be False on most real bytecode and Tier 2 will rarely fire. NOT
    changed unattended: narrowing markers makes `is_conclusive()` True more often, the unsafe
    direction. Fix is ~30 lines resolving `CONSTANT_Methodref` so the marker requires
@@ -96,7 +102,7 @@ were found and fixed, four of them by attacking the seam a previous fix created.
 - **Escape-hatch markers were only ever exercised against synthetic class files.** No JDK here,
   so nobody has confirmed they fire on real `javac` output.
 
-Full decision log — 43 rulings with rationale and cost-if-wrong:
+Full decision log — 45 rulings with rationale and cost-if-wrong:
 `.superpowers/sdd/2026-08-31-evidence-foundation/progress.md` (git-ignored, local only).
 
 - UI spec: `docs/design/ui-spec.md`; mockups `docs/design/ui-mockups.html`. Angular not started.
