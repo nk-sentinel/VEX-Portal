@@ -33,6 +33,7 @@ from app.artifact._archive import (
     has_archive_suffix,
     open_zip,
     read_entry,
+    read_entry_ignoring_declared_size,
 )
 from app.artifact.errors import MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
@@ -308,17 +309,25 @@ def _search(
     archive = open_zip(data)
 
     with archive:
-        # Second element: whether this candidate is in a library directory
-        # but not named like an archive — see the "needs_hint" handling below.
-        nested: list[tuple[str, bool]] = []
+        # Second element: the entry's payload if it was already read to
+        # settle whether it is genuinely empty (library-directory entries —
+        # see below); None means read it lazily below, as before. Third
+        # element: whether this candidate is in a library directory but not
+        # named like an archive — see the "needs_hint" handling below.
+        nested: list[tuple[str, bytes | None, bool]] = []
         for info in archive.infolist():
             enforce_limits(info, budget, limits)
             # zipfile.ZipInfo.is_dir() is a bare name.endswith("/") test that
-            # ignores file_size, so an entry named "…/Foo.class/" carrying real
-            # content reads as a directory and would be skipped before its name is
-            # ever compared. Treat anything with content as content: reporting a
-            # present class as absent is Tier 1 proof that clears a finding.
-            if info.is_dir() and info.file_size == 0:
+            # ignores both size fields, so an entry named "…/Foo.class/"
+            # carrying real content reads as a directory and would be
+            # skipped before its name is ever compared. Treat anything with
+            # content as content: reporting a present class as absent is
+            # Tier 1 proof that clears a finding. Both declared sizes must be
+            # zero, not just file_size: file_size is attacker-controlled
+            # central-directory metadata (see read_entry_ignoring_declared_size),
+            # but an entry with compress_size == 0 truly has no data for any
+            # reader, Python or JVM — that is what actually proves emptiness.
+            if info.is_dir() and info.file_size == 0 and info.compress_size == 0:
                 continue
             entry = normalize_entry_name(info.filename)
             for key in _entry_match_keys(entry):
@@ -326,18 +335,34 @@ def _search(
                     remaining.discard(key)
                     found.add(key)
             in_library_directory = _in_library_directory(entry)
-            if in_library_directory and info.file_size == 0:
-                # A zero-byte entry cannot contain a class under any reading
-                # of its bytes — provable from the declared size alone, not a
-                # heuristic about its name or extension. A `.gitkeep` left
-                # over from committing an empty library directory is common;
-                # without this carve-out it would be handed to open_zip()
-                # below and abort the whole determination on an empty file
-                # that plainly cannot hide anything. Deliberately narrow: a
-                # NON-empty non-archive here still raises, below.
-                if not remaining:
-                    return
-                continue
+            library_payload: bytes | None = None
+            if in_library_directory:
+                # info.file_size is the ZIP central directory's DECLARED
+                # uncompressed size — attacker-controlled metadata, not a
+                # fact about the entry (see read_entry_ignoring_declared_size).
+                # A carve-out keyed on that field alone can be defeated by an
+                # entry that declares file_size = 0 while carrying a real
+                # compress_size and real data — trivial with ZIP_STORED,
+                # exactly how Spring Boot packages nested JARs — which would
+                # then be silently skipped here while remaining fully
+                # readable to a JVM. Read the entry the way a JVM does
+                # (bounded by compressed size, not the declared uncompressed
+                # size) and exempt only when that read is actually empty.
+                # Entries under a library prefix are few, so this read is
+                # cheap; its result is reused below instead of read again.
+                library_payload = read_entry_ignoring_declared_size(archive, info)
+                if library_payload == b"":
+                    # A truly empty entry cannot contain a class under any
+                    # reading of its bytes. A `.gitkeep` left over from
+                    # committing an empty library directory is common;
+                    # without this carve-out it would be handed to
+                    # open_zip() below and abort the whole determination on
+                    # an empty file that plainly cannot hide anything.
+                    # Deliberately narrow: a NON-empty non-archive here
+                    # still raises, below.
+                    if not remaining:
+                        return
+                    continue
             archive_named = has_archive_suffix(entry)
             # Inside a library directory, every non-directory entry is a
             # classpath member regardless of name or extension — Spring Boot's
@@ -355,12 +380,15 @@ def _search(
                 # specific message instead, because for that one the likely
                 # explanation is not corruption — it is a non-archive
                 # resource that does not belong in the library directory.
-                nested.append((info.filename, in_library_directory and not archive_named))
+                nested.append(
+                    (info.filename, library_payload, in_library_directory and not archive_named)
+                )
             if not remaining:
                 return
 
-        for name, needs_library_hint in nested:
-            payload = read_entry(archive, name)
+        for name, payload, needs_library_hint in nested:
+            if payload is None:
+                payload = read_entry(archive, name)
             if needs_library_hint:
                 try:
                     open_zip(payload).close()

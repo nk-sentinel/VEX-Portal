@@ -14,7 +14,13 @@ import zipfile
 from dataclasses import dataclass, field
 from enum import Enum
 
-from app.artifact._archive import Budget, enforce_limits, open_zip, read_entry
+from app.artifact._archive import (
+    Budget,
+    enforce_limits,
+    open_zip,
+    read_entry,
+    read_entry_ignoring_declared_size,
+)
 from app.artifact.errors import MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
 from app.artifact.presence import (
@@ -195,20 +201,26 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
         for info in archive.infolist():
             enforce_limits(info, budget, limits)
             # zipfile.ZipInfo.is_dir() is a bare name.endswith("/") test that
-            # ignores file_size, so an entry named "…/Foo.class/" carrying real
-            # content reads as a directory and would be skipped before its name is
-            # ever compared. Treat anything with content as content: reporting a
-            # present class as absent is Tier 1 proof that clears a finding.
-            if info.is_dir() and info.file_size == 0:
+            # ignores both size fields, so an entry named "…/Foo.class/"
+            # carrying real content reads as a directory and would be
+            # skipped before its name is ever compared. Treat anything with
+            # content as content: reporting a present class as absent is
+            # Tier 1 proof that clears a finding. Both declared sizes must be
+            # zero, not just file_size: file_size is attacker-controlled
+            # central-directory metadata (see read_entry_ignoring_declared_size
+            # in app.artifact._archive), but an entry with compress_size == 0
+            # truly has no data for any reader, Python or JVM — that is what
+            # actually proves emptiness.
+            if info.is_dir() and info.file_size == 0 and info.compress_size == 0:
                 continue
             # Canonicalise once and use this form for every subsequent decision
             # (prefix tests, the app_classes key, the git.properties check).
             # Entry names are attacker-controlled — see app.artifact.presence —
             # and a raw-name comparison here is the same evasion one tier down:
             # a hidden class is dropped from app_classes, so its constant pool
-            # is never scanned and it reads as unreferenced. `info.filename`
-            # (the raw name) is kept only for archive.read(), which must
-            # address the entry as the ZIP itself names it.
+            # is never scanned and it reads as unreferenced. `info` itself
+            # (carrying the raw name) is kept only for reading the entry,
+            # which must address it as the ZIP itself names it.
             name = normalize_entry_name(info.filename)
 
             library_prefix = next(
@@ -224,8 +236,14 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                 # to be case-sensitive) invisible to provenance while it was
                 # still fully loadable by the JVM. Every known library prefix
                 # is tried, not just the one belonging to the detected layout
-                # — see inspect_archive's opening comment.
-                payload = read_entry(archive, info.filename)
+                # — see inspect_archive's opening comment. Read the way a JVM
+                # does — bounded by compressed size, not the declared
+                # (attacker-controlled) uncompressed size — so a library that
+                # declares file_size = 0 to hide from provenance hashing
+                # while shipping real, fully loadable bytes is hashed from
+                # its true content instead of from a truncated empty read.
+                # See read_entry_ignoring_declared_size and the N1 fix.
+                payload = read_entry_ignoring_declared_size(archive, info)
                 libraries.append(
                     Library(
                         path=name,
@@ -264,7 +282,17 @@ def inspect_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> Inventor
                             "copy the JVM would load is implementation-defined, so it "
                             "cannot be scanned exhaustively"
                         )
-                    payload = read_entry(archive, info.filename)
+                    # Same reasoning as the library read above: file_size is
+                    # attacker-controlled central-directory metadata, and an
+                    # entry declaring file_size = 0 (a trailing-slash name
+                    # like "…/Hidden.class/" that also passed the is_dir()
+                    # guard above because compress_size is nonzero, or a
+                    # plainly-named entry lying the same way) would otherwise
+                    # be admitted to app_classes with a truncated, empty
+                    # payload — collected in name only, with nothing left for
+                    # the reference scan to examine. See
+                    # read_entry_ignoring_declared_size.
+                    payload = read_entry_ignoring_declared_size(archive, info)
                     existing = app_classes.get(key)
                     if existing is not None and existing != payload:
                         # Two different prefixes stripped to the same key

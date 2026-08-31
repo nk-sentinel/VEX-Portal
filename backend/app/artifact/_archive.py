@@ -13,6 +13,7 @@ of each to import, not two that can grow apart again.
 
 from __future__ import annotations
 
+import copy
 import io
 import zipfile
 import zlib
@@ -109,3 +110,48 @@ def read_entry(archive: zipfile.ZipFile, name: str) -> bytes:
         return archive.read(name)
     except READ_FAILURES as exc:
         raise MalformedArtifact(f"could not read {name!r}: {exc}") from exc
+
+
+#: Overrides a lied-about declared uncompressed size in
+#: read_entry_ignoring_declared_size. Large enough that no legitimate or
+#: attacker-inflated entry's real decompressed length could reach it; its
+#: only job is to stop zipfile from truncating the bytes it returns to the
+#: (attacker-controlled) declared size, so the natural end of the compressed
+#: stream decides where the read stops instead.
+_UNBOUNDED_ENTRY_SIZE = 1 << 62
+
+
+def read_entry_ignoring_declared_size(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> bytes:
+    """Read one entry's true payload, ignoring its declared uncompressed size.
+
+    ``ZipInfo.file_size`` is the ZIP central directory's DECLARED
+    uncompressed size — attacker-controlled metadata, not a fact about the
+    entry. ``zipfile.ZipFile.read`` trusts it as a hard cap on the bytes it
+    returns: internally, every decompressed chunk is sliced to
+    ``data[:self._left]`` where ``self._left`` starts at ``zinfo.file_size``
+    and never grows. So an entry that declares ``file_size = 0`` while
+    carrying a real ``compress_size`` and real data reads back as ``b""``
+    through the ordinary API — even though ``java.util.zip.ZipFile``, which
+    bounds a read by compressed size rather than by declared uncompressed
+    size, returns the real bytes. Trivial to produce with ``ZIP_STORED``,
+    which is exactly how Spring Boot packages nested JARs.
+
+    Reads through a copy of ``info`` with ``file_size`` overridden to a
+    sentinel large enough that it can never be the binding constraint, so
+    the natural end of the compressed stream — not the declared size —
+    decides where the read stops, the same bound a JVM uses. CRC-32
+    validation is left untouched (the copy's ``CRC`` is not modified), so
+    genuine data corruption — a truncated or flipped compressed stream that
+    decompresses to something other than what was declared — still raises,
+    exactly as with :func:`read_entry`. Goes through ``ZipFile.read`` (which
+    accepts a ``ZipInfo`` in place of a name) rather than ``ZipFile.open``
+    directly, so this is interchangeable with :func:`read_entry` from every
+    caller's point of view — including a test that stubs ``ZipFile.read``
+    to simulate a corrupt archive.
+    """
+    truthful = copy.copy(info)
+    truthful.file_size = _UNBOUNDED_ENTRY_SIZE
+    try:
+        return archive.read(truthful)
+    except READ_FAILURES as exc:
+        raise MalformedArtifact(f"could not read {info.filename!r}: {exc}") from exc

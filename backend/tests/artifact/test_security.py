@@ -6,7 +6,9 @@ yields Tier 1 proof and clears a real vulnerability. These tests exist to make
 that evasion fail, and to keep a hostile archive from exhausting the host.
 """
 
+import hashlib
 import io
+import struct
 import tarfile
 import zipfile
 
@@ -30,6 +32,104 @@ def _zip_with_raw_names(names: dict[str, bytes]) -> bytes:
         for name, payload in names.items():
             zf.writestr(name, payload)
     return buffer.getvalue()
+
+
+def _lie_about_declared_uncompressed_size(raw: bytes, entry_name: str) -> bytes:
+    """Zero out ``entry_name``'s declared uncompressed size, in both its local
+    file header and its central directory record, leaving everything else —
+    CRC-32, compressed size, and the real compressed data itself — untouched.
+
+    This is the N1/N2 root cause, reproduced directly at the byte level
+    rather than through any helper in ``app.artifact``: ``ZipInfo.file_size``
+    is the ZIP central directory's DECLARED uncompressed size, which nothing
+    requires to match the entry's real, on-disk data.
+    """
+    data = bytearray(raw)
+    encoded_name = entry_name.encode("utf-8")
+
+    offset = 0
+    while True:
+        idx = data.index(b"PK\x03\x04", offset)
+        header = list(
+            struct.unpack(zipfile.structFileHeader, bytes(data[idx : idx + zipfile.sizeFileHeader]))
+        )
+        name_len = header[zipfile._FH_FILENAME_LENGTH]
+        name = bytes(data[idx + zipfile.sizeFileHeader : idx + zipfile.sizeFileHeader + name_len])
+        if name == encoded_name:
+            header[zipfile._FH_UNCOMPRESSED_SIZE] = 0
+            packed = struct.pack(zipfile.structFileHeader, *header)
+            data[idx : idx + zipfile.sizeFileHeader] = packed
+            break
+        offset = idx + 1
+
+    offset = 0
+    while True:
+        idx = data.index(b"PK\x01\x02", offset)
+        header = list(
+            struct.unpack(zipfile.structCentralDir, bytes(data[idx : idx + zipfile.sizeCentralDir]))
+        )
+        name_len = header[zipfile._CD_FILENAME_LENGTH]
+        name = bytes(data[idx + zipfile.sizeCentralDir : idx + zipfile.sizeCentralDir + name_len])
+        if name == encoded_name:
+            header[zipfile._CD_UNCOMPRESSED_SIZE] = 0
+            packed = struct.pack(zipfile.structCentralDir, *header)
+            data[idx : idx + zipfile.sizeCentralDir] = packed
+            break
+        offset = idx + 1
+
+    return bytes(data)
+
+
+def _zip_with_one_size_lying_entry(
+    honest_entries: dict[str, bytes], lying_name: str, lying_payload: bytes
+) -> bytes:
+    """Build a ZIP where every entry in ``honest_entries`` is written normally,
+    and ``lying_name`` is written STORED (uncompressed, exactly how Spring
+    Boot packages nested JARs) with real content but a declared uncompressed
+    size of zero — the N1/N2 craft.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        for name, payload in honest_entries.items():
+            zf.writestr(name, payload)
+        info = zipfile.ZipInfo(lying_name)
+        info.compress_type = zipfile.ZIP_STORED
+        with zf.open(info, "w") as handle:
+            handle.write(lying_payload)
+    return _lie_about_declared_uncompressed_size(buffer.getvalue(), lying_name)
+
+
+def _assert_size_lie_precondition(raw: bytes, entry_name: str, real_payload: bytes) -> None:
+    """Confirm the craft actually produced what it claims.
+
+    ``infolist()`` must report a declared uncompressed size of zero for
+    ``entry_name``, while the entry's real bytes are still physically present
+    and recoverable straight from the archive — independent of
+    ``zipfile.ZipFile.read``, which is exactly the API this module's fix must
+    stop trusting blindly. Pinned as an assertion (not just relied on
+    implicitly) so this test cannot silently stop testing what it claims to
+    if a future zipfile version changes how STORED entries are laid out.
+    """
+    with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+        info = zf.getinfo(entry_name)
+        assert info.file_size == 0, "precondition failed: declared uncompressed size is not 0"
+        assert info.compress_type == zipfile.ZIP_STORED
+        assert info.compress_size == len(real_payload)
+        header = struct.unpack(
+            zipfile.structFileHeader,
+            raw[info.header_offset : info.header_offset + zipfile.sizeFileHeader],
+        )
+        data_start = (
+            info.header_offset
+            + zipfile.sizeFileHeader
+            + header[zipfile._FH_FILENAME_LENGTH]
+            + header[zipfile._FH_EXTRA_FIELD_LENGTH]
+        )
+        on_disk = raw[data_start : data_start + info.compress_size]
+        assert on_disk == real_payload, (
+            "precondition failed: the entry's real bytes are not present on disk despite "
+            "the declared size lying about them"
+        )
 
 
 class TestEvasionByEntryNaming:
@@ -364,6 +464,118 @@ class TestLibraryDirectoryZeroByteEntryCarveOut:
         )
         with pytest.raises(MalformedArtifact, match="commons-text-1.9.jar.sha1"):
             contains_class(artifact, TARGET)
+
+
+class TestDeclaredSizeIsAttackerControlledMetadata:
+    """N1 (CRITICAL, regression introduced by C1) and N2 (HIGH, pre-existing).
+
+    Root cause shared by both: ``zipfile.ZipInfo.file_size`` is the ZIP
+    central directory's DECLARED uncompressed size — attacker-controlled
+    metadata, not a fact about the entry. Java bounds an entry read by
+    COMPRESSED size; Python's zipfile bounds it by the declared uncompressed
+    size. An entry that declares ``file_size = 0`` while carrying a real
+    ``compress_size`` and real data is therefore invisible to
+    ``zipfile.ZipFile.read`` while remaining fully readable to a JVM —
+    verified against OpenJDK 21. Trivial to produce with ``ZIP_STORED``,
+    exactly how Spring Boot packages nested JARs.
+
+    N1: the C1 library-directory carve-out (see
+    TestLibraryDirectoryZeroByteEntryCarveOut above) keyed its "this entry
+    cannot hide a class" reasoning off that same declared field, so the
+    craft above defeated it directly: a vulnerable bundled library silently
+    read as absent and unhashed.
+
+    N2: the ``info.is_dir() and info.file_size == 0`` guard in both
+    ``inventory.inspect_archive`` and the presence walk has the identical
+    weakness. A trailing-slash entry name — which ``ZipInfo.is_dir()``
+    resolves with a bare ``name.endswith("/")`` test — combined with a lying
+    declared size makes a real class disappear from app_classes entirely,
+    even though ``java.util.zip.ZipFile.getEntry``'s trailing-slash fallback
+    resolves it to the same real bytes.
+    """
+
+    def test_size_lying_library_entry_is_not_exempted_from_evidence(self):
+        # N1, test requirement 1: the vulnerable class inside the size-lying
+        # library is found by contains_class, and the library is hashed from
+        # its real content into library_sha1s() — not silently skipped, and
+        # not hashed from a truncated empty read.
+        library_content = _zip_with_raw_names({TARGET: make_class_file([VULNERABLE])})
+        raw = _zip_with_one_size_lying_entry(
+            honest_entries={"BOOT-INF/classes/com/example/App.class": b"x"},
+            lying_name="BOOT-INF/lib/commons-text-1.9.jar",
+            lying_payload=library_content,
+        )
+        _assert_size_lie_precondition(raw, "BOOT-INF/lib/commons-text-1.9.jar", library_content)
+
+        assert contains_class(raw, TARGET) is True
+
+        inventory = inspect_archive(raw)
+        expected_sha1 = hashlib.sha1(library_content).hexdigest()
+        libraries = inventory.library_sha1s()
+        assert expected_sha1 in libraries
+        assert libraries[expected_sha1] == "commons-text-1.9.jar"
+
+    def test_genuinely_empty_gitkeep_in_a_library_directory_is_still_skipped(self):
+        # N1, test requirement 2: the carve-out must keep doing its C1 job
+        # for an HONEST zero-byte entry — no read-based exemption change
+        # should turn "actually empty" into "must raise".
+        artifact = _zip_with_raw_names(
+            {
+                "WEB-INF/classes/com/example/App.class": make_class_file([VULNERABLE]),
+                "WEB-INF/lib/.gitkeep": b"",
+            }
+        )
+        assert contains_class(artifact, TARGET) is False
+        inventory = inspect_archive(artifact)
+        assert "com/example/App.class" in inventory.app_classes
+
+    def test_non_empty_readme_in_a_library_directory_still_raises(self):
+        # N1, test requirement 3: a genuinely non-empty non-archive in a
+        # library directory must still fail closed, exactly as C1 intended.
+        artifact = _zip_with_raw_names(
+            {
+                "WEB-INF/classes/com/example/App.class": b"x",
+                "WEB-INF/lib/README.txt": b"see the ops wiki for deployment notes",
+            }
+        )
+        with pytest.raises(MalformedArtifact, match="README.txt"):
+            contains_class(artifact, TARGET)
+
+    def test_trailing_slash_class_with_a_size_lie_still_carries_its_escape_hatch(self):
+        # N2, test requirement 4: a hidden class survives collection into
+        # app_classes with its REAL content — not a truncated empty read —
+        # so an escape hatch it carries (here, java.util.ServiceLoader) is
+        # still detected and is_conclusive() correctly reports False rather
+        # than silently flipping to True on a scan that saw nothing.
+        hidden_class = make_class_file(["java/util/ServiceLoader"])
+        raw = _zip_with_one_size_lying_entry(
+            honest_entries={},
+            lying_name="BOOT-INF/classes/c/Hidden.class/",
+            lying_payload=hidden_class,
+        )
+        _assert_size_lie_precondition(raw, "BOOT-INF/classes/c/Hidden.class/", hidden_class)
+
+        inventory = inspect_archive(raw)
+        assert inventory.app_classes.get("c/Hidden.class") == hidden_class
+
+        scan = scan_references(inventory)
+        assert scan.classes_scanned == 1
+        assert any(hatch.kind == "service_loader" for hatch in scan.escape_hatches)
+        assert scan.is_conclusive() is False
+
+    def test_genuine_empty_directory_entry_is_still_skipped(self):
+        # N2, test requirement 5: an HONEST directory entry — both declared
+        # sizes genuinely zero — must still be skipped and never appear in
+        # app_classes. The broadened guard (file_size == 0 and
+        # compress_size == 0) must not start admitting real directories.
+        artifact = _zip_with_raw_names(
+            {
+                "BOOT-INF/classes/com/example/": b"",
+                "BOOT-INF/classes/com/example/App.class": b"x",
+            }
+        )
+        inventory = inspect_archive(artifact)
+        assert sorted(inventory.app_classes) == ["com/example/App.class"]
 
 
 class TestEvasionAgainstTheReferenceScan:
