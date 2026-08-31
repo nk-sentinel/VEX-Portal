@@ -240,14 +240,29 @@ def _entry_match_keys(normalized_entry: str) -> tuple[str, ...]:
     the caller (see :func:`normalize_entry_name`) — entry names are
     attacker-controlled, and canonicalising only the target would leave the
     naming evasion open.
+
+    The two strips compose: applying each once against the ORIGINAL name
+    only, independently of the other, matches neither pattern on
+    ``META-INF/versions/9/BOOT-INF/classes/org/x/Y.class`` — a multi-release
+    override of a layout-prefixed class. Spring Boot 3's nested ``JarFile``
+    honours multi-release, so this is plausibly loadable. Both strips are
+    therefore applied repeatedly, to every result produced so far, in either
+    order, until neither pattern matches any remaining candidate — not just
+    once each against the original string.
     """
-    keys = [normalized_entry]
-    for prefix in LAYOUT_CLASS_PREFIXES:
-        if normalized_entry.startswith(prefix):
-            keys.append(normalized_entry.removeprefix(prefix))
-    multi_release_stripped = MULTI_RELEASE_PREFIX.sub("", normalized_entry)
-    if multi_release_stripped != normalized_entry:
-        keys.append(multi_release_stripped)
+    keys = {normalized_entry}
+    frontier = {normalized_entry}
+    while frontier:
+        discovered: set[str] = set()
+        for candidate in frontier:
+            for prefix in LAYOUT_CLASS_PREFIXES:
+                if candidate.startswith(prefix):
+                    discovered.add(candidate.removeprefix(prefix))
+            multi_release_stripped = MULTI_RELEASE_PREFIX.sub("", candidate)
+            if multi_release_stripped != candidate:
+                discovered.add(multi_release_stripped)
+        frontier = discovered - keys
+        keys |= discovered
     return tuple(keys)
 
 

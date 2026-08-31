@@ -169,6 +169,23 @@ def test_finds_multi_release_override_inside_a_bundled_library():
     assert contains_class(raw, TARGET) is True
 
 
+def test_finds_multi_release_override_of_a_layout_prefixed_class():
+    # F3: the layout-prefix strip and the multi-release strip must compose.
+    # Each applied only to the ORIGINAL name (independently of the other)
+    # matches neither pattern on this path — Spring Boot 3's nested JarFile
+    # honours multi-release, so a versioned override of a BOOT-INF/classes/
+    # entry is plausibly loadable and must be found.
+    raw = make_jar({"META-INF/versions/9/BOOT-INF/classes/org/x/Y.class": b"x"})
+    assert contains_class(raw, "org/x/Y.class") is True
+
+
+def test_finds_multi_release_override_composed_the_other_way_around():
+    # The reverse nesting of the same two prefixes — the strips must compose
+    # regardless of which pattern is textually "outer" in the entry name.
+    raw = make_jar({"BOOT-INF/classes/META-INF/versions/9/org/x/Y.class": b"x"})
+    assert contains_class(raw, "org/x/Y.class") is True
+
+
 @pytest.mark.parametrize(
     "failure",
     [
