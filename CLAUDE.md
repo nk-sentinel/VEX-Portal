@@ -53,7 +53,7 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 
 ## Current state
 
-**Branch `feat/evidence-foundation` — all 10 plan tasks complete. 231 tests, ruff + mypy clean.**
+**Branch `feat/evidence-foundation` — all 10 plan tasks complete. 242 tests, ruff + mypy clean.**
 
 The offline evidence engine: artifact inventory, Java constant-pool parsing, Tier 1 class
 presence, Tier 2 reference scanning with dynamic-dispatch anti-checks, container image layer
@@ -64,6 +64,17 @@ Went through a whole-branch review plus three adversarial fix/re-review rounds. 
 were found and fixed, four of them by attacking the seam a previous fix created.
 
 ### Fixed since the review
+
+**`git.properties` ordering (N4) — resolved.** Canonical ties now resolve by documented
+precedence (`BOOT-INF/classes/` > `WEB-INF/classes/` > root), never by ZIP order, so the
+determinism the code comment claims is now true. Where two canonical files disagree about the
+commit, the higher-precedence value is returned AND `Inventory.git_properties_ambiguous` is
+set and surfaced in the evidence pack — an artifact claiming two different commits is a fact a
+reviewer should see, not something to resolve silently. The comparison is made on the
+*resolved* commit (walking the `git.commit.id.full` -> `git.commit.id` -> `.abbrev` fallback
+chain), not one raw key, so a disagreement expressed only through a fallback key still flags.
+Raising on a tie was rejected: `commit_sha()` is attacker-authored metadata that no
+determination rests on, so refusing an artifact over it would cost availability for nothing.
 
 **Duplicate entry names (N3) — resolved.** An archive is rejected when a duplicated raw entry
 name would be READ as evidence: library-prefix entries, and nested archives the presence walk
@@ -81,12 +92,9 @@ did make `contains_class` return False. Guarded at every read site regardless.
    `compress_size` are attacker-controlled. Fixed at the guards that gate evidence; still
    trusted by `enforce_limits`' budget arithmetic and the two `git.properties` reads. Consider
    a central-vs-local-header consistency check.
-2. **`git.properties` canonical-vs-canonical ties (N4)** resolve by ZIP order, reintroducing
-   the order dependence the code comment says it prevents. Nil security impact; the
-   determinism claim is false as written.
-3. **Surplus tolerance (5%)** means a 100-component build tolerates five entirely unscanned
+2. **Surplus tolerance (5%)** means a 100-component build tolerates five entirely unscanned
    bundled JARs and still returns MATCH.
-4. **`java/lang/Class` marker breadth.** `Object.getClass()` is ubiquitous, so
+3. **`java/lang/Class` marker breadth.** `Object.getClass()` is ubiquitous, so
    `is_conclusive()` will be False on most real bytecode and Tier 2 will rarely fire. NOT
    changed unattended: narrowing markers makes `is_conclusive()` True more often, the unsafe
    direction. Fix is ~30 lines resolving `CONSTANT_Methodref` so the marker requires
@@ -102,7 +110,7 @@ did make `contains_class` return False. Guarded at every read site regardless.
 - **Escape-hatch markers were only ever exercised against synthetic class files.** No JDK here,
   so nobody has confirmed they fire on real `javac` output.
 
-Full decision log — 45 rulings with rationale and cost-if-wrong:
+Full decision log — 47 rulings with rationale and cost-if-wrong:
 `.superpowers/sdd/2026-08-31-evidence-foundation/progress.md` (git-ignored, local only).
 
 - UI spec: `docs/design/ui-spec.md`; mockups `docs/design/ui-mockups.html`. Angular not started.
