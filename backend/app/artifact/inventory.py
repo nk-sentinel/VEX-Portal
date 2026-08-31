@@ -90,6 +90,39 @@ _CANONICAL_GIT_PROPERTIES_PATHS: tuple[str, ...] = tuple(
 _COMMIT_KEYS = ("git.commit.id.full", "git.commit.id", "git.commit.id.abbrev")
 
 
+def _resolve_commit_sha(properties: dict[str, str]) -> str | None:
+    """Resolve the commit identifier from one git.properties file's own keys.
+
+    Walks the fallback chain in _COMMIT_KEYS: git.commit.id.full, then
+    git.commit.id, then git.commit.id.abbrev — the same chain
+    Inventory.commit_sha() applies to whichever file inspect_archive picked
+    as the winner. This is the ONE implementation of that chain; both
+    Inventory.commit_sha() and the canonical-files disagreement check in
+    _canonical_git_properties_disagree call this rather than each keeping
+    their own copy. Two independently maintained copies is exactly how a
+    disagreement expressed only through a fallback key (git.commit.id or
+    git.commit.id.abbrev, never .full) went undetected: the disagreement
+    check used to compare the raw git.commit.id.full key directly instead of
+    asking "what would commit_sha() actually return for this file".
+    """
+    for key in _COMMIT_KEYS:
+        value = properties.get(key)
+        if value:
+            return value
+    return None
+
+
+def _resolve_repository_url(properties: dict[str, str]) -> str | None:
+    """Resolve the repository URL from one git.properties file's own keys.
+
+    See _resolve_commit_sha: the same sharing rationale applies here, even
+    though this resolution has no fallback chain of its own today — the
+    point is that Inventory.repository_url() and the disagreement check ask
+    the same question the same way, not two independently written copies.
+    """
+    return properties.get("git.remote.origin.url") or None
+
+
 class _Exclusion(Enum):
     """Why a `.class` entry was not admitted to Inventory.app_classes."""
 
@@ -158,9 +191,12 @@ class Inventory:
     git_properties: dict[str, str] = field(default_factory=dict)
 
     #: True when more than one canonical git.properties was present in the
-    #: archive AND they disagreed on git.commit.id.full or
-    #: git.remote.origin.url. commit_sha() and repository_url() still return
-    #: the highest-precedence value in this case — see
+    #: archive AND they disagreed on the RESOLVED commit or repository URL —
+    #: i.e. what commit_sha() / repository_url() would each return for that
+    #: file alone, via the same fallback chain (git.commit.id.full ->
+    #: git.commit.id -> git.commit.id.abbrev for the commit), not just the
+    #: raw git.commit.id.full key. commit_sha() and repository_url() still
+    #: return the highest-precedence value in this case — see
     #: _CANONICAL_GIT_PROPERTIES_PATHS — because a build's own metadata is
     #: attacker-authored either way and no determination rests on it, so
     #: refusing the artifact over a metadata tie would cost availability for
@@ -180,11 +216,7 @@ class Inventory:
         git_properties_ambiguous when more than one canonical git.properties
         disagreed on this value.
         """
-        for key in _COMMIT_KEYS:
-            value = self.git_properties.get(key)
-            if value:
-                return value
-        return None
+        return _resolve_commit_sha(self.git_properties)
 
     def repository_url(self) -> str | None:
         """The git remote recorded inside the artifact, if present.
@@ -193,7 +225,7 @@ class Inventory:
         see git_properties_ambiguous when more than one canonical
         git.properties disagreed on this value.
         """
-        return self.git_properties.get("git.remote.origin.url") or None
+        return _resolve_repository_url(self.git_properties)
 
     def library_sha1s(self) -> dict[str, str]:
         """Bundled library hashes mapped to names, for provenance comparison."""
@@ -485,31 +517,37 @@ def _application_class_key(name: str) -> str | _Exclusion:
     return name
 
 
-#: The git.properties fields whose disagreement across canonical files is
-#: worth flagging: the two identifiers commit_sha() and repository_url()
-#: report to a reviewer. Other fields (git.branch, build timestamps, …) are
-#: not compared — this module makes no claim about them and a difference
-#: there is not the kind of disagreement Inventory.git_properties_ambiguous
-#: exists to surface.
-_DISAGREEMENT_FIELDS = ("git.commit.id.full", "git.remote.origin.url")
-
-
 def _canonical_git_properties_disagree(by_path: dict[str, dict[str, str]]) -> bool:
     """Whether the canonical git.properties files present disagree on identity.
 
     ``by_path`` holds one parsed git.properties per canonical path found in
     the archive — see the PRECEDENCE resolution in :func:`inspect_archive`,
-    which always returns a value regardless of what this reports. This exists
-    only to decide whether that value should be reported as ambiguous: an
-    artifact whose files agree, or where only one file states a given field,
-    is not making a conflicting claim about that field. Two files present
-    with two DIFFERENT non-empty values for the same field are.
+    which always returns a value regardless of what this reports.
+
+    The question this answers is "do these files disagree about the commit
+    (or remote) this artifact came from" — so each candidate file is resolved
+    the same way Inventory.commit_sha() / repository_url() would resolve it
+    (via _resolve_commit_sha / _resolve_repository_url), NOT by comparing one
+    specific raw key. A file that states only git.commit.id or only
+    git.commit.id.abbrev — never .full — still has an opinion about the
+    commit, and a difference expressed only through those fallback keys is a
+    real disagreement; comparing the raw git.commit.id.full key alone would
+    miss it, which is exactly the gap this closes.
+
+    A file that resolves to None carries no opinion and is never counted:
+    ``{A: "git.commit.id.full=AAA", B: "git.branch=main"}`` is not a
+    disagreement, since B says nothing about the commit. Two files that
+    resolve to the SAME non-None value — however they expressed it — are not
+    a disagreement either: ``{A: "git.commit.id.full=AAA", B:
+    "git.commit.id=AAA"}`` is the same commit stated two ways.
     """
-    for field_name in _DISAGREEMENT_FIELDS:
-        values = {
-            properties[field_name] for properties in by_path.values() if properties.get(field_name)
+    for resolve in (_resolve_commit_sha, _resolve_repository_url):
+        resolved_values = {
+            value
+            for properties in by_path.values()
+            if (value := resolve(properties)) is not None
         }
-        if len(values) > 1:
+        if len(resolved_values) > 1:
             return True
     return False
 

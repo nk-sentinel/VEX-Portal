@@ -260,6 +260,91 @@ def test_single_canonical_git_properties_leaves_ambiguous_flag_unset():
     assert inventory.git_properties_ambiguous is False
 
 
+def test_disagreement_via_commit_id_fallback_key_sets_ambiguous_flag():
+    # The disagreement check must resolve each candidate file's commit the
+    # same way commit_sha() would (walking the git.commit.id.full ->
+    # git.commit.id -> git.commit.id.abbrev fallback chain), not compare the
+    # raw git.commit.id.full key alone — otherwise a disagreement expressed
+    # only through git.commit.id is invisible even though commit_sha() would
+    # actually return a different value for each file.
+    higher_precedence = b"git.commit.id=" + b"1" * 40 + b"\n"
+    lower_precedence = b"git.commit.id=" + b"2" * 40 + b"\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": higher_precedence,
+                "WEB-INF/classes/git.properties": lower_precedence,
+            }
+        )
+    )
+    assert inventory.commit_sha() == "1" * 40
+    assert inventory.git_properties_ambiguous is True
+
+
+def test_disagreement_via_commit_id_abbrev_fallback_key_sets_ambiguous_flag():
+    higher_precedence = b"git.commit.id.abbrev=aaa1111\n"
+    lower_precedence = b"git.commit.id.abbrev=bbb2222\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": higher_precedence,
+                "WEB-INF/classes/git.properties": lower_precedence,
+            }
+        )
+    )
+    assert inventory.commit_sha() == "aaa1111"
+    assert inventory.git_properties_ambiguous is True
+
+
+def test_same_commit_expressed_through_different_keys_does_not_set_ambiguous_flag():
+    # Same commit, stated two different ways (one file uses the .full key,
+    # the other the short key) — not a disagreement.
+    full_key = b"git.commit.id.full=" + b"3" * 40 + b"\n"
+    short_key = b"git.commit.id=" + b"3" * 40 + b"\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": full_key,
+                "WEB-INF/classes/git.properties": short_key,
+            }
+        )
+    )
+    assert inventory.commit_sha() == "3" * 40
+    assert inventory.git_properties_ambiguous is False
+
+
+def test_file_with_no_commit_key_does_not_make_the_other_ambiguous():
+    # A file that says nothing about the commit carries no opinion — it
+    # cannot disagree with the file that does.
+    has_commit = b"git.commit.id.full=" + b"4" * 40 + b"\n"
+    no_commit_key = b"git.branch=main\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": has_commit,
+                "WEB-INF/classes/git.properties": no_commit_key,
+            }
+        )
+    )
+    assert inventory.commit_sha() == "4" * 40
+    assert inventory.git_properties_ambiguous is False
+
+
+def test_disagreeing_repository_url_sets_ambiguous_flag():
+    higher_precedence = b"git.remote.origin.url=https://example.test/real.git\n"
+    lower_precedence = b"git.remote.origin.url=https://example.test/decoy.git\n"
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/git.properties": higher_precedence,
+                "WEB-INF/classes/git.properties": lower_precedence,
+            }
+        )
+    )
+    assert inventory.repository_url() == "https://example.test/real.git"
+    assert inventory.git_properties_ambiguous is True
+
+
 def test_non_jar_named_library_entry_is_counted_and_hashed():
     # Spring Boot puts every non-directory entry under BOOT-INF/lib/ on the
     # classpath regardless of extension. Filtering on ".jar" here left an
