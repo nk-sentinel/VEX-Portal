@@ -113,6 +113,28 @@ def test_unreadable_artifact_propagates_even_with_no_findings():
         build_pack(b"not a zip file at all", set(), {})
 
 
+def test_class_present_is_true_for_a_dotted_ambiguous_class_path():
+    # M29: build_pack expands each finding's class_paths through
+    # candidate_class_paths before searching. A mutant using the raw
+    # class_paths instead would search for the literal string
+    # "com.example.Outer.Inner", which never matches an archive entry — the
+    # class is compiled and stored as the nested form Outer$Inner.
+    nested_class = "com/example/Outer$Inner.class"
+    vulnerable_lib = make_jar({nested_class: b"y" * 512})
+    others = {f"lib-{i}.jar": make_jar({f"pkg/C{i}.class": bytes([i])}) for i in range(9)}
+    libraries = {"commons-text-1.9.jar": vulnerable_lib, **others}
+    artifact = make_spring_boot_jar(app_classes={}, libraries=libraries)
+    report_hashes = {hashlib.sha1(p).hexdigest() for p in libraries.values()}
+
+    pack = build_pack(
+        artifact,
+        report_component_sha1s=report_hashes,
+        findings={"CVE-2024-0001": ["com.example.Outer.Inner"]},
+    )
+
+    assert pack.components[0].class_present is True
+
+
 def test_referenced_is_true_when_the_application_names_the_class():
     vulnerable_lib = make_jar({VULNERABLE_CLASS: b"y" * 512})
     others = {f"lib-{i}.jar": make_jar({f"pkg/C{i}.class": bytes([i])}) for i in range(9)}

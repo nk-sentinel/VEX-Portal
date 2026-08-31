@@ -4,7 +4,12 @@ import zlib
 import pytest
 
 from app.artifact.errors import MalformedArtifact
-from app.artifact.presence import contains_class, normalize_class_path
+from app.artifact.presence import (
+    candidate_class_paths,
+    collect_class_paths,
+    contains_class,
+    normalize_class_path,
+)
 from tests.artifact.factories import make_jar, make_spring_boot_jar, make_war
 
 TARGET = "org/apache/commons/text/StringSubstitutor.class"
@@ -113,6 +118,40 @@ def test_layout_prefix_match_is_a_prefix_not_a_suffix():
     # from unrelated vendored trees.
     raw = make_jar({"vendor/BOOT-INF/classes/com/example/App.class": b"x"})
     assert contains_class(raw, "com/example/App.class") is False
+
+
+def test_candidate_class_paths_expands_every_plausible_nested_class_split():
+    # M29's rationale: candidate_class_paths had zero direct test coverage —
+    # exercised only indirectly through contains_class.
+    assert candidate_class_paths("com.example.Service") == (
+        "com/example/Service.class",
+        "com/example$Service.class",
+        "com$example$Service.class",
+    )
+
+
+def test_candidate_class_paths_is_unambiguous_for_internal_form():
+    assert candidate_class_paths("com/example/Service.class") == ("com/example/Service.class",)
+
+
+def test_collect_class_paths_normalizes_a_hostile_target():
+    # M3: every other test here passes an already-canonical target, so only
+    # the entry side of normalize_entry_name was pinned. A caller is not
+    # obligated to pre-canonicalise its own targets before calling
+    # collect_class_paths — dropping normalize_entry_name on the target side
+    # would leave this hostile-but-legal target unmatched against a
+    # perfectly ordinary archive entry.
+    raw = make_jar({TARGET: b"x"})
+    hostile_target = f"./{TARGET}"
+    assert collect_class_paths(raw, {hostile_target}) == {hostile_target}
+
+
+def test_finds_class_in_uppercase_named_nested_archive_outside_a_library_directory():
+    # M8: outside a BOOT-INF/lib/ or WEB-INF/lib/ directory, nested-archive
+    # detection still relies on a suffix test; it must not be case-sensitive.
+    lib = make_jar({TARGET: b"x"})
+    raw = make_jar({"vendor/NESTED.JAR": lib})
+    assert contains_class(raw, TARGET) is True
 
 
 def test_finds_class_present_only_under_a_multi_release_override():

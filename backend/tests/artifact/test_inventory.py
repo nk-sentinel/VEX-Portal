@@ -2,6 +2,7 @@ import hashlib
 import io
 import warnings
 import zipfile
+import zlib
 
 import pytest
 
@@ -87,6 +88,33 @@ def test_library_sha1s_maps_hash_to_name():
     assert inspect_archive(raw).library_sha1s() == {
         hashlib.sha1(lib).hexdigest(): "commons-text-1.9.jar"
     }
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        zipfile.BadZipFile("corrupt central directory"),
+        zlib.error("Error -3 while decompressing data: invalid distance too far back"),
+        RuntimeError("File is encrypted, password required for extraction"),
+        NotImplementedError("compression type 99 (AES) is not supported"),
+        EOFError("Compressed file ended before the end-of-stream marker was reached"),
+        OSError("input/output error"),
+    ],
+    ids=lambda failure: type(failure).__name__,
+)
+def test_library_read_failure_raises_rather_than_hashing_empty_bytes(failure, monkeypatch):
+    # M13: a mutant that swallows the read failure in _read_entry and returns
+    # b"" instead of raising would silently hash the empty string into
+    # provenance on the library path rather than reporting "could not read".
+    raw = make_spring_boot_jar(app_classes={}, libraries={"dep.jar": make_jar({})})
+
+    def failing_read(self, name, pwd=None):
+        raise failure
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", failing_read)
+
+    with pytest.raises(MalformedArtifact):
+        inspect_archive(raw)
 
 
 def test_rejects_input_that_is_not_an_archive():

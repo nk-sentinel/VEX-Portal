@@ -146,3 +146,20 @@ def test_summary_reports_surplus_when_present():
     report = {hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in reported.values()}
 
     assert "not in the report" in compare(report, inventory).summary()
+
+
+def test_surplus_ratio_value_is_reported_directly():
+    # Every other surplus test asserts on the summary string or the verdict.
+    # Pin the numeric field itself: 10 of the artifact's 20 components (the
+    # extras) are unaccounted for by the report.
+    reported = _libs(10)
+    extras = {
+        f"x{i}.jar": make_jar({f"z/Z{i}.class": bytes([i]) * (i + 5)}) for i in range(10)
+    }
+    inventory = _inventory({**reported, **extras})
+    report = {hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in reported.values()}
+
+    result = compare(report, inventory)
+
+    assert result.surplus_ratio == 0.5
+    assert len(result.unmatched_artifact_hashes) == 10
