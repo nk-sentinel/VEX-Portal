@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from app.artifact.inventory import inspect_archive
-from app.artifact.presence import contains_class
+from app.artifact.presence import candidate_class_paths, collect_class_paths
 from app.artifact.references import EscapeHatch, scan_references
 from app.provenance.fingerprint import FingerprintResult, compare
 
@@ -70,11 +70,23 @@ def build_pack(
     provenance = compare(report_component_sha1s, inventory)
     scan = scan_references(inventory)
 
+    # Every implicated class path, across every finding, is resolved in one
+    # walk of the artifact rather than one walk per finding — see the module
+    # docstring on app.artifact.presence.collect_class_paths.
+    candidates_by_cve = {
+        cve: {candidate for path in class_paths for candidate in candidate_class_paths(path)}
+        for cve, class_paths in findings.items()
+    }
+    all_candidates = {
+        candidate for candidates in candidates_by_cve.values() for candidate in candidates
+    }
+    present = collect_class_paths(artifact, all_candidates)
+
     components = [
         ComponentEvidence(
             cve=cve,
             class_paths=list(class_paths),
-            class_present=any(contains_class(artifact, path) for path in class_paths),
+            class_present=bool(candidates_by_cve[cve] & present),
             referenced=any(scan.references(path) for path in class_paths),
             reference_scan_conclusive=scan.is_conclusive(),
         )

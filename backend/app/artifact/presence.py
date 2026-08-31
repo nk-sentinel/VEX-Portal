@@ -12,6 +12,14 @@ out of a bug.
 
 A ``True`` proves only presence, never use. Whether the application calls the
 class is a Tier 2 question, answered in :mod:`app.artifact.references`.
+
+:func:`collect_class_paths` is the one traversal implementation in this
+module: it walks the archive once and resolves every target class path it is
+given in that same walk. :func:`contains_class` is a convenience wrapper
+around it for the single-target case; a caller checking many class paths
+against one artifact — see :func:`app.evidence.pack.build_pack` — should call
+:func:`collect_class_paths` directly rather than looping over
+:func:`contains_class`, which would re-open and re-walk the archive per call.
 """
 
 from __future__ import annotations
@@ -19,6 +27,7 @@ from __future__ import annotations
 import io
 import zipfile
 import zlib
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
@@ -101,11 +110,10 @@ def normalize_entry_name(name: str) -> str:
 class _Budget:
     """Running totals for one archive walk, shared across nested recursion.
 
-    A dotted class name can expand into several candidate paths, and each
-    candidate re-walks the archive from scratch (see :func:`contains_class`),
-    so a fresh budget is created per candidate rather than shared across all
-    of them — otherwise an ordinary large artifact would be rejected purely
-    because of how many candidates a caller's name happened to expand into.
+    One budget is created per top-level call into the walk (see
+    :func:`collect_class_paths`) and threaded through every recursive
+    descent into a nested archive, so the limits in :data:`Limits` bound the
+    cost of one walk regardless of how many targets it is answering at once.
     """
 
     entries: int = 0
@@ -140,6 +148,73 @@ def _enforce_limits(info: zipfile.ZipInfo, budget: _Budget, limits: Limits) -> N
         )
 
 
+def collect_class_paths(
+    data: bytes,
+    targets: Iterable[str],
+    *,
+    max_depth: int = 3,
+    limits: Limits = DEFAULT_LIMITS,
+) -> set[str]:
+    """Report which of ``targets`` are present, in a single walk of the artifact.
+
+    This is the one traversal implementation the module has: it searches the
+    application's own classes and recurses into bundled JARs once, checking
+    every catalogued entry against every remaining target instead of
+    re-opening and re-walking the archive per target. :func:`contains_class`
+    is a one-element-set convenience wrapper around this function; a caller
+    that has many class paths to resolve against the same artifact (see
+    :func:`app.evidence.pack.build_pack`) should call this directly with all
+    of them at once.
+
+    Args:
+        data: the artifact bytes.
+        targets: the class paths to look for, in any of the forms
+            :func:`normalize_class_path` accepts. Duplicates are fine.
+        max_depth: how many levels of nested archive to descend. Spring Boot
+            nests one level; shaded uber-JARs can nest deeper. The limit exists
+            so a malicious or pathological archive cannot cause unbounded work.
+        limits: resource bounds enforced while walking the archive. See
+            :mod:`app.artifact.limits`.
+
+    Returns:
+        The subset of ``targets`` (as given, not normalised) found present.
+        An empty result means none of them were found — Tier 1 proof for
+        every target in the input, not just some of them, because the walk
+        only stops short of visiting the whole reachable archive tree once
+        every target has already been resolved.
+
+    Raises:
+        MalformedArtifact: the artifact or a nested archive could not be read,
+            or nesting exceeded ``max_depth`` while targets remained
+            unresolved. Never omits a target from the result silently for
+            these reasons — see the module docstring.
+        ArtifactTooLarge: the archive exceeded a resource bound before it
+            could be searched exhaustively. Same rationale.
+    """
+    by_normalized: dict[str, list[str]] = {}
+    for target in targets:
+        by_normalized.setdefault(normalize_entry_name(target), []).append(target)
+    if not by_normalized:
+        return set()
+
+    remaining = set(by_normalized)
+    found_normalized: set[str] = set()
+    _search(
+        data,
+        remaining,
+        found_normalized,
+        depth=0,
+        max_depth=max_depth,
+        limits=limits,
+        budget=_Budget(),
+    )
+
+    found: set[str] = set()
+    for key in found_normalized:
+        found.update(by_normalized[key])
+    return found
+
+
 def contains_class(
     data: bytes,
     class_path: str,
@@ -152,8 +227,9 @@ def contains_class(
     Searches the application's own classes and recurses into bundled JARs,
     which is where the vulnerable class usually lives. A dotted ``class_path``
     is ambiguous between a top-level class and a nested class (see
-    :func:`candidate_class_paths`); every plausible form is tried, and absence
-    is reported only once none of them is present.
+    :func:`candidate_class_paths`); every plausible form is tried in a single
+    walk of the archive via :func:`collect_class_paths`, and absence is
+    reported only once none of them was found.
 
     Args:
         data: the artifact bytes.
@@ -172,25 +248,54 @@ def contains_class(
             could be searched exhaustively. Never returns ``False`` for this,
             for the same reason.
     """
-    for candidate in candidate_class_paths(class_path):
-        if _search(data, candidate, depth=0, max_depth=max_depth, limits=limits, budget=_Budget()):
-            return True
-    return False
+    found = collect_class_paths(
+        data, candidate_class_paths(class_path), max_depth=max_depth, limits=limits
+    )
+    return bool(found)
+
+
+def _entry_match_keys(normalized_entry: str) -> tuple[str, ...]:
+    """Every normalised target key that ``normalized_entry`` should satisfy.
+
+    Callers pass the bare JVM name; the artifact may store it under a layout
+    prefix depending on how it was packaged. The entry name has already been
+    normalised by the caller (see :func:`normalize_entry_name`) — entry names
+    are attacker-controlled, and canonicalising only the target would leave
+    the naming evasion open.
+    """
+    keys = [normalized_entry]
+    for prefix in _LAYOUT_CLASS_PREFIXES:
+        if normalized_entry.startswith(prefix):
+            keys.append(normalized_entry.removeprefix(prefix))
+    return tuple(keys)
 
 
 def _search(
     data: bytes,
-    target: str,
+    remaining: set[str],
+    found: set[str],
     *,
     depth: int,
     max_depth: int,
     limits: Limits,
     budget: _Budget,
-) -> bool:
+) -> None:
+    """Walk ``data`` once, moving satisfied keys from ``remaining`` to ``found``.
+
+    Recurses into every bundled JAR reachable within ``max_depth``, stopping
+    early — at this level or a nested one — the moment ``remaining`` is empty,
+    since there is nothing left to prove. Never returns while ``remaining`` is
+    non-empty without having visited everything reachable within the depth
+    budget: raising is always preferred to silently leaving a target
+    unresolved.
+    """
+    if not remaining:
+        return
     if depth >= max_depth:
         raise MalformedArtifact(
-            f"archive nesting depth exceeded {max_depth} while looking for {target}; "
-            "refusing to report absence without having searched exhaustively"
+            f"archive nesting depth exceeded {max_depth} while looking for "
+            f"{sorted(remaining)!r}; refusing to report absence without having "
+            "searched exhaustively"
         )
 
     try:
@@ -211,10 +316,15 @@ def _search(
             _enforce_limits(info, budget, limits)
             if info.is_dir():
                 continue
-            if _matches(info.filename, target):
-                return True
+            entry = normalize_entry_name(info.filename)
+            for key in _entry_match_keys(entry):
+                if key in remaining:
+                    remaining.discard(key)
+                    found.add(key)
             if info.filename.lower().endswith(_NESTED_ARCHIVE_SUFFIXES):
                 nested.append(info.filename)
+            if not remaining:
+                return
 
         for name in nested:
             try:
@@ -229,35 +339,16 @@ def _search(
             ) as exc:
                 raise MalformedArtifact(f"could not read nested archive {name}: {exc}") from exc
             try:
-                if _search(
+                _search(
                     payload,
-                    target,
+                    remaining,
+                    found,
                     depth=depth + 1,
                     max_depth=max_depth,
                     limits=limits,
                     budget=budget,
-                ):
-                    return True
+                )
             except MalformedArtifact as exc:
                 raise MalformedArtifact(f"while inspecting nested archive {name}: {exc}") from exc
-
-    return False
-
-
-def _matches(entry: str, target: str) -> bool:
-    """Compare an archive entry against the target, allowing layout prefixes.
-
-    Callers pass the bare JVM name; the artifact may store it under a layout
-    prefix depending on how it was packaged. Both sides are normalised before
-    comparison: entry names are attacker-controlled, and canonicalising only
-    the target would leave the naming evasion open.
-    """
-    entry = normalize_entry_name(entry)
-    target = normalize_entry_name(target)
-    if entry == target:
-        return True
-    return any(
-        entry.removeprefix(prefix) == target
-        for prefix in _LAYOUT_CLASS_PREFIXES
-        if entry.startswith(prefix)
-    )
+            if not remaining:
+                return
