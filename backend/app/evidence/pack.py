@@ -99,6 +99,7 @@ def build_pack(
             "layout": inventory.layout.value,
             "libraries": len(inventory.libraries),
             "app_classes": len(inventory.app_classes),
+            "excluded_class_count": inventory.excluded_class_count,
             "classes_scanned": scan.classes_scanned,
             "unreadable_classes": len(scan.unreadable_classes),
             "commit_sha": inventory.commit_sha(),

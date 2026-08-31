@@ -37,8 +37,14 @@ from app.artifact._archive import (
 from app.artifact.errors import MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
 
-_LAYOUT_CLASS_PREFIXES = ("BOOT-INF/classes/", "WEB-INF/classes/")
-_LIBRARY_DIR_PREFIXES = ("BOOT-INF/lib/", "WEB-INF/lib/")
+#: Public (not module-private) because app.artifact.inventory shares these —
+#: previously each module carried its own copy, and independent copies drift:
+#: presence.py's suffix test was lowercased and inventory.py's was not, which
+#: made an uppercase-named bundled library visible to one check and invisible
+#: to the other (see app.artifact._archive). One definition, imported, closes
+#: that class of bug for the class/library prefixes too.
+LAYOUT_CLASS_PREFIXES = ("BOOT-INF/classes/", "WEB-INF/classes/")
+LIBRARY_DIR_PREFIXES = ("BOOT-INF/lib/", "WEB-INF/lib/")
 
 #: Multi-release JARs place version-specific overrides under this prefix; such
 #: a class loads on any Java 9+ JVM on a plain `java -jar`. Defined here (not
@@ -236,7 +242,7 @@ def _entry_match_keys(normalized_entry: str) -> tuple[str, ...]:
     naming evasion open.
     """
     keys = [normalized_entry]
-    for prefix in _LAYOUT_CLASS_PREFIXES:
+    for prefix in LAYOUT_CLASS_PREFIXES:
         if normalized_entry.startswith(prefix):
             keys.append(normalized_entry.removeprefix(prefix))
     multi_release_stripped = MULTI_RELEASE_PREFIX.sub("", normalized_entry)
@@ -253,7 +259,7 @@ def _in_library_directory(normalized_entry: str) -> bool:
     the framework's own loader does not check the extension, so neither can
     this. See :func:`_search`.
     """
-    return any(normalized_entry.startswith(prefix) for prefix in _LIBRARY_DIR_PREFIXES)
+    return any(normalized_entry.startswith(prefix) for prefix in LIBRARY_DIR_PREFIXES)
 
 
 def _search(

@@ -123,9 +123,17 @@ def test_rejects_input_that_is_not_an_archive():
 
 
 def test_spring_boot_layout_wins_when_both_prefixes_are_present():
-    # Spring Boot ships fat WARs, so an archive can carry both prefixes.
-    # Misclassifying one as a plain WAR would read BOOT-INF/lib JARs as
-    # application classes and poison the reference scan.
+    # Spring Boot ships fat WARs, so an archive can carry both prefixes. The
+    # reported layout label still prefers SPRING_BOOT_FAT in that case (see
+    # _detect_layout) — but, unlike before the F1 fix, that label no longer
+    # decides what gets collected: REWORKED from asserting that only the
+    # "winning" layout's classes were collected (BOOT-INF/classes/App.class)
+    # and WEB-INF/classes/Legacy.class was silently dropped. That exclusivity
+    # was the defect: a decoy under one prefix could make genuine code under
+    # the other vanish from app_classes entirely. Collection is now a union
+    # of every known class prefix, so both are present. BOOT-INF/lib/dep.jar
+    # must still be classified as a library, not application code, regardless
+    # of which prefix "won" for reporting purposes.
     raw = make_jar(
         {
             "BOOT-INF/classes/com/example/App.class": b"x",
@@ -136,7 +144,8 @@ def test_spring_boot_layout_wins_when_both_prefixes_are_present():
     )
     inventory = inspect_archive(raw)
     assert inventory.layout is Layout.SPRING_BOOT_FAT
-    assert set(inventory.app_classes) == {"com/example/App.class"}
+    assert set(inventory.app_classes) == {"com/example/App.class", "com/example/Legacy.class"}
+    assert [library.path for library in inventory.libraries] == ["BOOT-INF/lib/dep.jar"]
 
 
 def test_multi_release_classes_are_application_code():
@@ -217,13 +226,94 @@ def test_duplicate_application_class_entry_raises():
 
 
 def test_empty_directory_entry_does_not_flip_a_plain_jar_to_spring_boot_layout():
-    # A zero-byte BOOT-INF/classes/ entry is inert to the JVM. Letting it
-    # decide layout flips a plain JAR to SPRING_BOOT_FAT, which then demands
-    # every real class carry that prefix and empties app_classes entirely.
+    # A zero-byte BOOT-INF/classes/ entry is inert to the JVM and asserts
+    # nothing about how the artifact is packaged, so it must not flip the
+    # reported layout label to SPRING_BOOT_FAT. Since the F1 fix, the label
+    # is purely informational and no longer gates collection either way —
+    # see test_content_bearing_decoy_* in test_security.py for the case that
+    # actually mattered: a decoy with REAL content.
     raw = make_jar({"BOOT-INF/classes/": b"", "com/example/App.class": b"x"})
     inventory = inspect_archive(raw)
     assert inventory.layout is Layout.PLAIN_JAR
     assert "com/example/App.class" in inventory.app_classes
+
+
+def test_application_classes_are_collected_from_every_known_prefix_as_a_union():
+    # F1: collection must never depend on which single layout was detected.
+    raw = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": b"x",
+            "WEB-INF/classes/com/example/Legacy.class": b"y",
+            "com/example/RootLevel.class": b"z",
+        }
+    )
+    inventory = inspect_archive(raw)
+    assert set(inventory.app_classes) == {
+        "com/example/App.class",
+        "com/example/Legacy.class",
+        "com/example/RootLevel.class",
+    }
+
+
+def test_libraries_are_collected_from_every_known_prefix_as_a_union():
+    # F2: a vulnerable library hidden under the "losing" layout's lib prefix
+    # must still be hashed, or it never shows up as surplus in provenance.
+    boot_lib = make_jar({})
+    web_lib = make_jar({"org/example/Thing.class": b"y"})
+    raw = make_jar({"BOOT-INF/lib/dep.jar": boot_lib, "WEB-INF/lib/other.jar": web_lib})
+    inventory = inspect_archive(raw)
+    assert {library.path for library in inventory.libraries} == {
+        "BOOT-INF/lib/dep.jar",
+        "WEB-INF/lib/other.jar",
+    }
+
+
+def test_cross_prefix_duplicate_key_with_different_content_raises():
+    # Two different prefixes strip to the same application class key, with
+    # DIFFERENT content. Which copy a JVM's classloader would load is
+    # implementation-defined, so this must raise rather than pick one.
+    raw = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": b"real-code",
+            "WEB-INF/classes/com/example/App.class": b"different-code",
+        }
+    )
+    with pytest.raises(MalformedArtifact, match="com/example/App.class"):
+        inspect_archive(raw)
+
+
+def test_cross_prefix_duplicate_key_with_identical_content_is_kept_once():
+    # Same key from two different prefixes, but the bytes are identical — no
+    # ambiguity about what would actually run, so this is deduplicated
+    # instead of raising.
+    payload = b"identical-bytes"
+    raw = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": payload,
+            "WEB-INF/classes/com/example/App.class": payload,
+        }
+    )
+    inventory = inspect_archive(raw)
+    assert inventory.app_classes == {"com/example/App.class": payload}
+
+
+def test_class_under_an_unrecognised_container_subdirectory_is_excluded_and_counted():
+    # Defence in depth for F1: a `.class` entry inside a namespace this
+    # module recognises as a packaging container (BOOT-INF/) but NOT under
+    # either subdirectory it knows how to interpret (classes/ or lib/)
+    # matches no collection rule. It must not be silently dropped without a
+    # trace — Inventory.excluded_class_count is how scan_references later
+    # learns the scan did not see everything.
+    raw = make_jar(
+        {
+            "BOOT-INF/classes/com/example/App.class": b"x",
+            "BOOT-INF/oddly-placed/Extra.class": b"y",
+        }
+    )
+    inventory = inspect_archive(raw)
+    assert "com/example/App.class" in inventory.app_classes
+    assert "BOOT-INF/oddly-placed/Extra.class" not in inventory.app_classes
+    assert inventory.excluded_class_count == 1
 
 
 def test_versioned_copy_of_tooling_is_excluded_like_its_unversioned_twin():

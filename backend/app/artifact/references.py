@@ -57,6 +57,14 @@ class ReferenceScan:
     #: see everything, so absence of a reference proves nothing.
     unreadable_classes: list[str] = field(default_factory=list)
 
+    #: Copied from Inventory.excluded_class_count: `.class` entries present
+    #: in the archive that inventory collection could not positively
+    #: identify as either the application's own code or recognised tooling.
+    #: Non-zero means this scan did not see every application class, for a
+    #: reason this module cannot explain — see
+    #: app.artifact.inventory.Inventory.excluded_class_count.
+    excluded_classes: int = 0
+
     def references(self, class_path: str) -> bool:
         """Whether the application statically references ``class_path``.
 
@@ -75,15 +83,23 @@ class ReferenceScan:
     def is_conclusive(self) -> bool:
         """Whether absence of a reference can be trusted as evidence.
 
-        False when any dynamic-dispatch escape hatch was found, when any class
-        could not be read, or when nothing was scanned at all. A scan of zero
-        classes is not evidence that a class is unreferenced — it is evidence
-        that nothing was examined, which a layout-detection bug (an inert
-        empty directory entry flipping the archive to a layout whose class
-        prefix matches nothing real) can produce with a clean escape-hatch and
-        unreadable-classes record.
+        False when any dynamic-dispatch escape hatch was found, when any
+        class could not be read, when nothing was scanned at all, or when
+        inventory collection excluded some class for a reason it cannot
+        explain (``excluded_classes``). A scan of zero classes is not
+        evidence that a class is unreferenced — it is evidence that nothing
+        was examined. And a scan of everything COLLECTED is not evidence
+        about the classes that were never collected in the first place: an
+        artifact could package real application code under a prefix this
+        engine has not been taught to recognise, and a clean escape-hatch and
+        unreadable-classes record would not catch that on its own.
         """
-        return self.classes_scanned > 0 and not self.escape_hatches and not self.unreadable_classes
+        return (
+            self.classes_scanned > 0
+            and not self.escape_hatches
+            and not self.unreadable_classes
+            and self.excluded_classes == 0
+        )
 
 
 def scan_references(inventory: Inventory) -> ReferenceScan:
@@ -119,4 +135,5 @@ def scan_references(inventory: Inventory) -> ReferenceScan:
         escape_hatches=hatches,
         classes_scanned=scanned,
         unreadable_classes=unreadable,
+        excluded_classes=inventory.excluded_class_count,
     )

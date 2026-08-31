@@ -163,3 +163,32 @@ def test_surplus_ratio_value_is_reported_directly():
 
     assert result.surplus_ratio == 0.5
     assert len(result.unmatched_artifact_hashes) == 10
+
+
+def test_cross_layout_bundled_library_is_hashed_and_reported_as_surplus():
+    # F2: because inventory collection used to pick a single layout's library
+    # prefix, a vulnerable JAR bundled under WEB-INF/lib/ inside an otherwise
+    # BOOT-INF-layout artifact was never hashed at all — surplus_ratio stayed
+    # 0.00 and provenance returned MATCH despite the artifact carrying an
+    # unscanned bundled library. Tier 1 presence already finds classes there
+    # regardless of layout (see app.artifact.presence), so the damage was
+    # specifically a false provenance MATCH — surplus is the direction the
+    # threat model says the attacker controls.
+    reported = _libs(5)
+    vuln = make_jar({"org/apache/commons/text/StringSubstitutor.class": b"y" * 64})
+    entries = {"BOOT-INF/classes/com/example/App.class": b"x"}
+    entries.update({f"BOOT-INF/lib/{name}": payload for name, payload in reported.items()})
+    entries["WEB-INF/lib/vuln.jar"] = vuln
+    inventory = inspect_archive(make_jar(entries))
+
+    vuln_sha1 = hashlib.sha1(vuln, usedforsecurity=False).hexdigest()
+    assert vuln_sha1 in inventory.library_sha1s()
+
+    report = {hashlib.sha1(p, usedforsecurity=False).hexdigest() for p in reported.values()}
+    result = compare(report, inventory)
+
+    assert result.matched == 5
+    assert result.ratio == 1.0
+    assert vuln_sha1 in result.unmatched_artifact_hashes
+    assert result.surplus_ratio > 0
+    assert result.verdict is Verdict.MISMATCH

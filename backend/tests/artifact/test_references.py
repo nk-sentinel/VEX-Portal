@@ -1,6 +1,6 @@
 from app.artifact.inventory import inspect_archive
 from app.artifact.references import scan_references
-from tests.artifact.factories import make_class_file, make_spring_boot_jar
+from tests.artifact.factories import make_class_file, make_jar, make_spring_boot_jar
 
 VULNERABLE = "org/apache/commons/text/StringSubstitutor"
 
@@ -109,5 +109,30 @@ def test_unreadable_class_is_recorded_and_makes_the_scan_inconclusive():
     )
     scan = scan_references(inventory)
     assert scan.unreadable_classes == ["com/example/Bad.class"]
+    assert scan.is_conclusive() is False
+
+
+def test_excluded_non_tooling_class_makes_the_scan_inconclusive():
+    # Defence in depth for F1: a `.class` entry inside a namespace inventory
+    # collection recognises as a packaging container but not under either
+    # subdirectory it knows how to interpret is counted on
+    # Inventory.excluded_class_count rather than silently dropped. Scanning a
+    # subset of the application's classes is not evidence about the ones a
+    # prefix this engine has not been taught about might be hiding.
+    inventory = inspect_archive(
+        make_jar(
+            {
+                "BOOT-INF/classes/com/example/App.class": make_class_file(["java/lang/String"]),
+                "BOOT-INF/oddly-placed/Extra.class": b"not scanned",
+            }
+        )
+    )
+    assert inventory.excluded_class_count == 1
+
+    scan = scan_references(inventory)
+    assert scan.classes_scanned == 1
+    assert scan.escape_hatches == []
+    assert scan.unreadable_classes == []
+    assert scan.excluded_classes == 1
     assert scan.is_conclusive() is False
     assert scan.classes_scanned == 1

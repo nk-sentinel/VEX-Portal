@@ -214,15 +214,93 @@ class TestNonJarLibraryEntryEvasion:
             contains_class(artifact, TARGET)
 
 
-class TestEmptyDirectoryEntryDoesNotManufactureTier2Conclusiveness:
-    """A zero-byte BOOT-INF/classes/ entry is inert to the JVM but, before the
-    fix, flipped layout detection on a plain JAR to SPRING_BOOT_FAT and
-    emptied app_classes. scan_references then saw zero classes, and
-    is_conclusive() was vacuously True at zero classes scanned — a clean
-    CODE_NOT_REACHABLE on a class the app demonstrably references.
+class TestContentBearingDecoyDoesNotSuppressRealApplicationClasses:
+    """F1 (CRITICAL, re-review): layout detection is attacker-flippable, and
+    the guard that used to exist here did not catch it.
+
+    REWORKED from TestEmptyDirectoryEntryDoesNotManufactureTier2Conclusiveness
+    (originally: a zero-byte BOOT-INF/classes/ entry flipped layout detection
+    on a plain JAR to SPRING_BOOT_FAT and emptied app_classes — that guard
+    only ever excluded ZERO-BYTE directory entries from deciding layout).
+    Ignoring zero-byte entries does not stop a single CONTENT-BEARING decoy —
+    a real, parseable class at, say, BOOT-INF/classes/Decoy.class — from
+    flipping a WAR or plain JAR to SPRING_BOOT_FAT: _is_application_class
+    then demanded that prefix, so every genuine application class was
+    dropped from app_classes. Because the decoy itself parsed,
+    classes_scanned was still > 0, so the classes_scanned > 0 guard did not
+    fire either.
+
+    The artifact ran identically either way: a servlet container reads
+    WEB-INF/classes and WEB-INF/lib and never looks at BOOT-INF/, and a
+    plain `java -jar` deployment never looks at WEB-INF/. It also silently
+    suppressed escape-hatch detection, since the real code was never
+    scanned. Fixed by collecting app_classes as a UNION over every known
+    prefix instead of gating collection on a single detected layout — see
+    app.artifact.inventory.inspect_archive and the Layout docstring.
     """
 
-    def test_reference_scan_survives_a_falsely_flipped_layout(self):
+    def test_boot_inf_decoy_does_not_suppress_a_war_deployment(self):
+        decoy = make_class_file(["java/lang/Object"])
+        real_lib = _zip_with_raw_names({TARGET: b"y" * 64})
+        artifact = _zip_with_raw_names(
+            {
+                "BOOT-INF/classes/Decoy.class": decoy,
+                "BOOT-INF/lib/decoy-dep.jar": _zip_with_raw_names({}),
+                "WEB-INF/classes/com/example/App.class": make_class_file([VULNERABLE]),
+                "WEB-INF/lib/commons-text-1.9.jar": real_lib,
+            }
+        )
+        inventory = inspect_archive(artifact)
+        assert "com/example/App.class" in inventory.app_classes
+
+        scan = scan_references(inventory)
+        assert scan.references(VULNERABLE) is True
+        assert scan.is_conclusive() is True
+
+    def test_boot_inf_decoy_does_not_suppress_a_plain_jar_deployment(self):
+        decoy = make_class_file(["java/lang/Object"])
+        artifact = _zip_with_raw_names(
+            {
+                "BOOT-INF/classes/Decoy.class": decoy,
+                "BOOT-INF/lib/decoy-dep.jar": _zip_with_raw_names({}),
+                "com/example/App.class": make_class_file([VULNERABLE]),
+            }
+        )
+        inventory = inspect_archive(artifact)
+        assert "com/example/App.class" in inventory.app_classes
+
+        scan = scan_references(inventory)
+        assert scan.references(VULNERABLE) is True
+        assert scan.is_conclusive() is True
+
+    def test_web_inf_decoy_does_not_suppress_a_boot_deployment(self):
+        # BOOT-INF/ already wins detection over WEB-INF/ when both are
+        # present (see _detect_layout), so this decoy direction was never
+        # exploitable through the layout label itself under the pre-fix
+        # code. Pinned here as a regression test for the union-collection
+        # design: the real classes must be collected for the RIGHT reason
+        # (every known prefix is examined) rather than by accident of which
+        # prefix happens to win the layout label.
+        decoy = make_class_file(["java/lang/Object"])
+        real_lib = _zip_with_raw_names({TARGET: b"y" * 64})
+        artifact = _zip_with_raw_names(
+            {
+                "WEB-INF/classes/Decoy.class": decoy,
+                "WEB-INF/lib/decoy-dep.jar": _zip_with_raw_names({}),
+                "BOOT-INF/classes/com/example/App.class": make_class_file([VULNERABLE]),
+                "BOOT-INF/lib/commons-text-1.9.jar": real_lib,
+            }
+        )
+        inventory = inspect_archive(artifact)
+        assert "com/example/App.class" in inventory.app_classes
+
+        scan = scan_references(inventory)
+        assert scan.references(VULNERABLE) is True
+        assert scan.is_conclusive() is True
+
+    def test_zero_byte_padding_entry_still_does_not_disrupt_the_scan(self):
+        # The narrower, previously-fixed case, kept as a regression check
+        # alongside the content-bearing decoys above.
         artifact = _zip_with_raw_names(
             {
                 "BOOT-INF/classes/": b"",
@@ -236,6 +314,7 @@ class TestEmptyDirectoryEntryDoesNotManufactureTier2Conclusiveness:
         assert scan.classes_scanned == 1
         assert scan.references(VULNERABLE) is True
         assert scan.is_conclusive() is True
+
 
 
 class TestEvasionAgainstTheReferenceScan:
