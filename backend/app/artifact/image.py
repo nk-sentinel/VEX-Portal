@@ -27,11 +27,11 @@ import posixpath
 import tarfile
 from dataclasses import dataclass
 
+from app.artifact._archive import has_archive_suffix
 from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
 from app.artifact.presence import normalize_entry_name
 
-_ARCHIVE_SUFFIXES = (".jar", ".war", ".ear")
 _WHITEOUT_PREFIX = ".wh."
 
 #: An OverlayFS opaque-directory marker. Its presence in a directory means
@@ -108,7 +108,7 @@ def find_application_archives(
                 surviving.pop(deleted, None)
                 continue
 
-            if not name.lower().endswith(_ARCHIVE_SUFFIXES) or len(payload) < min_size:
+            if not has_archive_suffix(name) or len(payload) < min_size:
                 continue
 
             surviving[name] = FoundArchive(path=name, layer_index=index, data=payload)

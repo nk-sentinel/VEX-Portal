@@ -24,19 +24,21 @@ against one artifact — see :func:`app.evidence.pack.build_pack` — should cal
 
 from __future__ import annotations
 
-import io
 import re
-import zipfile
-import zlib
 from collections.abc import Iterable
-from dataclasses import dataclass
 
-from app.artifact.errors import ArtifactTooLarge, MalformedArtifact
+from app.artifact._archive import (
+    Budget,
+    enforce_limits,
+    has_archive_suffix,
+    open_zip,
+    read_entry,
+)
+from app.artifact.errors import MalformedArtifact
 from app.artifact.limits import DEFAULT_LIMITS, Limits
 
 _LAYOUT_CLASS_PREFIXES = ("BOOT-INF/classes/", "WEB-INF/classes/")
 _LIBRARY_DIR_PREFIXES = ("BOOT-INF/lib/", "WEB-INF/lib/")
-_NESTED_ARCHIVE_SUFFIXES = (".jar", ".war", ".ear")
 
 #: Multi-release JARs place version-specific overrides under this prefix; such
 #: a class loads on any Java 9+ JVM on a plain `java -jar`. Defined here (not
@@ -115,48 +117,6 @@ def normalize_entry_name(name: str) -> str:
     return "/".join(parts)
 
 
-@dataclass(slots=True)
-class _Budget:
-    """Running totals for one archive walk, shared across nested recursion.
-
-    One budget is created per top-level call into the walk (see
-    :func:`collect_class_paths`) and threaded through every recursive
-    descent into a nested archive, so the limits in :data:`Limits` bound the
-    cost of one walk regardless of how many targets it is answering at once.
-    """
-
-    entries: int = 0
-    total_uncompressed: int = 0
-
-
-def _enforce_limits(info: zipfile.ZipInfo, budget: _Budget, limits: Limits) -> None:
-    """Reject a declared-oversized or bomb-shaped entry before it is read.
-
-    Checked against declared metadata (``file_size`` / ``compress_size``)
-    before any entry is decompressed, so a bomb is refused rather than read
-    and then rejected.
-    """
-    budget.entries += 1
-    if budget.entries > limits.max_entries:
-        raise ArtifactTooLarge(f"archive has more than {limits.max_entries} entries")
-    if info.file_size > limits.max_entry_size:
-        raise ArtifactTooLarge(
-            f"entry {info.filename!r} declares {info.file_size} bytes, over the "
-            f"{limits.max_entry_size} byte limit"
-        )
-    ratio = info.file_size / max(info.compress_size, 1)
-    if ratio > limits.max_compression_ratio:
-        raise ArtifactTooLarge(
-            f"entry {info.filename!r} has compression ratio {ratio:.0f}:1, over the "
-            f"{limits.max_compression_ratio}:1 limit"
-        )
-    budget.total_uncompressed += info.file_size
-    if budget.total_uncompressed > limits.max_total_uncompressed:
-        raise ArtifactTooLarge(
-            f"archive exceeds {limits.max_total_uncompressed} total uncompressed bytes"
-        )
-
-
 def collect_class_paths(
     data: bytes,
     targets: Iterable[str],
@@ -215,7 +175,7 @@ def collect_class_paths(
         depth=0,
         max_depth=max_depth,
         limits=limits,
-        budget=_Budget(),
+        budget=Budget(),
     )
 
     found: set[str] = set()
@@ -304,7 +264,7 @@ def _search(
     depth: int,
     max_depth: int,
     limits: Limits,
-    budget: _Budget,
+    budget: Budget,
 ) -> None:
     """Walk ``data`` once, moving satisfied keys from ``remaining`` to ``found``.
 
@@ -324,22 +284,12 @@ def _search(
             "searched exhaustively"
         )
 
-    try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-    except (
-        zipfile.BadZipFile,
-        zlib.error,
-        OSError,
-        RuntimeError,
-        NotImplementedError,
-        EOFError,
-    ) as exc:
-        raise MalformedArtifact(f"not a readable archive: {exc}") from exc
+    archive = open_zip(data)
 
     with archive:
         nested: list[str] = []
         for info in archive.infolist():
-            _enforce_limits(info, budget, limits)
+            enforce_limits(info, budget, limits)
             # zipfile.ZipInfo.is_dir() is a bare name.endswith("/") test that
             # ignores file_size, so an entry named "…/Foo.class/" carrying real
             # content reads as a directory and would be skipped before its name is
@@ -359,23 +309,13 @@ def _search(
             # info.filename: a trailing-slash-with-content entry (see the
             # is_dir() comment above) would otherwise never match the suffix
             # test even though it carries a real nested archive's bytes.
-            if _in_library_directory(entry) or entry.lower().endswith(_NESTED_ARCHIVE_SUFFIXES):
+            if _in_library_directory(entry) or has_archive_suffix(entry):
                 nested.append(info.filename)
             if not remaining:
                 return
 
         for name in nested:
-            try:
-                payload = archive.read(name)
-            except (
-                zipfile.BadZipFile,
-                zlib.error,
-                OSError,
-                RuntimeError,
-                NotImplementedError,
-                EOFError,
-            ) as exc:
-                raise MalformedArtifact(f"could not read nested archive {name}: {exc}") from exc
+            payload = read_entry(archive, name)
             try:
                 _search(
                     payload,
