@@ -31,6 +31,20 @@ def test_accepts_the_dotted_and_suffixed_forms():
     assert scan.references(f"{VULNERABLE}.class") is True
 
 
+def test_references_matches_a_dotted_ambiguous_name_against_a_dollar_stored_nested_class():
+    # A dotted report path such as "com.example.Outer.Inner" is ambiguous
+    # between a top-level class and the nested class Outer$Inner (see
+    # candidate_class_paths). The class file is compiled with the nested
+    # form; references() must still find it, or a dotted report path against
+    # a $-stored class feeds a false referenced=False into Tier 2
+    # CODE_NOT_REACHABLE.
+    inventory = _inventory_with(
+        {"com/example/App.class": make_class_file(["com/example/Outer$Inner"])}
+    )
+    scan = scan_references(inventory)
+    assert scan.references("com.example.Outer.Inner") is True
+
+
 def test_detects_reflection_escape_hatch():
     # Class.forName reaches classes that never appear in a constant pool, so
     # "no reference found" stops being evidence of non-use.

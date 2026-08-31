@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from app.artifact.classfile import referenced_classes
 from app.artifact.errors import ArtifactError
 from app.artifact.inventory import Inventory
-from app.artifact.presence import normalize_class_path
+from app.artifact.presence import candidate_class_paths
 
 #: Classes whose presence in a constant pool indicates the application can
 #: reach code that static analysis cannot see. Mapped to the escape hatch kind
@@ -58,8 +58,19 @@ class ReferenceScan:
     unreadable_classes: list[str] = field(default_factory=list)
 
     def references(self, class_path: str) -> bool:
-        """Whether the application statically references ``class_path``."""
-        return normalize_class_path(class_path).removesuffix(".class") in self.referenced
+        """Whether the application statically references ``class_path``.
+
+        A dotted ``class_path`` is ambiguous between a top-level class and a
+        nested class (see :func:`app.artifact.presence.candidate_class_paths`
+        for why nothing in the string settles it). Every plausible form is
+        checked, and this reports ``False`` only if none of them was
+        referenced — the same reasoning presence.py applies to a raw dotted
+        report path against a ``$``-stored nested class.
+        """
+        return any(
+            candidate.removesuffix(".class") in self.referenced
+            for candidate in candidate_class_paths(class_path)
+        )
 
     def is_conclusive(self) -> bool:
         """Whether absence of a reference can be trusted as evidence.

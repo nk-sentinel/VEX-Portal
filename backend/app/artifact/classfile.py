@@ -69,6 +69,16 @@ def referenced_classes(data: bytes) -> set[str]:
         raise NotAClassFile("input does not begin with the Java class file magic number")
 
     pool_count = struct.unpack_from(">H", data, 8)[0]
+    if pool_count < 1:
+        # JVMS 4.1: constant_pool_count is the number of entries in the
+        # constant pool plus one; the minimum legal value is therefore 1 (an
+        # empty pool). A value of 0 is not a legal empty pool, it is a
+        # corrupt header — returning an empty reference set here would count
+        # this class toward classes_scanned as "no references" rather than
+        # toward unreadable_classes, silently understating what was examined.
+        raise MalformedClassFile(
+            f"constant_pool_count is {pool_count}; the minimum legal value is 1"
+        )
     offset = _HEADER_SIZE
 
     utf8_by_index: dict[int, str] = {}

@@ -34,6 +34,13 @@ from app.artifact.presence import normalize_entry_name
 _ARCHIVE_SUFFIXES = (".jar", ".war", ".ear")
 _WHITEOUT_PREFIX = ".wh."
 
+#: An OverlayFS opaque-directory marker. Its presence in a directory means
+#: every path under that directory written by an EARLIER layer is deleted —
+#: distinct from the single-path whiteout above, which _WHITEOUT_PREFIX alone
+#: would otherwise mis-parse as a whiteout for a file literally named
+#: ".wh..opq", doing nothing.
+_OPAQUE_WHITEOUT_NAME = ".wh..wh..opq"
+
 #: Archives smaller than this are JRE stubs, helper JARs, and build tooling
 #: rather than the application. The floor is deliberately low: excluding a real
 #: application is worse than including a stub, which later checks discard.
@@ -81,12 +88,27 @@ def find_application_archives(
         for name, payload in _walk_layer(blob, index, limits):
             base = posixpath.basename(name)
 
+            if base == _OPAQUE_WHITEOUT_NAME:
+                # Delete every surviving path under this directory that an
+                # EARLIER layer wrote. A path this same layer also writes
+                # keeps its layer_index == index, so it is never touched here
+                # regardless of which order the tar happens to list the two
+                # entries in.
+                directory = posixpath.dirname(name)
+                prefix = f"{directory}/" if directory else ""
+                for existing_path, found in list(surviving.items()):
+                    if found.layer_index < index and (
+                        existing_path == directory or existing_path.startswith(prefix)
+                    ):
+                        del surviving[existing_path]
+                continue
+
             if base.startswith(_WHITEOUT_PREFIX):
                 deleted = posixpath.join(posixpath.dirname(name), base[len(_WHITEOUT_PREFIX) :])
                 surviving.pop(deleted, None)
                 continue
 
-            if not name.endswith(_ARCHIVE_SUFFIXES) or len(payload) < min_size:
+            if not name.lower().endswith(_ARCHIVE_SUFFIXES) or len(payload) < min_size:
                 continue
 
             surviving[name] = FoundArchive(path=name, layer_index=index, data=payload)

@@ -1,3 +1,5 @@
+import struct
+
 import pytest
 
 from app.artifact.classfile import referenced_classes
@@ -61,6 +63,18 @@ def test_double_entry_does_not_desynchronise_the_pool():
     trailer = struct.pack(">HHHHHHH", 0x0021, 0, 0, 0, 0, 0, 0)
 
     assert referenced_classes(header + bytes(pool) + trailer) == {"com/example/Service"}
+
+
+def test_zero_constant_pool_count_raises_rather_than_returning_empty():
+    # JVMS 4.1: constant_pool_count's minimum legal value is 1 (an empty
+    # pool). 0 is not a legal empty pool, it is a corrupt header. Returning
+    # an empty set here would count this class toward classes_scanned as "no
+    # references" rather than toward unreadable_classes, silently
+    # understating what was actually examined.
+    data = bytearray(make_class_file(["com/example/Service"]))
+    struct.pack_into(">H", data, 8, 0)
+    with pytest.raises(MalformedClassFile):
+        referenced_classes(bytes(data))
 
 
 def test_dangling_class_name_index_raises_rather_than_dropping_the_reference():

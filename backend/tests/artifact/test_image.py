@@ -101,6 +101,46 @@ def test_whiteout_entry_removes_an_earlier_archive():
     assert find_application_archives(layers) == []
 
 
+def test_opaque_directory_whiteout_removes_everything_under_the_directory():
+    # ".wh..wh..opq" in a directory means every path under it written by an
+    # EARLIER layer is deleted — distinct from a single-path ".wh.<name>"
+    # whiteout. Without handling it, a deleted archive survives and is
+    # returned.
+    layers = [
+        make_layer({"app/application.jar": APP_JAR, "app/README": b"x" * 10}),
+        make_layer({"app/.wh..wh..opq": b""}),
+    ]
+    assert find_application_archives(layers) == []
+
+
+def test_opaque_directory_whiteout_does_not_remove_the_same_layers_own_entries():
+    # OverlayFS lets a layer opaque a directory and repopulate it in the same
+    # step: the deletion only reaches EARLIER layers.
+    layers = [
+        make_layer({"app/application.jar": APP_JAR}),
+        make_layer({"app/.wh..wh..opq": b"", "app/application.jar": APP_JAR}),
+    ]
+    found = find_application_archives(layers)
+    assert [(f.path, f.layer_index) for f in found] == [("app/application.jar", 1)]
+
+
+def test_opaque_directory_whiteout_does_not_depend_on_entry_order_within_the_layer():
+    layers = [
+        make_layer({"app/old.jar": APP_JAR}),
+        make_layer({"app/new.jar": APP_JAR, "app/.wh..wh..opq": b""}),
+    ]
+    found = find_application_archives(layers)
+    assert [f.path for f in found] == ["app/new.jar"]
+
+
+def test_uppercase_and_mixed_case_archive_suffixes_are_found():
+    # presence.py already lowercases before comparing; this test locks the
+    # same rule in on the image-layer side.
+    layers = [make_layer({"app/application.JAR": APP_JAR, "app/other.War": APP_JAR})]
+    found = find_application_archives(layers)
+    assert sorted(f.path for f in found) == ["app/application.JAR", "app/other.War"]
+
+
 def test_malformed_layer_raises_rather_than_being_skipped():
     with pytest.raises(MalformedArtifact):
         find_application_archives([b"not a tar archive at all"])
