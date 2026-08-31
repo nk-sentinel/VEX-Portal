@@ -92,12 +92,25 @@ def test_finding_with_several_class_paths_is_present_if_any_ships():
     assert pack.components[0].class_present is True
 
 
-def test_unreadable_artifact_propagates_rather_than_yielding_an_empty_pack():
+def test_unreadable_artifact_propagates_when_findings_are_present():
     # "Could not read" must never become "nothing found". Absence of a class
     # is Tier 1 proof that clears a security finding, so a pack built from a
     # failed read would manufacture that proof out of an I/O error.
+    #
+    # Note this case does NOT discriminate a swallowed inspect_archive failure:
+    # with findings present, contains_class touches the same malformed bytes
+    # and raises on its own. See the no-findings test below for that guarantee.
     with pytest.raises(MalformedArtifact):
         build_pack(b"not a zip file at all", set(), {"CVE-2022-42889": [VULNERABLE_CLASS]})
+
+
+def test_unreadable_artifact_propagates_even_with_no_findings():
+    # The discriminating case. With no findings, inspect_archive is the only
+    # thing that touches the artifact bytes, so this is what actually pins
+    # "could not read" against silently becoming an empty pack. With findings
+    # present the assertion would hold for the wrong reason.
+    with pytest.raises(MalformedArtifact):
+        build_pack(b"not a zip file at all", set(), {})
 
 
 def test_referenced_is_true_when_the_application_names_the_class():
