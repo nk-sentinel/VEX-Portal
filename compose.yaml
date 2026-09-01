@@ -1,14 +1,22 @@
-# VEX Portal — API service, fronted by Traefik.
+# VEX Portal — API + web, fronted by Traefik.
 #
 # Public entry: vex.shadow-lab.org -> Cloudflare tunnel -> Traefik (web
-# entrypoint) -> vex-portal-api. TLS terminates at Cloudflare — no
-# certresolver label here.
+# entrypoint) -> one of two routers on the SAME hostname, split by path:
+#   - Host(vex.shadow-lab.org) && PathPrefix(`/api`) -> vex-portal-api
+#   - Host(vex.shadow-lab.org)                       -> vex-portal-web
+# Traefik computes router priority from rule length by default, which
+# already makes the longer `&&` rule win over the bare `Host` rule, but the
+# priority is set explicitly below anyway — this ordering is load-bearing
+# (get it wrong and every page request 404s against the API, or the API
+# never receives a request at all), not a styling choice worth leaving
+# implicit. TLS terminates at Cloudflare — no certresolver label anywhere
+# in this file.
 #
-# Service name is stack-unique (vex-portal-api) per house convention: the
-# `proxy` network is shared across every stack on this host, and Compose
-# registers each service name as a DNS alias on it. A generic name like
-# `api` would collide with another stack's identically-named service and
-# Docker DNS would round-robin between them.
+# Service names are stack-unique (vex-portal-api, vex-portal-web) per house
+# convention: the `proxy` network is shared across every stack on this
+# host, and Compose registers each service name as a DNS alias on it. A
+# generic name like `api` or `web` would collide with another stack's
+# identically-named service and Docker DNS would round-robin between them.
 #
 # The portal's database is a single SQLite file (see backend/app/db.py), and
 # this project is single-replica by design (see CLAUDE.md) — this
@@ -20,7 +28,16 @@
 # host-venv database, is — see Task 5's brief and the report's concerns.
 #
 # Deploy:  docker compose up -d --build
-# Secrets: .env (gitignored) — see .env.example.
+# Secrets: .env (gitignored) — see .env.example. Task 4-6's report flags a
+# real bug this deploy step had to work around: JFROG_TOKEN/BITBUCKET_TOKEN
+# defaulting to empty (the shipped .env.example value) makes
+# `JFrogHttpClient`/`BitbucketHttpClient` build the illegal HTTP header
+# `Authorization: Bearer ` (trailing space, no token), which httpx refuses
+# to send client-side — every artifact fetch fails, admission never passes,
+# and no assessment can ever be raised. Both are set to a non-empty
+# placeholder in .env (config only, not a code change) so the fake-mode
+# demo this task must verify actually works; see the report for the
+# recommended backend-code fix, which is out of this task's file scope.
 
 services:
   vex-portal-api:
@@ -28,6 +45,22 @@ services:
     image: vex-portal-api:latest
     container_name: vex-portal-api
     env_file: [.env]
+    # Overrides FAKE_IQ_URL/etc from .env, which default to
+    # http://localhost:910x — correct for `just dev-api` (a HOST process
+    # reaching the fakes' published host ports) but wrong for THIS
+    # container, where "localhost" is its own network namespace, not the
+    # fakes'. The fakes are reachable by their compose SERVICE NAME on the
+    # shared `proxy` network (they're on it precisely for this DNS alias —
+    # see the vex-fake-* block's own comment below) at their container-
+    # internal port 8000, never the host-published 910x one. Discovered
+    # while verifying this task's end-to-end flow against the deployed
+    # container: every admission attempt failed 503 "Nexus IQ is
+    # unreachable" until this was added — see the task report.
+    environment:
+      FAKE_IQ_URL: http://vex-fake-iq:8000
+      FAKE_JFROG_URL: http://vex-fake-jfrog:8000
+      FAKE_BITBUCKET_URL: http://vex-fake-bitbucket:8000
+      FAKE_BEDROCK_URL: http://vex-fake-bedrock:8000
     volumes:
       - vex_portal_data:/app/data
     networks: [proxy]
@@ -37,9 +70,30 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.vex-portal-api.rule=Host(`vex.shadow-lab.org`)"
+      - "traefik.http.routers.vex-portal-api.rule=Host(`vex.shadow-lab.org`) && PathPrefix(`/api`)"
       - "traefik.http.routers.vex-portal-api.entrypoints=web"
+      - "traefik.http.routers.vex-portal-api.priority=100"
       - "traefik.http.services.vex-portal-api.loadbalancer.server.port=8000"
+
+  # Production Angular build, served by nginx (web/Dockerfile). Everything
+  # NOT under /api on this hostname lands here — the SPA owns client-side
+  # routing (/login, /assessments, /review, ...) via index.html's fallback
+  # (web/nginx.conf).
+  vex-portal-web:
+    build: ./web
+    image: vex-portal-web:latest
+    container_name: vex-portal-web
+    networks: [proxy]
+    restart: unless-stopped
+    depends_on: [vex-portal-api]
+    # No `ports:` — same reasoning as vex-portal-api: only Traefik reaches it.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.vex-portal-web.rule=Host(`vex.shadow-lab.org`)"
+      - "traefik.http.routers.vex-portal-web.entrypoints=web"
+      - "traefik.http.routers.vex-portal-web.priority=1"
+      - "traefik.http.services.vex-portal-web.loadbalancer.server.port=80"
 
   # --- Fake external systems (Task 7) — THROWAWAY, see /fakes/README.md ---
   #

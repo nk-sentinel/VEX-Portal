@@ -4,10 +4,12 @@ default:
 
 # No dev database container to start — the database is a SQLite file under
 # backend/data/, and `just migrate` creates it. `just up` brings up the
-# containerized API (vex-portal-api) behind Traefik at vex.shadow-lab.org;
-# it uses its own volume, separate from the host-venv database `just
-# dev-api`/`just migrate` use, since this project is single-replica by
-# design and the two must never write the same SQLite file concurrently.
+# containerized API (vex-portal-api) AND the production Angular build
+# (vex-portal-web), both behind Traefik at vex.shadow-lab.org (API under
+# /api — see compose.yaml's two routers); the API container uses its own
+# volume, separate from the host-venv database `just dev-api`/`just
+# migrate` use, since this project is single-replica by design and the two
+# must never write the same SQLite file concurrently.
 
 # --- Deploy ---
 up:
@@ -15,6 +17,9 @@ up:
 
 down:
     docker compose down
+
+logs:
+    docker compose logs -f vex-portal-api vex-portal-web
 
 # --- Backend ---
 install:
@@ -37,3 +42,14 @@ migrate:
 # — 4201 avoids the collision (see the Task 3 report).
 dev-web:
     cd web && npx ng serve --host 0.0.0.0 --port 4201
+
+build-web:
+    cd web && npx ng build
+
+# Headless Chrome for CI/sandbox use — a system Chrome/Playwright browser
+# install needs sudo, unavailable in this environment; every task report
+# under .superpowers/sdd/2026-09-01-screens/ used this same cached
+# Chromium + --browsers=ChromeHeadlessNoSandbox combination.
+test-web:
+    cd web && CHROME_BIN=~/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome \
+        npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox
