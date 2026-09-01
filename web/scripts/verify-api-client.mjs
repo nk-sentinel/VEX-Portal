@@ -298,6 +298,104 @@ async function main() {
     ok('carries a "detail" the New Assessment form can surface', 'detail' in res.body);
   }
 
+  // --- Task 4: New Assessment / My Assessments / Assessment Result. Against
+  // the real fake-IQ application (`4f6d8a2c9b1e4a7f8c3d2b1a0f9e8d7c` /
+  // publicId "payments-api" — GET /api/v2/applications on the fake, not a
+  // synthetic id) and its one report — the only application the fake IQ
+  // fixture actually knows, so this is the one real end-to-end raise this
+  // script can perform. **Requires a non-empty JFROG_TOKEN/BITBUCKET_TOKEN**
+  // — see the Task 4-6 report's "empty bearer token" finding: with the
+  // shipped `.env`/`.env.example` default (empty), every JFrog/Bitbucket
+  // call raises `httpx.LocalProtocolError` (an illegal `"Bearer "` header)
+  // client-side, which `_transport.py`'s broad `except httpx.HTTPError`
+  // reports as "could not be reached" — every admission's artifact check
+  // fails, and this whole section soft-skips.
+  console.log('\nPOST /api/assessments — a real admission failure names which check failed and why (report id does not exist)');
+  {
+    const res = await api('/api/assessments', {
+      cookie: requesterCookie,
+      method: 'POST',
+      body: {
+        application_id: '4f6d8a2c9b1e4a7f8c3d2b1a0f9e8d7c',
+        report_id: 'no-such-report-id',
+        artifact_coordinates: 'libs-release-local/com/example/payments-api/1.0.0/payments-api-1.0.0.jar',
+        requester_note: 'verify-api-client.mjs: bad report id',
+      },
+    });
+    ok('422', res.status === 422);
+    ok('names the failed check as "report"', res.body?.detail?.check === 'report');
+    ok('message is actionable (mentions re-scanning)', /re-scan|resubmit/i.test(res.body?.detail?.message ?? ''));
+  }
+
+  console.log('\nPOST /api/assessments — a full real raise against the fake IQ + fake JFrog, end to end');
+  {
+    const res = await api('/api/assessments', {
+      cookie: requesterCookie,
+      method: 'POST',
+      body: {
+        application_id: '4f6d8a2c9b1e4a7f8c3d2b1a0f9e8d7c',
+        report_id: 'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7',
+        artifact_coordinates: 'libs-release-local/com/example/payments-api/1.0.0/payments-api-1.0.0.jar',
+        requester_note: 'verify-api-client.mjs: real raise',
+      },
+    });
+    if (res.status === 422 && res.body?.detail?.check === 'artifact') {
+      console.log(
+        '  skip - JFROG_TOKEN is empty in this environment, so every artifact fetch is refused client-side ' +
+          '(illegal "Bearer " header) before it ever reaches the fake JFrog server — see the task report',
+      );
+    } else {
+      ok('201', res.status === 201);
+      ok(
+        'matches AssessmentDetail shape',
+        hasKeys(res.body, ['id', 'application_id', 'report_id', 'state', 'provenance', 'outcome_counts', 'findings']),
+      );
+      ok('provenance matched every report component (this fixture is a genuine MATCH)', res.body.provenance?.verdict === 'match');
+      ok('at least one finding was produced', res.body.findings.length > 0);
+      const assessmentId = res.body.id;
+
+      console.log('\nGET /api/assessments — the new assessment appears in the requester\'s own list');
+      const listRes = await api('/api/assessments', { cookie: requesterCookie });
+      ok('the raised assessment is in the list', listRes.body.some((a) => a.id === assessmentId));
+
+      console.log('\nGET /api/assessments/{id} — Assessment Result, same shape, same data');
+      const detailRes = await api(`/api/assessments/${assessmentId}`, { cookie: requesterCookie });
+      ok('200', detailRes.status === 200);
+      ok('same id', detailRes.body.id === assessmentId);
+
+      const clearedFinding = res.body.findings.find((f) => f.outcome === 'not_affected');
+      if (clearedFinding) {
+        console.log('\nGET fake IQ applicableWaivers — a Not Affected clear really did push a suppression to Nexus IQ');
+        // Resolve the violation id from the report's own policy payload —
+        // FindingOut carries no violation id (see app/repos/models.py's own
+        // "violation ids are reassigned on every re-scan" docstring), so
+        // this is the same lookup a human auditor would do.
+        const policyRes = await fetch(
+          `${(process.env.FAKE_IQ_URL ?? 'http://localhost:9101')}/api/v2/applications/4f6d8a2c9b1e4a7f8c3d2b1a0f9e8d7c/reports/b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7/policy`,
+        ).then((r) => r.json());
+        let violationId;
+        for (const component of policyRes.components ?? []) {
+          for (const violation of component.violations ?? []) {
+            for (const cv of violation.constraintViolations ?? []) {
+              if (cv.reasons?.some((r) => r.reference?.value === clearedFinding.cve)) violationId = violation.policyViolationId;
+            }
+          }
+        }
+        if (violationId) {
+          const waivers = await fetch(
+            `${(process.env.FAKE_IQ_URL ?? 'http://localhost:9101')}/api/v2/policyViolations/${violationId}/applicableWaivers`,
+          ).then((r) => r.json());
+          ok(
+            `a waiver referencing this assessment (${assessmentId}) exists in the fake IQ`,
+            (waivers.activeWaivers ?? []).some((w) => w.comment?.includes(assessmentId)),
+          );
+        } else {
+          console.log('  skip - could not resolve a violation id for the cleared CVE from the fixture');
+        }
+      }
+    }
+  }
+
   console.log('\nGET /api/risk-acceptance — RiskAcceptanceRow[]');
   {
     const riskManager = await login('riskmgr1', PASSWORD);

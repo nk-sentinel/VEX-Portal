@@ -42,13 +42,19 @@ export const routes: Routes = [
       {
         path: 'assessments/new',
         canActivate: [capabilityGuard('raise_assessment')],
-        loadComponent: () => import('./core/shell/route-stub').then((m) => m.RouteStub),
+        loadComponent: () => import('./features/assessments/new-assessment').then((m) => m.NewAssessment),
         data: { title: 'New Assessment' },
+      },
+      {
+        path: 'assessments/:id/result',
+        canActivate: [capabilityGuard('raise_assessment')],
+        loadComponent: () => import('./features/assessments/assessment-result').then((m) => m.AssessmentResult),
+        data: { title: 'Assessment Result' },
       },
       {
         path: 'assessments',
         canActivate: [capabilityGuard('raise_assessment')],
-        loadComponent: () => import('./core/shell/route-stub').then((m) => m.RouteStub),
+        loadComponent: () => import('./features/assessments/my-assessments').then((m) => m.MyAssessments),
         data: { title: 'My Assessments' },
       },
       {

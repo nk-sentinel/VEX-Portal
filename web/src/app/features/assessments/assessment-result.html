@@ -1,0 +1,106 @@
+<div class="page" style="max-width: 900px">
+  @if (pageState() === 'loading') {
+    <div class="page__head">
+      <div>
+        <p class="eyebrow">Result · read only</p>
+        <span class="skeleton" style="width: 220px; height: 22px; display: block; margin-top: 4px"></span>
+      </div>
+    </div>
+    <div class="card"><div class="card__body" style="display: grid; gap: 14px">
+      @for (sk of [1, 2, 3, 4]; track sk) {
+        <span class="skeleton" style="width: 70%"></span>
+      }
+    </div></div>
+  } @else if (pageState() === 'error') {
+    <div class="page__head">
+      <div><p class="eyebrow">Result · read only</p><h1>Could not load this assessment</h1></div>
+    </div>
+    <div class="callout callout--warning" role="alert">
+      <span class="callout__title">{{ loadErrorMessage() }}</span>
+      <span><button type="button" class="link-btn" (click)="retry()">Retry</button></span>
+    </div>
+  } @else if (assessment(); as asm) {
+    <div class="page__head">
+      <div>
+        <p class="eyebrow">Result · read only</p>
+        <h1>{{ asm.id }} · {{ asm.application_id }}</h1>
+        <p class="sub">
+          @if (asm.commit_sha) {
+            commit {{ asm.commit_sha }} ·
+          }
+          @if (asm.provenance; as prov) {
+            provenance ✓ {{ prov['matched'] }}/{{ prov['report_total'] }}
+          }
+        </p>
+      </div>
+      <span [class]="stateBadgeClass(asm.state)">{{ stateLabel(asm.state) }}</span>
+    </div>
+
+    @if (asm.admission_failure; as failure) {
+      <!-- An admission-failed assessment never ran the pipeline — it has no
+           findings, which is not the "no empty state" this screen otherwise
+           promises (ui-spec: "an assessment always has findings, or it
+           would have failed admission" IS the admission-failed case). -->
+      <div class="callout callout--danger" role="alert">
+        <span class="callout__title">This assessment did not pass admission</span>
+        <span>{{ failure.message }}</span>
+      </div>
+      <a class="btn btn--ghost" routerLink="/assessments">← Back to My Assessments</a>
+    } @else {
+      <div style="display: grid; gap: 12px">
+        @for (r of asm.findings; track r.id) {
+          <div class="card">
+            <div class="card__body" style="display: grid; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+                <span class="mono" style="font-family: var(--font-mono); font-weight: 700; font-size: 14px">{{ r.cve }}</span>
+                <span style="font-family: var(--font-mono); font-size: 12px; color: var(--fg-secondary)">{{ r.purl }}</span>
+                @if (r.outcome; as outcome) {
+                  <span style="margin-left: auto; display: inline-flex; gap: 6px; align-items: center">
+                    <span [class]="OUTCOME_META[outcome].cls"><span class="outcome__icon">{{ OUTCOME_META[outcome].icon }}</span>{{ OUTCOME_META[outcome].label }}</span>
+                    @if (tierBadgeClass(r.tier); as cls) {
+                      <span [class]="cls">{{ tierLabel(r.tier) }}</span>
+                    }
+                  </span>
+                }
+              </div>
+              <p style="margin: 0; font-size: 13px; line-height: 1.55; color: var(--fg-secondary); text-wrap: pretty">{{ r.reason }}</p>
+
+              @if (r.outcome === 'risk_acceptance_required') {
+                <div class="callout callout--handoff">
+                  <span class="callout__title">No determination was made</span>
+                  <span>
+                    No fix is available. This did not receive a determination and the Nexus IQ violation stays open. Take
+                    the evidence package to your risk manager.
+                  </span>
+                  @if (canDownloadPackage()) {
+                    <span><a class="btn btn--handoff btn--sm" [href]="packageUrl(r.id)">↗ Download evidence package</a></span>
+                  } @else {
+                    <span style="font-size: 12px; color: var(--fg-muted)">
+                      Only a risk manager or auditor can pull the evidence package from the portal directly — ask them, or
+                      raise it with your risk manager, who can retrieve it from the Risk Acceptance Queue.
+                    </span>
+                  }
+                </div>
+              }
+
+              @if (r.evidence_refs.length > 0) {
+                <div>
+                  <button type="button" class="link-btn" (click)="toggleEvidence(r.id)">
+                    {{ isExpanded(r.id) ? 'Hide evidence' : 'Show evidence' }}
+                  </button>
+                </div>
+                @if (isExpanded(r.id)) {
+                  <div style="border-top: 1px solid var(--border-subtle); padding-top: 8px; display: grid; gap: 4px">
+                    @for (ref of r.evidence_refs; track ref) {
+                      <span style="font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted)">{{ ref }}</span>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

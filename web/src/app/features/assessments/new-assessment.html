@@ -1,0 +1,157 @@
+<div class="page" style="max-width: 760px">
+  <div class="page__head">
+    <div>
+      <p class="eyebrow">New assessment</p>
+      <h1>New Exploitability Assessment</h1>
+      <p class="sub">Covers every open security finding in one Nexus IQ report.</p>
+    </div>
+  </div>
+
+  @if (loadState() === 'loading') {
+    <div class="card"><div class="card__body" style="display: grid; gap: 14px">
+      <span class="skeleton" style="width: 60%"></span>
+      <span class="skeleton" style="width: 40%"></span>
+      <span class="skeleton" style="width: 80%"></span>
+    </div></div>
+  } @else if (loadState() === 'error') {
+    <div class="callout callout--warning" role="alert">
+      <span class="callout__title">Could not load your applications</span>
+      <span>{{ loadErrorMessage() }}</span>
+      <span><button type="button" class="link-btn" (click)="retryLoad()">Retry</button></span>
+    </div>
+  } @else if (loadState() === 'empty') {
+    <div class="card" style="padding: 48px; max-width: 640px">
+      <p style="margin: 0; font-size: 18px; font-weight: 600">You do not have access to any application in Nexus IQ.</p>
+      <p style="margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: var(--fg-secondary)">
+        An assessment can only be raised against an application you can see in Nexus IQ. Ask the AppSec team to grant you
+        access to the application first, then come back here.
+      </p>
+    </div>
+  } @else {
+    <div class="card">
+      <div class="card__body" style="display: grid; gap: 20px">
+        <label class="field">
+          <span class="field-label">Application</span>
+          <select [ngModel]="applicationId()" (ngModelChange)="applicationId.set($event)" [disabled]="submitting()">
+            <option value="" disabled>select an application…</option>
+            @for (app of applications(); track app.id) {
+              <option [value]="app.id">{{ app.name }}</option>
+            }
+          </select>
+          <span class="field__help">Only applications you can access in Nexus IQ are listed.</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Nexus IQ report URL or ID</span>
+          <input
+            type="text"
+            [ngModel]="reportRef()"
+            (ngModelChange)="reportRef.set($event)"
+            [disabled]="submitting()"
+            placeholder="https://iq.../applicationReport/payments-api/38ef4d1f"
+          />
+        </label>
+
+        <div class="field">
+          <span class="field-label">Build artifact</span>
+          <div style="display: flex; gap: 10px">
+            <button
+              type="button"
+              class="chip"
+              [class.is-active]="artifactType() === 'binary'"
+              [disabled]="submitting()"
+              (click)="setArtifactType('binary')"
+              style="flex: 1"
+            >
+              Binary
+            </button>
+            <button
+              type="button"
+              class="chip"
+              [class.is-active]="artifactType() === 'image'"
+              [disabled]="submitting()"
+              (click)="setArtifactType('image')"
+              style="flex: 1"
+            >
+              Container image
+            </button>
+          </div>
+          <input
+            type="text"
+            [ngModel]="artifactCoordinates()"
+            (ngModelChange)="artifactCoordinates.set($event)"
+            [disabled]="submitting()"
+            [placeholder]="artifactPlaceholder()"
+            style="margin-top: 8px"
+          />
+        </div>
+
+        <label class="field">
+          <span class="field-label">Commit (optional)</span>
+          <input type="text" [ngModel]="commitSha()" (ngModelChange)="commitSha.set($event)" [disabled]="submitting()" placeholder="4a9f1c2" />
+          <span class="field__help">Cross-checked against the artifact's own git.properties once the assessment completes.</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Why is this needed?</span>
+          <textarea
+            [ngModel]="requesterNote()"
+            (ngModelChange)="requesterNote.set($event)"
+            [disabled]="submitting()"
+            placeholder="Feeds the reviewer's context. Not read by the rule engine."
+          ></textarea>
+        </label>
+
+        @if (submitting()) {
+          <div class="callout callout--info" role="status">
+            <span class="callout__title">Checking and determining</span>
+            <span>
+              The report, the artifact, and whether the artifact matches the report are checked in order; on success every
+              open finding is evaluated straight away. This can take a few seconds.
+            </span>
+          </div>
+        }
+
+        @if (admissionFailure() || submitting() || checkRows()[0].status !== 'pending') {
+          <div style="display: grid; gap: 4px">
+            @for (row of checkRows(); track row.check) {
+              @if (row.status === 'pass') {
+                <span class="check check--pass"><span class="check__mark">✓</span><span>{{ ADMISSION_CHECK_LABEL[row.check] }}</span></span>
+              } @else if (row.status === 'fail') {
+                <span class="check check--fail">
+                  <span class="check__mark">✗</span><span>{{ ADMISSION_CHECK_LABEL[row.check] }} — {{ admissionFailure()?.message }}</span>
+                </span>
+              } @else {
+                <span class="check check--busy"><span class="check__mark">{{ submitting() ? '⏳' : '·' }}</span><span>{{ ADMISSION_CHECK_LABEL[row.check] }}</span></span>
+              }
+            }
+          </div>
+        }
+
+        @if (admissionFailure(); as failure) {
+          @if (failure.check === 'provenance') {
+            <div class="callout callout--danger" role="alert">
+              <span class="callout__title">Blocked — provenance mismatch</span>
+              <span>{{ failure.message }}</span>
+              <span><button type="button" class="btn btn--ghost btn--sm" (click)="useDifferentArtifact()">Use a different artifact</button></span>
+            </div>
+          }
+        }
+
+        @if (submitError(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+          <span style="font-size: 12px; color: var(--fg-muted); max-width: 340px">Determinations last 7 days and are not renewed automatically.</span>
+          <span style="margin-left: auto; display: flex; gap: 8px">
+            <a class="btn btn--ghost" routerLink="/assessments">Cancel</a>
+            <button type="button" class="btn btn--primary" [disabled]="!canSubmit()" (click)="submit()">
+              {{ submitting() ? 'Submitting…' : 'Submit' }}
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+  }
+</div>
