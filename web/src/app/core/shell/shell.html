@@ -1,0 +1,43 @@
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">VEX</div>
+      <div style="min-width: 0">
+        <h1>VEX Portal</h1>
+        <span>exploitability</span>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      @if (visibleNavItems().length > 0) {
+        <div class="nav-group-title">Navigate</div>
+      }
+      @for (item of visibleNavItems(); track item.route) {
+        <a class="nav-item" [routerLink]="item.route" routerLinkActive="active">
+          <span class="icon" aria-hidden="true">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="persona">
+      <div style="display: flex; flex-direction: column">
+        <span class="role">{{ roleLabels().join(' · ') || 'No roles assigned' }}</span>
+        <span class="name">{{ username() }}</span>
+      </div>
+      <button type="button" class="nav-item" style="border: 1px solid var(--border-sidebar)" (click)="signOut()">
+        <span class="icon" aria-hidden="true">⏻</span>
+        <span>Sign out</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <span class="eyebrow" style="margin: 0">VEX Portal</span>
+    </header>
+    <div style="flex: 1; overflow-y: auto">
+      <router-outlet />
+    </div>
+  </div>
+</div>

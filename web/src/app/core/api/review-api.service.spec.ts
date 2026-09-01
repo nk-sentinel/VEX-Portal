@@ -36,7 +36,9 @@ describe('ReviewApiService', () => {
 
   it('getFinding() GETs the drawer payload by id', () => {
     service.getFinding('finding-1').subscribe();
-    httpMock.expectOne('/api/review/findings/finding-1').flush({});
+    const req = httpMock.expectOne('/api/review/findings/finding-1');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
   });
 
   it('decide() POSTs the commit body to .../decide', () => {

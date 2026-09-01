@@ -1,0 +1,77 @@
+<div class="page" style="display: grid; place-items: center; min-height: 100%; padding: 64px 24px">
+  <div class="card" style="width: 100%; max-width: 360px">
+    <div class="card__body" style="display: grid; gap: var(--space-4)">
+      <div style="display: flex; align-items: center; gap: var(--space-3)">
+        <div
+          style="
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-md);
+            display: grid;
+            place-items: center;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 13px;
+            background: var(--accent-fill);
+            color: var(--fg-onAccent);
+          "
+        >
+          VEX
+        </div>
+        <div>
+          <h1 style="margin: 0; font-size: 18px; font-weight: 600">VEX Portal</h1>
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted)">exploitability</span>
+        </div>
+      </div>
+
+      @if (noRoleSession(); as blocked) {
+        <div class="callout callout--warning" role="alert">
+          <p class="callout__title">No recognised role group</p>
+          <p style="margin: 0">
+            <strong>{{ blocked.username }}</strong> is signed in, but this account is not a member of any group the
+            portal recognises. Access requires one of: {{ allRoleLabels.join(', ') }}. Contact your AppSec
+            administrator to be added to the right group.
+          </p>
+        </div>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div style="display: grid; gap: var(--space-3)">
+            <label class="field">
+              <span>Username</span>
+              <input
+                type="text"
+                formControlName="username"
+                autocomplete="username"
+                [attr.aria-invalid]="form.controls.username.invalid && form.controls.username.touched ? true : null"
+              />
+              @if (form.controls.username.invalid && form.controls.username.touched) {
+                <span class="field-error">Username is required.</span>
+              }
+            </label>
+
+            <label class="field">
+              <span>Password</span>
+              <input
+                type="password"
+                formControlName="password"
+                autocomplete="current-password"
+                [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched ? true : null"
+              />
+              @if (form.controls.password.invalid && form.controls.password.touched) {
+                <span class="field-error">Password is required.</span>
+              }
+            </label>
+
+            @if (credentialError(); as message) {
+              <p class="form-error" role="alert">{{ message }}</p>
+            }
+
+            <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+              {{ submitting() ? 'Signing in…' : 'Sign in' }}
+            </button>
+          </div>
+        </form>
+      }
+    </div>
+  </div>
+</div>
