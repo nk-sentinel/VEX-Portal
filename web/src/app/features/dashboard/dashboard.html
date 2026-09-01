@@ -1,0 +1,242 @@
+<div class="page">
+  <div class="page__head">
+    <div>
+      <p class="eyebrow">Dashboard</p>
+      <h1>
+        @if (automationSplit().data?.automated_ratio != null) {
+          {{ formatPercent(automationSplit().data?.automated_ratio) }} of findings determined without a human
+        } @else {
+          Portal metrics
+        }
+      </h1>
+      <p class="sub">
+        Every number below links through to the findings behind it.
+        @if (!canDrillIntoQueue()) {
+          Your role cannot open the Review Queue, so the numbers here are not links.
+        }
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px">
+      <select class="icon-btn" style="height: 32px" [ngModel]="rangePreset()" (ngModelChange)="onRangeChange($event)">
+        <option [value]="7">last 7 days</option>
+        <option [value]="30">last 30 days</option>
+        <option [value]="90">last 90 days</option>
+      </select>
+      <select class="icon-btn" style="height: 32px" [ngModel]="applicationFilter()" (ngModelChange)="onApplicationChange($event)">
+        <option value="all">all applications</option>
+        @for (app of applicationOptions(); track app) {
+          <option [value]="app">{{ app }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- ============================== Headline metrics ============================== -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px">
+    <div class="card">
+      <div class="card__body metric">
+        <span class="metric__label">Automation split</span>
+        @if (automationSplit().status === 'loading') {
+          <span class="skeleton" style="width: 60px; height: 26px"></span>
+        } @else if (automationSplit().status === 'error') {
+          <span style="font-size: 13px; color: var(--danger)">{{ automationSplit().error }} <button type="button" class="link-btn" (click)="retryAutomationSplit()">Retry</button></span>
+        } @else {
+          <span class="metric__value">{{ formatPercent(automationSplit().data?.automated_ratio) }}</span>
+          <span class="metric__delta">auto-determined · {{ automationSplit().data?.automated ?? 0 }} of {{ automationSplit().data?.total_decided ?? 0 }} decided</span>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body metric">
+        <span class="metric__label">Time to determination</span>
+        @if (sla().status === 'loading') {
+          <span class="skeleton" style="width: 60px; height: 26px"></span>
+        } @else if (sla().status === 'error') {
+          <span style="font-size: 13px; color: var(--danger)">{{ sla().error }} <button type="button" class="link-btn" (click)="retrySla()">Retry</button></span>
+        } @else {
+          <span class="metric__value">{{ formatHours(sla().data?.median_hours_to_determination) }}</span>
+          <span class="metric__delta">
+            median · p90 {{ formatHours(sla().data?.p90_hours_to_determination) }} ·
+            @if ((sla().data?.breaching_count ?? 0) > 0 && canDrillIntoQueue()) {
+              <button type="button" class="link-btn" style="color: var(--danger); font-weight: 600" (click)="drillBreaching()">
+                {{ sla().data?.breaching_count }} breaching
+              </button>
+            } @else {
+              <span [style.color]="(sla().data?.breaching_count ?? 0) > 0 ? 'var(--danger)' : null" style="font-weight: 600">{{ sla().data?.breaching_count ?? 0 }} breaching</span>
+            }
+          </span>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body metric">
+        <span class="metric__label">Agreement rate</span>
+        @if (agreement().status === 'loading') {
+          <span class="skeleton" style="width: 60px; height: 26px"></span>
+        } @else if (agreement().status === 'error') {
+          <span style="font-size: 13px; color: var(--danger)">{{ agreement().error }} <button type="button" class="link-btn" (click)="retryAgreement()">Retry</button></span>
+        } @else {
+          <span class="metric__value">{{ (agreement().data?.rules ?? []).length - belowBarRuleCount() }}/{{ (agreement().data?.rules ?? []).length }}</span>
+          <span class="metric__delta">
+            @if (belowBarRuleCount() > 0) {
+              <span style="color: var(--warning); font-weight: 600">{{ belowBarRuleCount() }} rule(s) below bar</span>
+            } @else {
+              rules at or above their bar
+            }
+          </span>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body metric">
+        <span class="metric__label">Expiring in 7 days</span>
+        @if (expiry().status === 'loading') {
+          <span class="skeleton" style="width: 60px; height: 26px"></span>
+        } @else if (expiry().status === 'error') {
+          <span style="font-size: 13px; color: var(--danger)">{{ expiry().error }} <button type="button" class="link-btn" (click)="retryExpiry()">Retry</button></span>
+        } @else {
+          <span class="metric__value">{{ expiry().data?.lapsing_within_7_days ?? 0 }}</span>
+          <span class="metric__delta">incoming reassessment load</span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== Volume + Agreement ============================== -->
+  <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px">
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Volume</h2>
+        <span style="font-size: 11px; color: var(--fg-muted)">findings by outcome, whole window (no time-series data source — see the task report)</span>
+      </div>
+      <div class="card__body">
+        @if (volume().status === 'loading') {
+          <span class="skeleton" style="width: 100%; height: 40px"></span>
+        } @else if (volume().status === 'error') {
+          <div class="callout callout--warning" role="alert">
+            <span class="callout__title">Could not load volume</span><span>{{ volume().error }}</span>
+            <span><button type="button" class="link-btn" (click)="retryVolume()">Retry</button></span>
+          </div>
+        } @else {
+          @let v = volume().data!;
+          @let byOutcome = v.findings_by_outcome ?? {};
+          <p style="margin: 0 0 12px; font-size: 13px; color: var(--fg-secondary)">{{ v.total_assessments }} assessments · {{ v.total_findings }} findings</p>
+          <div style="display: flex; height: 22px; border-radius: 999px; overflow: hidden; background: var(--bg-surface-2)">
+            <button type="button" style="border: 0; padding: 0; background: var(--outcome-clear); cursor: pointer" [style.width]="segmentWidth(countOf(byOutcome, 'not_affected'), v.total_findings)" [disabled]="!canDrillIntoQueue()" (click)="drillOutcome('not_affected')" title="not affected"></button>
+            <button type="button" style="border: 0; padding: 0; background: var(--outcome-affected); cursor: pointer" [style.width]="segmentWidth(countOf(byOutcome, 'affected'), v.total_findings)" [disabled]="!canDrillIntoQueue()" (click)="drillOutcome('affected')" title="affected"></button>
+            <button type="button" style="border: 0; padding: 0; background: var(--outcome-review); cursor: pointer" [style.width]="segmentWidth(countOf(byOutcome, 'needs_review'), v.total_findings)" [disabled]="!canDrillIntoQueue()" (click)="drillOutcome('needs_review')" title="needs review"></button>
+            <button type="button" style="border: 0; padding: 0; background: var(--handoff); cursor: pointer" [style.width]="segmentWidth(countOf(byOutcome, 'risk_acceptance_required'), v.total_findings)" [disabled]="!canDrillIntoQueue()" (click)="drillOutcome('risk_acceptance_required')" title="risk acceptance"></button>
+          </div>
+          <div style="display: flex; gap: 14px; margin-top: 12px; font-size: 11px; color: var(--fg-secondary); flex-wrap: wrap">
+            <span>■ {{ countOf(byOutcome, 'not_affected') }} not affected</span>
+            <span style="color: var(--outcome-affected)">■ {{ countOf(byOutcome, 'affected') }} affected</span>
+            <span style="color: var(--outcome-review)">■ {{ countOf(byOutcome, 'needs_review') }} needs review</span>
+            <span style="color: var(--handoff)">■ {{ countOf(byOutcome, 'risk_acceptance_required') }} risk acceptance</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head"><h2 class="card__title">Agreement rate per rule</h2><span style="font-size: 11px; color: var(--fg-muted)">the trust metric</span></div>
+      <div class="card__body" style="display: grid; gap: 12px">
+        @if (agreement().status === 'loading') {
+          <span class="skeleton" style="width: 100%"></span>
+          <span class="skeleton" style="width: 80%"></span>
+        } @else if (agreement().status === 'error') {
+          <div class="callout callout--warning" role="alert">
+            <span class="callout__title">Could not load agreement</span><span>{{ agreement().error }}</span>
+            <span><button type="button" class="link-btn" (click)="retryAgreement()">Retry</button></span>
+          </div>
+        } @else if ((agreement().data?.rules ?? []).length === 0) {
+          <p style="margin: 0; font-size: 13px; color: var(--fg-muted)">No rules have cleared anything in this window yet.</p>
+        } @else {
+          @for (r of agreement().data!.rules!; track r.rule_id) {
+            <div style="display: grid; gap: 4px">
+              <div style="display: flex; align-items: baseline; gap: 8px">
+                @if (canDrillIntoQueue()) {
+                  <button type="button" class="link-btn" style="font-family: var(--font-mono); font-size: 11px; text-decoration: none" (click)="drillTier(r.tier)">{{ r.rule_id }}</button>
+                } @else {
+                  <span style="font-family: var(--font-mono); font-size: 11px; color: var(--fg-secondary)">{{ r.rule_id }}</span>
+                }
+                <span style="margin-left: auto; font-family: var(--font-mono); font-size: 12px; font-weight: 600">{{ formatPercent(r.agreement_rate) }}</span>
+              </div>
+              <div class="progress"><div class="progress__fill" [style.width]="percentWidth(r.agreement_rate)" [style.background]="r.below_bar ? 'var(--warning)' : null"></div></div>
+              @if (r.below_bar) {
+                <span style="font-size: 11px; color: var(--warning); font-weight: 600">below its bar — auto-determination suspended</span>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== Outcome mix + Expiry ============================== -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+    <div class="card">
+      <div class="card__head"><h2 class="card__title">Outcome mix by application</h2></div>
+      <div class="card__body" style="display: grid; gap: 12px">
+        @if (outcomeMix().status === 'loading') {
+          <span class="skeleton" style="width: 100%"></span>
+        } @else if (outcomeMix().status === 'error') {
+          <div class="callout callout--warning" role="alert">
+            <span class="callout__title">Could not load outcome mix</span><span>{{ outcomeMix().error }}</span>
+            <span><button type="button" class="link-btn" (click)="retryOutcomeMix()">Retry</button></span>
+          </div>
+        } @else if ((outcomeMix().data?.by_application ?? []).length === 0) {
+          <p style="margin: 0; font-size: 13px; color: var(--fg-muted)">No determinations in this window yet.</p>
+        } @else {
+          @for (m of outcomeMix().data!.by_application!; track m.application_id) {
+            @let total = m.not_affected + m.affected + m.risk_acceptance_required;
+            <div style="display: grid; gap: 4px">
+              <div style="display: flex; font-size: 12px">
+                @if (canDrillIntoQueue()) {
+                  <button type="button" class="link-btn" style="text-decoration: none" (click)="drillApplication(m.application_id)">{{ m.application_id }}</button>
+                } @else {
+                  <span>{{ m.application_id }}</span>
+                }
+                <span style="margin-left: auto; font-family: var(--font-mono); color: var(--fg-muted)">{{ total }} determined</span>
+              </div>
+              <div style="display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--bg-surface-2)">
+                <div style="background: var(--outcome-clear)" [style.width]="segmentWidth(m.not_affected, total)"></div>
+                <div style="background: var(--outcome-affected)" [style.width]="segmentWidth(m.affected, total)"></div>
+                <div style="background: var(--handoff)" [style.width]="segmentWidth(m.risk_acceptance_required, total)"></div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head"><h2 class="card__title">Determination expiry</h2><span style="font-size: 11px; color: var(--fg-muted)">next 7 days</span></div>
+      <div class="card__body" style="display: grid; gap: 10px">
+        @if (expiry().status === 'loading') {
+          <span class="skeleton" style="width: 100%"></span>
+        } @else if (expiry().status === 'error') {
+          <div class="callout callout--warning" role="alert">
+            <span class="callout__title">Could not load expiry</span><span>{{ expiry().error }}</span>
+            <span><button type="button" class="link-btn" (click)="retryExpiry()">Retry</button></span>
+          </div>
+        } @else {
+          <div style="display: flex; align-items: baseline; gap: 10px">
+            <span class="expiry expiry--near">lapsing within 7 days</span>
+            <span style="margin-left: auto; font-family: var(--font-display); font-size: 22px; font-weight: 600">{{ expiry().data?.lapsing_within_7_days ?? 0 }}</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px">
+            <span class="expiry expiry--lapsed">already lapsed</span>
+            <span style="margin-left: auto; font-family: var(--font-display); font-size: 22px; font-weight: 600">{{ expiry().data?.already_expired ?? 0 }}</span>
+          </div>
+          <p style="margin: 4px 0 0; font-size: 12px; color: var(--fg-muted)">
+            Determinations are never auto-renewed, so each of these becomes a reassessment the requester has to raise. No
+            per-assessment drill-through exists for these two numbers — see the task report.
+          </p>
+        }
+      </div>
+    </div>
+  </div>
+</div>

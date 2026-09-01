@@ -397,11 +397,55 @@ async function main() {
   }
 
   console.log('\nGET /api/risk-acceptance — RiskAcceptanceRow[]');
+  const riskManager = await login('riskmgr1', PASSWORD);
   {
-    const riskManager = await login('riskmgr1', PASSWORD);
     const res = await api('/api/risk-acceptance', { cookie: riskManager.cookie });
     ok('200', res.status === 200);
     ok('is an array', Array.isArray(res.body));
+    ok(
+      'every row matches RiskAcceptanceRow (never a determination shape)',
+      res.body.every((r) => hasKeys(r, ['finding_id', 'assessment_id', 'application_id', 'cve', 'purl', 'reason', 'escalation', 'affected_applications_count', 'age_hours', 'status'])),
+    );
+
+    // --- Task 5: [8] Risk Acceptance Queue — hand-off status write + the
+    // package download, against whatever real RISK_ACCEPTANCE_REQUIRED row
+    // this environment currently has (seeded or freshly raised).
+    const target = res.body[0];
+    if (!target) {
+      console.log('  skip - no RISK_ACCEPTANCE_REQUIRED finding exists in this environment yet');
+    } else {
+      console.log('\nPUT /api/risk-acceptance/{id}/status — an auditor (view-only) is refused (403)');
+      const auditorForRisk = await login('auditor1', PASSWORD);
+      const auditorWrite = await api(`/api/risk-acceptance/${target.finding_id}/status`, {
+        cookie: auditorForRisk.cookie,
+        method: 'PUT',
+        body: { status: 'accepted' },
+      });
+      ok('403 — VIEW_RISK_ACCEPTANCE (auditor) is not MANAGE_RISK_ACCEPTANCE', auditorWrite.status === 403);
+
+      console.log('\nPUT /api/risk-acceptance/{id}/status — the risk manager\'s own hand-off write round-trips');
+      const restore = target.status;
+      const next = restore === 'with_risk_manager' ? 'awaiting_hand_off' : 'with_risk_manager';
+      const written = await api(`/api/risk-acceptance/${target.finding_id}/status`, {
+        cookie: riskManager.cookie,
+        method: 'PUT',
+        body: { status: next },
+      });
+      ok('200', written.status === 200);
+      ok('status actually changed', written.body.status === next);
+      ok('records who set it', written.body.status_updated_by === 'riskmgr1');
+      // Restore, so re-running this script is idempotent.
+      await api(`/api/risk-acceptance/${target.finding_id}/status`, { cookie: riskManager.cookie, method: 'PUT', body: { status: restore } });
+
+      console.log('\nGET /api/risk-acceptance/{id}/package — a downloadable, self-contained evidence document');
+      const pkg = await api(`/api/risk-acceptance/${target.finding_id}/package`, { cookie: riskManager.cookie });
+      ok('200', pkg.status === 200);
+      ok(
+        'the note explicitly says this is a hand-off, not a determination',
+        typeof pkg.body?.note === 'string' && /hand-off|not a determination/i.test(pkg.body.note),
+      );
+      ok('never uses the word "waiver" anywhere in the package', !/waiver/i.test(pkg.text));
+    }
   }
 
   console.log('\nGET /api/admin/rules — RuleOut[] discriminated union (Toggleable | Escalation | Pending)');
@@ -445,6 +489,58 @@ async function main() {
       body: { auto_determination_enabled: true },
     });
     ok('422 — the server enforces this, not the client (rule 3)', res.status === 422);
+  }
+
+  // --- Task 5: [9] Rules & Thresholds — the admin write paths the screen
+  // actually exercises: toggling a Tier 1/2 rule, editing its agreement
+  // bar, and the EPSS threshold's routing-difference count.
+  console.log('\nPUT /api/admin/rules/{id} — toggling a Tier 1/2 rule round-trips and is reflected on the next GET');
+  {
+    const before = (await api('/api/admin/rules', { cookie: adminCookie })).body.find((r) => r.rule_id === 't1-class-absent');
+    const flipped = await api('/api/admin/rules/t1-class-absent', {
+      cookie: adminCookie,
+      method: 'PUT',
+      body: { auto_determination_enabled: !before.auto_determination_enabled },
+    });
+    ok('200', flipped.status === 200);
+    ok('auto_determination_enabled actually flipped', flipped.body.auto_determination_enabled === !before.auto_determination_enabled);
+    const after = (await api('/api/admin/rules', { cookie: adminCookie })).body.find((r) => r.rule_id === 't1-class-absent');
+    ok('GET reflects the write', after.auto_determination_enabled === !before.auto_determination_enabled);
+    // Restore, so re-running this script (and every other check that
+    // depends on t1-class-absent auto-clearing findings) is idempotent.
+    await api('/api/admin/rules/t1-class-absent', { cookie: adminCookie, method: 'PUT', body: { auto_determination_enabled: before.auto_determination_enabled } });
+  }
+
+  console.log('\nPUT /api/admin/rules/{id} — agreement_bar round-trips');
+  {
+    const res = await api('/api/admin/rules/t1-class-absent', { cookie: adminCookie, method: 'PUT', body: { agreement_bar: 0.77 } });
+    ok('200', res.status === 200);
+    ok('agreement_bar set', res.body.agreement_bar === 0.77);
+  }
+
+  console.log('\nPUT /api/admin/rules/t3-epss — epss_hard_block_threshold names a routing_difference_count (the "blast radius")');
+  {
+    const res = await api('/api/admin/rules/t3-epss', { cookie: adminCookie, method: 'PUT', body: { epss_hard_block_threshold: 0.25 } });
+    ok('200', res.status === 200);
+    ok('epss_hard_block_threshold set', res.body.epss_hard_block_threshold === 0.25);
+    ok(
+      'routing_difference_count is a number, not null — this is the only way the backend computes it (see the task report: no dry-run endpoint exists)',
+      typeof res.body.routing_difference_count === 'number',
+    );
+
+    const wrongRule = await api('/api/admin/rules/t1-class-absent', {
+      cookie: adminCookie,
+      method: 'PUT',
+      body: { epss_hard_block_threshold: 0.3 },
+    });
+    ok('epss_hard_block_threshold is refused on any rule other than t3-epss (422)', wrongRule.status === 422);
+  }
+
+  console.log('\nPUT /api/admin/rules/{id} — a non-admin (e.g. auditor) is refused (403)');
+  {
+    const auditorForAdmin = await login('auditor1', PASSWORD);
+    const res = await api('/api/admin/rules/t1-class-absent', { cookie: auditorForAdmin.cookie, method: 'PUT', body: { agreement_bar: 0.5 } });
+    ok('403 — MANAGE_RULES is admin-only', res.status === 403);
   }
 
   console.log('\nGET /api/dashboard/* — six panels');

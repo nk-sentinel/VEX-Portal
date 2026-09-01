@@ -1,0 +1,176 @@
+<div class="page">
+  <div class="page__head">
+    <div>
+      <p class="eyebrow">Administration</p>
+      <h1>Rules &amp; Thresholds</h1>
+      <p class="sub">Tier 3 rules have no auto-determination capability, so they carry no toggle — not even a disabled one.</p>
+    </div>
+  </div>
+
+  @if (pageState() === 'error') {
+    <div class="callout callout--warning" role="alert">
+      <span class="callout__title">Could not load the rule registry</span>
+      <span>{{ loadErrorMessage() }}</span>
+      <span><button type="button" class="link-btn" (click)="retry()">Retry</button></span>
+    </div>
+  } @else if (pageState() === 'loading') {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Rule</th><th>Tier</th><th>Version</th><th>Auto-determination</th><th>Agreement</th><th>30-day volume</th></tr></thead>
+        <tbody>
+          @for (sk of [1, 2, 3, 4]; track sk) {
+            <tr>@for (c of [1, 2, 3, 4, 5, 6]; track c) { <td><span class="skeleton" style="width: 70px"></span></td> }</tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (pageState() === 'empty') {
+    <div class="card" style="padding: 48px; text-align: center">
+      <p style="margin: 0; font-size: 18px; font-weight: 600">No rules are registered.</p>
+    </div>
+  } @else {
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rule</th><th style="width: 70px">Tier</th><th style="width: 64px">Version</th>
+            <th style="width: 190px">Auto-determination</th><th style="width: 210px">Agreement</th>
+            <th style="width: 110px">30-day volume</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (rule of registered(); track rule.rule_id) {
+            <tr class="row">
+              <td class="mono" style="font-weight: 600; font-size: 13px">{{ rule.rule_id }}</td>
+              <td><span [class]="tierBadgeClass(rule.tier)">{{ tierLabel(rule.tier) }}</span></td>
+              <td class="mono" style="font-size: 12px; color: var(--fg-secondary)">{{ rule.version }}</td>
+              <td>
+                @if (isToggleable(rule)) {
+                  <button
+                    type="button"
+                    class="chip"
+                    [class.is-active]="rule.auto_determination_enabled"
+                    [disabled]="togglingId() === rule.rule_id"
+                    (click)="toggleAuto(rule)"
+                  >
+                    {{ rule.auto_determination_enabled ? 'enabled' : 'disabled' }}
+                  </button>
+                  @if (rule.auto_suspended) {
+                    <div style="font-size: 11px; color: var(--warning); font-weight: 600; margin-top: 4px">
+                      below its bar — auto-suspended
+                    </div>
+                  }
+                } @else {
+                  <!-- Tier 3: structurally no toggle element at all — see this component's class docstring. -->
+                  <span style="font-size: 11px; color: var(--fg-muted); font-style: italic">no auto-determination capability</span>
+                }
+                @if (rowError()[rule.rule_id]; as msg) {
+                  <div style="font-size: 11px; color: var(--danger); margin-top: 4px">{{ msg }}</div>
+                }
+              </td>
+              <td>
+                @if (isToggleable(rule)) {
+                  <div style="display: grid; gap: 4px">
+                    <div style="display: flex; gap: 8px; font-size: 12px; align-items: center">
+                      <span style="font-family: var(--font-mono); font-weight: 600">{{ formatPercent(rule.agreement_rate) }}</span>
+                      <span style="color: var(--fg-muted)">bar</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        [ngModel]="barDraft(rule.rule_id)"
+                        (ngModelChange)="setBarDraft(rule.rule_id, $event)"
+                        style="width: 60px; padding: 1px 4px; font-size: 12px"
+                        [attr.aria-label]="'agreement bar for ' + rule.rule_id"
+                      />
+                      @if (barDirty(rule)) {
+                        <button type="button" class="link-btn" [disabled]="barSavingId() === rule.rule_id" (click)="saveBar(rule)">save</button>
+                      }
+                    </div>
+                    <div class="progress"><div class="progress__fill" [style.width]="percentWidth(rule.agreement_rate)" [style.background]="rule.auto_suspended ? 'var(--warning)' : null"></div></div>
+                  </div>
+                } @else {
+                  <span style="font-family: var(--font-mono); font-size: 12px; color: var(--fg-muted)">n/a — escalation only</span>
+                }
+              </td>
+              <td class="num">{{ rule.volume_30d }}</td>
+              <td>
+                <button type="button" class="link-btn" disabled title="Not available yet — no backend endpoint exists for per-rule version history.">
+                  History
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (pending().length > 0) {
+      <div class="card" style="border-color: var(--border-strong)">
+        <div class="card__head">
+          <h2 class="card__title">Unregistered rules</h2>
+          <span style="font-size: 11px; color: var(--fg-muted)">no evidence source exists yet — deliberately parked, not broken</span>
+        </div>
+        <div class="card__body" style="display: grid; gap: 10px">
+          @for (rule of pending(); track rule.rule_id) {
+            <div style="display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap">
+              <span class="mono" style="font-family: var(--font-mono); font-weight: 600; font-size: 13px">{{ rule.rule_id }}</span>
+              <span class="tier-badge" style="background: var(--bg-surface-2); color: var(--fg-muted)">UNREGISTERED</span>
+              <span style="font-size: 12px; color: var(--fg-secondary)">{{ rule.reason }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+      <div class="card">
+        <div class="card__head"><h2 class="card__title">Escalation triggers</h2></div>
+        <div class="card__body" style="display: grid; gap: 14px">
+          <div class="callout callout--warning">
+            <span class="callout__title">No preview endpoint exists</span>
+            <span>
+              Saving is the only way this backend can compute how many findings would route differently — there is no
+              dry-run. The impact below appears immediately AFTER you save, not before, and saving writes a real audit
+              entry. See the task report for the recommended fix.
+            </span>
+          </div>
+          <label class="field">
+            <span class="field-label">EPSS routing threshold ({{ EPSS_RULE_ID }})</span>
+            <input type="number" step="0.01" min="0" max="1" [ngModel]="epssDraft()" (ngModelChange)="epssDraft.set($event)" />
+            <span class="field__help">Above this, a finding routes to a human regardless of tier 1 and tier 2 evidence.</span>
+          </label>
+          @if (epssResult(); as diff) {
+            <div class="callout callout--info">
+              <span class="callout__title">Saved</span>
+              <span>{{ diff }} of the last 30 days' findings would have routed differently under this threshold.</span>
+            </div>
+          }
+          @if (epssError(); as msg) {
+            <p class="form-error" role="alert">{{ msg }}</p>
+          }
+          <div style="display: flex; gap: 8px">
+            <button type="button" class="btn btn--primary btn--sm" [disabled]="!epssCanSave()" (click)="saveEpssThreshold()">
+              {{ epssSaving() ? 'Saving…' : 'Save threshold' }}
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" (click)="resetEpssDraft()">Reset</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__head"><h2 class="card__title">Why Tier 3 has no toggle</h2></div>
+        <div class="card__body" style="display: grid; gap: 10px; font-size: 13px; line-height: 1.6; color: var(--fg-secondary)">
+          <p style="margin: 0">
+            Tier 3 evidence — CVSS vector, EPSS, KEV, exposure — may raise severity or route a finding to a human. It may
+            never clear one. That is enforced in the domain layer, not by reviewer discipline.
+          </p>
+          <p style="margin: 0">
+            A greyed-out toggle would imply the capability exists and is merely switched off, so the control is absent
+            instead.
+          </p>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -76,19 +76,19 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         canActivate: [capabilityGuard('view_dashboard')],
-        loadComponent: () => import('./core/shell/route-stub').then((m) => m.RouteStub),
+        loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
         data: { title: 'Dashboard' },
       },
       {
         path: 'risk-acceptance',
         canActivate: [capabilityGuard('view_risk_acceptance')],
-        loadComponent: () => import('./core/shell/route-stub').then((m) => m.RouteStub),
+        loadComponent: () => import('./features/risk/risk-queue').then((m) => m.RiskQueue),
         data: { title: 'Risk Acceptance Queue' },
       },
       {
         path: 'admin/rules',
         canActivate: [capabilityGuard('manage_rules')],
-        loadComponent: () => import('./core/shell/route-stub').then((m) => m.RouteStub),
+        loadComponent: () => import('./features/admin/rules-admin').then((m) => m.RulesAdmin),
         data: { title: 'Rules & Thresholds' },
       },
       // Unknown path inside the shell -> back through the landing redirect,

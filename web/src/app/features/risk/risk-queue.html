@@ -1,0 +1,123 @@
+<div style="position: relative; min-height: 100%" [class.has-drawer]="openFindingId() !== null">
+  <div class="page">
+    <div class="page__head">
+      <div>
+        <p class="eyebrow">Risk acceptance · hand-off</p>
+        <h1>{{ rows().length }} finding{{ rows().length === 1 ? '' : 's' }} left the portal</h1>
+        <p class="sub">No fix exists for these. None received a determination.</p>
+      </div>
+    </div>
+
+    <div class="callout callout--handoff">
+      <span class="callout__title">These are not determinations</span>
+      <span>
+        Every Nexus IQ violation below is still open, and the portal does not enforce the outcome. Status is set by hand
+        and tracks only the point at which the evidence package left the portal.
+      </span>
+    </div>
+
+    @if (!canOpenDrawer()) {
+      <p style="margin: 0; font-size: 12px; color: var(--fg-muted)">
+        Your role cannot open the evidence drawer from this queue — use "Package" below to see the underlying evidence.
+      </p>
+    }
+
+    @if (saveError(); as msg) {
+      <div class="callout callout--warning" role="alert">
+        <span class="callout__title">Could not update the hand-off status</span><span>{{ msg }}</span>
+      </div>
+    }
+
+    @if (pageState() === 'error') {
+      <div class="callout callout--warning" role="alert">
+        <span class="callout__title">Could not load the risk acceptance queue</span>
+        <span>{{ loadErrorMessage() }}</span>
+        <span><button type="button" class="link-btn" (click)="retry()">Retry</button></span>
+      </div>
+    } @else if (pageState() === 'loading') {
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Application</th><th>CVE</th><th>Component</th><th>Why no fix</th><th>Signals</th>
+              <th>Apps</th><th>Age</th><th>Hand-off</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sk of [1, 2, 3]; track sk) {
+              <tr>
+                @for (col of [1, 2, 3, 4, 5, 6, 7, 8, 9]; track col) {
+                  <td><span class="skeleton" style="width: 70px"></span></td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (pageState() === 'empty') {
+      <div class="card" style="padding: 48px; text-align: center">
+        <p style="margin: 0; font-size: 18px; font-weight: 600">Nothing is waiting on a risk decision.</p>
+        <p style="margin: 8px 0 0; font-size: 14px; color: var(--fg-secondary)">
+          Every open finding either has a fix path or already received a determination.
+        </p>
+      </div>
+    } @else {
+      <div class="data-table-wrap">
+        <table class="data-table" [class.data-table--clickable]="canOpenDrawer()">
+          <thead>
+            <tr>
+              <th>Application</th><th>CVE</th><th>Component</th><th>Why no fix</th><th style="width: 170px">Signals</th>
+              <th style="width: 50px">Apps</th><th style="width: 56px">Age</th><th style="width: 170px">Hand-off</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.finding_id) {
+              <tr class="row is-handoff" [class.is-open]="openFindingId() === row.finding_id" (click)="openRow(row.finding_id)">
+                <td>{{ row.application_id }}</td>
+                <td class="mono" style="font-weight: 600">{{ row.cve }}</td>
+                <td class="mono" style="font-size: 12px; color: var(--fg-secondary)">{{ row.purl }}</td>
+                <td style="font-size: 12px; color: var(--fg-secondary); max-width: 280px">{{ row.reason }}</td>
+                <td style="font-family: var(--font-mono); font-size: 11px; color: var(--signal-label)">
+                  CVSS {{ row.escalation.cvss_base_score ?? '—' }} · EPSS {{ row.escalation.epss ?? '—' }} ·
+                  {{ row.escalation.kev ? 'KEV' : 'not KEV' }}
+                </td>
+                <td class="num">{{ row.affected_applications_count }}</td>
+                <td class="num" style="font-size: 12px; color: var(--fg-secondary)">{{ formatAge(row.age_hours) }}</td>
+                <td (click)="$event.stopPropagation()">
+                  @if (canManage()) {
+                    <select
+                      [ngModel]="row.status"
+                      (ngModelChange)="updateStatus(row, $event)"
+                      [disabled]="savingId() === row.finding_id"
+                      [attr.aria-label]="'hand-off status for ' + row.cve"
+                      style="font-size: 12px; padding: 2px 4px"
+                    >
+                      @for (status of HANDOFF_ORDER; track status) {
+                        <option [value]="status">{{ HANDOFF_META[status].icon }} {{ HANDOFF_META[status].label }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <span [style.color]="HANDOFF_META[row.status].color" style="font-size: 12px; font-weight: 600">
+                      {{ HANDOFF_META[row.status].icon }} {{ HANDOFF_META[row.status].label }}
+                    </span>
+                  }
+                </td>
+                <td (click)="$event.stopPropagation()">
+                  <a class="btn btn--handoff btn--sm" [href]="packageUrl(row.finding_id)">↗ Package</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; font-size: 12px; color: var(--fg-muted)">
+        There is no integration with the GRC system. This is a deliberate hand-off, tracked only to the point of leaving
+        the portal.
+      </p>
+    }
+  </div>
+
+  @if (openFindingId(); as id) {
+    <app-evidence-drawer [findingId]="id" [readOnly]="true" (closed)="closeDrawer()" />
+  }
+</div>
