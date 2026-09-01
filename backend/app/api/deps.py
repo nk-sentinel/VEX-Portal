@@ -30,6 +30,13 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import Depends, HTTPException, Request, status
 
+from app.adapters.factory import (
+    get_adjudicator,
+    get_artifact_store,
+    get_iq_client,
+    get_source_repository,
+)
+from app.adapters.protocols import Adjudicator, ArtifactStore, IqClient, SourceRepository
 from app.config import Settings, get_settings
 from app.middleware.session import SESSION_COOKIE_NAME, SessionData, read_session_cookie
 from app.services.authorization import Capability, has_capability
@@ -74,4 +81,39 @@ def requires(capability: Capability) -> Callable[..., Awaitable[SessionData]]:
     return _dependency
 
 
-__all__ = ["get_current_session", "requires"]
+#: Zero-argument dependency wrappers around ``app/adapters/factory.py``'s
+#: adapter builders. ``app.adapters.factory.get_iq_client`` and its siblings
+#: each take an *optional* ``settings`` parameter so they double as plain
+#: functions elsewhere in the codebase — but that same optional parameter
+#: makes them unsafe to pass to FastAPI's ``Depends`` directly: FastAPI
+#: introspects every parameter of a dependency callable, and a bare
+#: ``settings: Settings | None = None`` (``Settings`` is a Pydantic model)
+#: would be treated as a request body/query field to resolve, not as "call
+#: this with no arguments". Wrapping each in a genuinely zero-argument
+#: function removes the ambiguity, and doing it once here (rather than in
+#: every route module that needs an adapter) is the one place a future
+#: adapter gets the same treatment.
+def get_iq_client_dep() -> IqClient:
+    return get_iq_client()
+
+
+def get_artifact_store_dep() -> ArtifactStore:
+    return get_artifact_store()
+
+
+def get_source_repository_dep() -> SourceRepository:
+    return get_source_repository()
+
+
+def get_adjudicator_dep() -> Adjudicator:
+    return get_adjudicator()
+
+
+__all__ = [
+    "get_adjudicator_dep",
+    "get_artifact_store_dep",
+    "get_current_session",
+    "get_iq_client_dep",
+    "get_source_repository_dep",
+    "requires",
+]

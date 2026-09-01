@@ -475,6 +475,49 @@ class AuditEntry(Base, kw_only=True):
     created_at: Mapped[datetime] = mapped_column(default_factory=_now)
 
 
+class RuleConfig(Base, kw_only=True):
+    """Admin-set overrides for one registered rule's auto-determination
+    behaviour and thresholds (``docs/design/ui-spec.md`` screen 9, "Rules &
+    Thresholds").
+
+    No row for a rule means "the rule's built-in default applies" — this
+    table holds overrides only, so a rule freshly added to
+    ``app/rules/registry.py`` needs no backfill here.
+
+    **Tier 3 rules must never carry ``auto_determination_enabled=True``.**
+    Tier 3 (ESCALATION) evidence can never justify a clear (CLAUDE.md rule
+    2), so "auto-determination" has no meaning for it — a Tier 3 rule has no
+    toggle at all, absent rather than disabled (task-6 brief). That
+    invariant is enforced at the API boundary (``app/api/admin.py``), not by
+    a CHECK constraint here: validating "which rule ids are Tier 3" needs
+    the rule registry (``app/rules/registry.py``), and this module must not
+    import it — ``app/rules/engine.py`` already imports *from* this module
+    (``FindingOutcome``), so a reverse import would be a cycle.
+    """
+
+    __tablename__ = "rule_config"
+
+    rule_id: Mapped[str] = mapped_column(primary_key=True)
+
+    #: Only meaningful for a Tier 1/2 rule id — see class docstring. Whether
+    #: this rule's own SATISFIED-with-justification result may propose
+    #: clearing a finding automatically.
+    auto_determination_enabled: Mapped[bool] = mapped_column(default=True)
+
+    #: The minimum agreement rate (0-1) this rule must hold against human
+    #: review before it auto-suspends ("A rule below its agreement bar shows
+    #: as auto-suspended"). None = no bar configured.
+    agreement_bar: Mapped[float | None] = mapped_column(default=None)
+
+    #: Rule-specific threshold overrides, e.g. ``{"epss_hard_block": 0.1}``
+    #: for ``t3-epss`` — generic JSON rather than a dedicated column per
+    #: rule, so a new threshold-bearing rule needs no migration.
+    thresholds_json: Mapped[dict[str, Any]] = mapped_column(JSON, default_factory=dict)
+
+    updated_at: Mapped[datetime] = mapped_column(default_factory=_now)
+    updated_by: Mapped[str | None] = mapped_column(default=None)
+
+
 @event.listens_for(Session, "before_flush")
 def _block_audit_mutation(session: Session, _ctx: object, _instances: object) -> None:
     """An audit row that can be edited is not an audit trail.
