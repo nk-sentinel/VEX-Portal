@@ -44,6 +44,17 @@ _NETWORK_VECTOR = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
 # Same base score, but exploitation requires local access — must NOT block.
 _LOCAL_VECTOR = "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
 
+# Tier3Signals.kev/fix_available default to None ("unknown") since fix round
+# 2, and unknown KEV is itself a hard blocker — so a bare Tier3Signals() no
+# longer means "nothing blocks" the way it did before that change. Tests in
+# this file whose point is the tier-safety property or a *different*
+# blocker, not KEV/fix status, use this explicit, positively-confirmed-safe
+# Tier3Signals instead of relying on the default. See TestHardBlockers'
+# test_no_signals_at_all_blocks_nothing and
+# TestHardBlockers.test_unknown_kev_blocks_even_with_nothing_else_looked_up
+# for the tests that exist specifically to pin the *new* default behaviour.
+_BLOCKER_FREE_SIGNALS = Tier3Signals(kev=False, fix_available=True)
+
 
 @dataclass(frozen=True, slots=True)
 class AlwaysSatisfied:
@@ -148,7 +159,11 @@ class TestTierSafetyRule:
                 )
             ]
         )
-        outcome = engine.evaluate_component(PACK, COMPONENT)
+        # This test is about the tier-safety property, not Tier 3 signals —
+        # confirmed blocker-free explicitly. A bare Tier3Signals() now means
+        # "unknown" (fix round 2) and would block on kev alone, which is not
+        # what this test is checking.
+        outcome = engine.evaluate_component(PACK, COMPONENT, _BLOCKER_FREE_SIGNALS)
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
         assert outcome.tier is EvidenceTier.PROOF
         assert outcome.justification is Justification.CODE_NOT_PRESENT
@@ -162,7 +177,7 @@ class TestTierSafetyRule:
                 )
             ]
         )
-        outcome = engine.evaluate_component(PACK, COMPONENT)
+        outcome = engine.evaluate_component(PACK, COMPONENT, _BLOCKER_FREE_SIGNALS)
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
         assert outcome.requires_second_confirmation is True
 
@@ -205,7 +220,7 @@ class TestTierSafetyRule:
                 ),
             ]
         )
-        outcome = engine.evaluate_component(PACK, COMPONENT)
+        outcome = engine.evaluate_component(PACK, COMPONENT, _BLOCKER_FREE_SIGNALS)
         assert outcome.tier is EvidenceTier.PROOF
         assert outcome.justification is Justification.CODE_NOT_PRESENT
         assert outcome.requires_second_confirmation is False
@@ -279,7 +294,9 @@ class TestHardBlockers:
 
     def test_epss_below_threshold_does_not_block(self) -> None:
         engine = RuleEngine(self._CLEARING, epss_threshold=0.10)
-        outcome = engine.evaluate_component(PACK, COMPONENT, tier3_signals=Tier3Signals(epss=0.05))
+        outcome = engine.evaluate_component(
+            PACK, COMPONENT, tier3_signals=Tier3Signals(kev=False, epss=0.05)
+        )
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
         assert outcome.blocked_by == frozenset()
 
@@ -301,7 +318,7 @@ class TestHardBlockers:
         outcome = engine.evaluate_component(
             PACK,
             COMPONENT,
-            tier3_signals=Tier3Signals(cvss_base_score=9.8, cvss_vector=_LOCAL_VECTOR),
+            tier3_signals=Tier3Signals(kev=False, cvss_base_score=9.8, cvss_vector=_LOCAL_VECTOR),
         )
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
         assert "cvss" not in outcome.blocked_by
@@ -311,22 +328,44 @@ class TestHardBlockers:
         outcome = engine.evaluate_component(
             PACK,
             COMPONENT,
-            tier3_signals=Tier3Signals(cvss_base_score=8.9, cvss_vector=_NETWORK_VECTOR),
+            tier3_signals=Tier3Signals(
+                kev=False, cvss_base_score=8.9, cvss_vector=_NETWORK_VECTOR
+            ),
         )
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
 
     def test_missing_cvss_vector_does_not_block_on_score_alone(self) -> None:
         engine = RuleEngine(self._CLEARING)
         outcome = engine.evaluate_component(
-            PACK, COMPONENT, tier3_signals=Tier3Signals(cvss_base_score=9.9, cvss_vector=None)
+            PACK,
+            COMPONENT,
+            tier3_signals=Tier3Signals(kev=False, cvss_base_score=9.9, cvss_vector=None),
         )
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
 
     def test_no_signals_at_all_blocks_nothing(self) -> None:
+        # "No signals at all" here means every OTHER blocker input stays at
+        # its safe value (kev confirmed False) while epss/cvss/reachable are
+        # genuinely unlooked-up — this is about EPSS/CVSS/reachable not
+        # firing on absent data, which is a separate property from KEV's.
+        # See test_unknown_kev_blocks_even_with_nothing_else_looked_up below
+        # for the fix-round-2 counterpart: a truly bare Tier3Signals() DOES
+        # block, on kev alone.
         engine = RuleEngine(self._CLEARING)
-        outcome = engine.evaluate_component(PACK, COMPONENT)
+        outcome = engine.evaluate_component(PACK, COMPONENT, _BLOCKER_FREE_SIGNALS)
         assert outcome.blocked_by == frozenset()
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
+
+    def test_unknown_kev_blocks_even_with_nothing_else_looked_up(self) -> None:
+        """Fix round 2: Tier3Signals.kev now defaults to None ('unknown'),
+        not False, and unknown KEV is itself a hard blocker. A bare
+        Tier3Signals() — the shape a caller gets from constructing it with
+        nothing set, e.g. a degraded vuln-lookup response — must not read as
+        'nothing blocks' the way it used to."""
+        engine = RuleEngine(self._CLEARING)
+        outcome = engine.evaluate_component(PACK, COMPONENT, Tier3Signals())
+        assert outcome.blocked_by == frozenset({"kev"})
+        assert outcome.proposed is FindingOutcome.NEEDS_REVIEW
 
     def test_multiple_blockers_are_all_recorded(self) -> None:
         engine = RuleEngine(self._CLEARING)

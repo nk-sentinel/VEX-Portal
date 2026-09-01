@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from app.evidence.pack import ComponentEvidence, EvidencePack
 from app.provenance.fingerprint import FingerprintResult, Verdict
-from app.rules.engine import RuleVerdict, Tier3Signals
+from app.repos.models import FindingOutcome
+from app.rules.engine import RuleEngine, RuleVerdict, Tier3Signals
 from app.rules.registry import ACTIVE_RULES, PENDING_EVIDENCE
 from app.rules.tier1 import CveWithdrawn
 from app.rules.tier2 import GadgetAbsent, RuntimeImmune
@@ -42,10 +43,18 @@ _ANSWERABLE_COMPONENT = ComponentEvidence(
     reference_scan_conclusive=True,
 )
 
+# Deliberately confirmed-safe on every field, not just non-None: below the
+# engine's own hard-blocker thresholds (epss < 0.10, cvss score < 9.0) as
+# well as populated, so this fixture doubles as "answerable" evidence for
+# TestEveryActiveRuleCanAnswer AND as a genuine "would clear if nothing
+# blocked" case for TestBareSignalsMeanUnknown below — a version of this
+# fixture that tripped a hard blocker would make that second use silently
+# wrong without ever failing TestEveryActiveRuleCanAnswer (which does not
+# route through RuleEngine and so never sees blocked_by at all).
 _ANSWERABLE_SIGNALS = Tier3Signals(
     kev=False,
-    epss=0.5,
-    cvss_base_score=9.8,
+    epss=0.01,
+    cvss_base_score=4.0,
     cvss_vector="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
     reachable_with_call_path=False,
     fix_available=True,
@@ -97,3 +106,30 @@ class TestEveryActiveRuleCanAnswer:
         for rule in pending_rules:
             result = rule.evaluate(_ANSWERABLE_PACK, _ANSWERABLE_COMPONENT, _ANSWERABLE_SIGNALS)
             assert result.verdict is RuleVerdict.UNANSWERABLE
+
+
+class TestBareSignalsMeanUnknown:
+    """Fix round 2's pinned test. ``_ANSWERABLE_COMPONENT`` (class_present is
+    False) is exactly the shape ``t1-class-absent`` would otherwise clear on
+    its own — this test proves that a bare ``Tier3Signals()`` (no KEV/fix
+    lookup performed, as a degraded feed or a too-new CVE would produce)
+    does not silently let that clear through."""
+
+    def test_bare_signals_mean_unknown_and_therefore_block_an_automatic_clear(self) -> None:
+        # Constructing Tier3Signals with nothing known must not assert "not
+        # KEV". A degraded feed or a CVE too new to be scored produces
+        # exactly this shape, and treating it as safe re-enables
+        # auto-clearing for the vulnerabilities most likely to be exploited.
+        engine = RuleEngine(ACTIVE_RULES)
+
+        # Sanity check: this component really would otherwise clear, so the
+        # assertion below is proving something, not vacuously true.
+        clears_when_confirmed_safe = engine.evaluate_component(
+            _ANSWERABLE_PACK, _ANSWERABLE_COMPONENT, _ANSWERABLE_SIGNALS
+        )
+        assert clears_when_confirmed_safe.proposed is FindingOutcome.NOT_AFFECTED
+
+        outcome = engine.evaluate_component(
+            _ANSWERABLE_PACK, _ANSWERABLE_COMPONENT, Tier3Signals()
+        )
+        assert outcome.proposed is FindingOutcome.NEEDS_REVIEW

@@ -70,16 +70,16 @@ class TestKev:
         assert result.verdict is RuleVerdict.UNANSWERABLE
         assert result.justification is None
 
-    def test_default_tier3_signals_still_has_kev_false_not_unknown(self) -> None:
-        """The bare Tier3Signals() default was deliberately left at kev=False
-        (unchanged) rather than moved to kev=None, so a caller that omits
-        tier3_signals entirely still gets RuleEngine's documented
-        blocker-free outcome — only a caller that positively knows the
-        lookup resolved to 'unknown' should pass kev=None explicitly. See
-        Tier3Signals' own docstring for the judgment call this encodes."""
+    def test_bare_tier3_signals_defaults_kev_to_unknown(self) -> None:
+        """Fix round 2: the bare Tier3Signals() default moved from kev=False
+        to kev=None. Constructing Tier3Signals with nothing set means 'I
+        know nothing about KEV status for this CVE' — not 'confirmed not
+        KEV' — so a caller that forgets to set kev (e.g. because the vuln
+        lookup response omitted the field) gets an honest UNANSWERABLE
+        rather than a silently permissive NOT_SATISFIED."""
         rule = Kev()
         result = rule.evaluate(PACK, COMPONENT, Tier3Signals())
-        assert result.verdict is RuleVerdict.NOT_SATISFIED
+        assert result.verdict is RuleVerdict.UNANSWERABLE
 
 
 class TestEpss:
@@ -171,12 +171,12 @@ class TestNoFixAvailable:
         assert result.verdict is RuleVerdict.UNANSWERABLE
         assert result.justification is None
 
-    def test_default_tier3_signals_still_has_fix_available_true_not_unknown(self) -> None:
-        """Mirrors t3-kev's equivalent test: the bare Tier3Signals() default
-        was deliberately left at fix_available=True (unchanged)."""
+    def test_bare_tier3_signals_defaults_fix_available_to_unknown(self) -> None:
+        """Fix round 2: mirrors t3-kev's equivalent test — the bare
+        Tier3Signals() default moved from fix_available=True to None."""
         rule = NoFixAvailable()
         result = rule.evaluate(PACK, COMPONENT, Tier3Signals())
-        assert result.verdict is RuleVerdict.NOT_SATISFIED
+        assert result.verdict is RuleVerdict.UNANSWERABLE
 
     def test_never_a_determination_structurally(self) -> None:
         """This rule never sets a justification even when SATISFIED, so it

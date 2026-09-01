@@ -215,38 +215,46 @@ class Tier3Signals:
     against — each of those rules reads its field here and reports
     SATISFIED/NOT_SATISFIED/UNANSWERABLE at tier ESCALATION accordingly.
 
-    Every field defaults to the "nothing known" state (no blocker implied),
-    so a caller that has not looked up vuln enrichment yet gets a
-    blocker-free outcome rather than a crash — ``epss``/``cvss_base_score``
-    default to ``None``, never ``0``/coerced-false, so "not looked up" is
-    never silently read as "does not block".
+    Every field defaults to the "nothing known" state — ``epss``,
+    ``cvss_base_score``, ``cvss_vector``, ``kev``, and ``fix_available`` all
+    default to ``None``, never a coerced value, so "not looked up" is never
+    silently read as "does not block" (or, for ``fix_available``, "a fix
+    exists"). Constructing a bare ``Tier3Signals()`` therefore means "I know
+    nothing about this CVE's KEV/EPSS/CVSS/fix status" — which is honest,
+    and honest here means the finding routes to a human, not that it clears.
 
     **``kev``/``fix_available`` are a tri-state ``bool | None``, not a plain
-    ``bool`` — fixed in Task 2/3/4's review round.** ``None`` means "unknown":
-    the vuln lookup for this CVE either was not performed or the KEV/fix
-    portion of it failed. This is deliberately distinct from a confirmed
-    ``False``, for the same reason ``epss``/``cvss_base_score`` are
-    ``Optional`` rather than defaulting to ``0``: a caller that read a
+    ``bool`` — fixed across Task 2/3/4's review rounds.** ``None`` means
+    "unknown": the vuln lookup for this CVE either was not performed or the
+    KEV/fix portion of it failed. This is deliberately distinct from a
+    confirmed ``False``, for the same reason ``epss``/``cvss_base_score``
+    are ``Optional`` rather than defaulting to ``0``: a caller that read a
     broken or unavailable KEV feed as plain ``False`` would have a silent
     failure present itself as a safe answer — "we could not check KEV" and
     "this is not on KEV" are different facts, and confusing them is exactly
-    the failure mode this project has been fighting throughout. Unlike
-    ``epss``/``cvss_base_score``, the *default* value of ``kev`` and
-    ``fix_available`` is intentionally left at their pre-existing safe
-    constants (``False``/``True``) rather than changed to ``None`` — an
-    omitted ``Tier3Signals`` (the "no vuln enrichment yet" case
-    ``RuleEngine.evaluate_component`` documents) stays blocker-free exactly
-    as before; only a caller that explicitly knows the KEV/fix lookup
-    resolved to "unknown" — as opposed to never having been attempted at all
-    — should construct ``Tier3Signals(kev=None)`` /
-    ``Tier3Signals(fix_available=None)``. Flagged as a judgment call in the
-    Task 2/3/4 report: the alternative (default ``None``, blocking by
-    default whenever ``Tier3Signals`` is omitted) is arguably more
-    consistent with "unknown must not read as false", but is a larger,
-    more invasive change than this fix round's scope.
+    the failure mode this project has been fighting throughout.
+
+    **Fix round 2: the field *defaults* also moved to ``None``** (round 1
+    had widened the type but deliberately left the defaults at their
+    pre-existing ``False``/``True`` constants — see the Task 2/3/4 report's
+    fix-round-1 section for that reasoning and why it was reconsidered).
+    Task 6 builds ``Tier3Signals`` from IQ's vulnerability lookup; a
+    response missing its KEV field (a degraded feed, a schema shift, a CVE
+    too new to be scored) naturally gets written as
+    ``Tier3Signals(epss=..., cvss_vector=...)``, leaving ``kev`` at its
+    default. With the old ``False`` default that construction silently
+    asserted "this is not a known-exploited vulnerability" — a claim
+    nobody made. With ``kev``/``fix_available`` defaulting to ``None``, that
+    same construction now honestly says "unknown", and
+    ``RuleEngine._hard_blockers`` (for ``kev``) / ``t3-no-fix-available``
+    (for ``fix_available``) treat it accordingly. A caller that has
+    positively confirmed the safe state must say so explicitly —
+    ``Tier3Signals(kev=False)`` / ``Tier3Signals(fix_available=True)`` — a
+    permissive outcome is never assumed by omission.
     """
 
-    kev: bool | None = False
+    #: None = "not looked up" (fix round 2 default; see class docstring).
+    kev: bool | None = None
 
     #: EPSS probability, 0-1. None means "not looked up".
     epss: float | None = None
@@ -269,7 +277,7 @@ class Tier3Signals:
     #: unlike ``kev``, ``None`` here ("unknown") does not add to
     #: ``blocked_by``; it only makes ``t3-no-fix-available`` report
     #: UNANSWERABLE. See the class docstring's tri-state note.
-    fix_available: bool | None = True
+    fix_available: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -27,26 +27,29 @@ determination service (Phase 4, Task 8), made by inspecting
 layer above this module's aggregation step. This rule's only job is to make
 that fact appear in the trace.
 
-**All four rules now support UNANSWERABLE (fix round 1).** ``Tier3Signals.kev``
-and ``fix_available`` were originally plain ``bool`` fields with safe
-defaults (``False``/``True``); Task 1's own reasoning for that shape was
-"nothing known" reading as "no blocker implied", which seemed like the safe
-direction because Tier 3 evidence can only ever escalate, never clear. The
-coordinator's fix round 1 review correctly identified the hazard that logic
-missed: a lookup that never ran (or a KEV feed outage) was indistinguishable
-from a lookup that positively confirmed the safe answer — "we could not
-check KEV" and "this is not on KEV" are different facts, and a rule that
-conflates them is a silent failure presenting as a safe answer. Both fields
-are now ``bool | None`` (``None`` = unknown); see ``Tier3Signals``'s own
-docstring for the full tri-state note, including why the field *default*
-was deliberately left unchanged (a judgment call flagged in the Task 2/3/4
-report). ``t3-kev`` and ``t3-no-fix-available`` now report UNANSWERABLE on
-``None`` exactly like ``t3-epss``/``t3-cvss-vector`` do on their own
-``Optional`` fields. The one remaining asymmetry: unknown KEV is also a
-hard *blocker* (``RuleEngine._hard_blockers`` treats ``kev is None`` the
-same as ``kev is True``) — "if we cannot establish KEV status, a human
-decides" — while unknown ``fix_available`` is not, matching
-``fix_available``'s pre-existing non-blocking role.
+**All four rules now support UNANSWERABLE (fix rounds 1-2).**
+``Tier3Signals.kev`` and ``fix_available`` were originally plain ``bool``
+fields with safe defaults (``False``/``True``); Task 1's own reasoning for
+that shape was "nothing known" reading as "no blocker implied", which
+seemed like the safe direction because Tier 3 evidence can only ever
+escalate, never clear. The coordinator's fix-round review correctly
+identified the hazard that logic missed: a lookup that never ran (or a KEV
+feed outage) was indistinguishable from a lookup that positively confirmed
+the safe answer — "we could not check KEV" and "this is not on KEV" are
+different facts, and a rule that conflates them is a silent failure
+presenting as a safe answer. Both fields are now ``bool | None`` (``None``
+= unknown, and ``None`` is also now the *default* — fix round 2 moved the
+bare-default value there too, after round 1 had widened only the type; see
+``Tier3Signals``'s own docstring for the full history). ``t3-kev`` and
+``t3-no-fix-available`` now report UNANSWERABLE on ``None`` exactly like
+``t3-epss``/``t3-cvss-vector`` do on their own ``Optional`` fields — and,
+since ``None`` is now the default, a bare ``Tier3Signals()`` makes every
+rule in this module UNANSWERABLE, not just the two that always were before
+round 1. The one remaining asymmetry: unknown KEV is also a hard *blocker*
+(``RuleEngine._hard_blockers`` treats ``kev is None`` the same as
+``kev is True``) — "if we cannot establish KEV status, a human decides" —
+while unknown ``fix_available`` is not, matching ``fix_available``'s
+pre-existing non-blocking role.
 """
 
 from __future__ import annotations

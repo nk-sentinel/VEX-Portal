@@ -91,10 +91,17 @@ class TestNotReferenced:
     def test_tier2_clear_always_requires_second_confirmation(self) -> None:
         """Integration-level check through the real RuleEngine: a Tier 2
         clear must always carry requires_second_confirmation — it is
-        defeasible evidence, not proof."""
+        defeasible evidence, not proof.
+
+        This test is about the tier-safety property, not KEV/fix status, so
+        it confirms those explicitly (kev=False, fix_available=True) rather
+        than relying on a bare Tier3Signals(), which — since fix round 2 —
+        means 'unknown' and would block on its own, confounding what this
+        test is checking."""
         engine = RuleEngine([NotReferenced()])
         component = _component(referenced=False, reference_scan_conclusive=True)
-        outcome = engine.evaluate_component(PACK, component, SIGNALS)
+        blocker_free_signals = Tier3Signals(kev=False, fix_available=True)
+        outcome = engine.evaluate_component(PACK, component, blocker_free_signals)
         assert outcome.proposed is FindingOutcome.NOT_AFFECTED
         assert outcome.requires_second_confirmation is True
 
