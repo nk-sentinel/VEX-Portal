@@ -25,6 +25,7 @@ from fastapi import FastAPI
 
 from app.api.assessments import router as assessments_router
 from app.api.auth import router as auth_router
+from app.api.review import router as review_router
 from app.config import get_settings
 from app.db import get_engine
 
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="VEX Portal", lifespan=lifespan)
     app.include_router(auth_router)
     app.include_router(assessments_router)
+    app.include_router(review_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

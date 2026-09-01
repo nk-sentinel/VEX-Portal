@@ -73,13 +73,23 @@ class RuleTraceEntry(BaseModel):
     surface. Deliberately excludes Tier 3 (ESCALATION) rule results, which
     surface only through :class:`EscalationSignals` — see this module's
     docstring for why the two are never merged.
+
+    Carries no per-rule ``justification``: ``app.repos.models.RuleResult``
+    never persists ``app.rules.engine.RuleEvaluation.justification`` (only
+    the lossy-bridged ``verdict``/``detail_json`` survive —
+    ``app/services/determination.py``'s ``_persist_rule_results`` builds
+    ``detail_json`` from ``evaluation.detail`` alone). Flagged in the task
+    report: a per-rule justification exists transiently while the pipeline
+    runs and is not reconstructable from the database afterward. The
+    finding-level justification (``Finding.justification`` — the *deciding*
+    rule's) is unaffected and surfaces via ``RecommendationOut``/
+    ``DeterminationOut`` instead.
     """
 
     rule_id: str
     rule_version: str
     tier: EvidenceTier
     verdict: str
-    justification: Justification | None
     detail: dict[str, object]
 
 

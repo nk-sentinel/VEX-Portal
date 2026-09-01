@@ -484,8 +484,77 @@ async def determine(
     return finding
 
 
+async def commit_reviewer_clear(
+    finding: Finding,
+    assessment: Assessment,
+    *,
+    tier: EvidenceTier,
+    justification: Justification,
+    confidence: Confidence,
+    evidence_refs: tuple[str, ...],
+    session: AsyncSession,
+    iq: IqClient,
+) -> None:
+    """Commit a human reviewer's ``NOT_AFFECTED`` decision (``app/api/review.py``'s
+    ``POST .../decide``) — the reviewed counterpart to :func:`determine`'s own
+    automated ``NOT_AFFECTED`` branches.
+
+    Shares :func:`build_not_affected_determination` — the same last gate, not
+    a second implementation of it — and the same
+    ``IqClient.create_determination`` / ``IqDeterminationLink`` bookkeeping
+    :func:`determine` itself uses. Lives here rather than in the route module
+    for a second reason beyond keeping decision logic out of routes:
+    ``app.repos.models.IqDeterminationLink``'s one vendor-named field is the
+    deliberate single exception to this project's naming rule (see that
+    model's own docstring and ``docs/naming.md``) and is meant to live behind
+    the adapter/service boundary — every module that constructs that row does
+    so from ``app/services/*`` or ``app/adapters/*``, never from ``app/api/*``
+    or ``app/schemas/*``, which is exactly what ``grep -rin waiver
+    backend/app/api backend/app/schemas`` (the task brief's own check) is
+    verifying stays true.
+
+    Mutates ``finding.outcome``/``tier``/``justification``/``confidence`` in
+    place; the caller is responsible for ``finding.decided_by``/
+    ``decided_at`` and its own audit entry, mirroring how :func:`determine`
+    itself only owns the fields a *determination* decides, never who decided
+    it or why an audit trail exists at all.
+
+    Raises:
+        DeterminationError: the combination does not satisfy
+            ``Determination.validate()`` — not caught here, per
+            :func:`build_not_affected_determination`'s own contract.
+    """
+    build_not_affected_determination(
+        tier=tier, justification=justification, confidence=confidence, evidence_refs=evidence_refs
+    )
+
+    expires_at = datetime.now(UTC) + _EXPIRY
+    finding_ref = FindingRef(
+        application_id=assessment.application_id, cve=finding.cve, purl=finding.purl
+    )
+    options = DeterminationOptions(
+        justification=justification,
+        assessment_id=assessment.id,
+        rationale=(
+            f"human-reviewed: {justification.value} (tier {tier.value}, "
+            f"confidence {confidence.value})"
+        ),
+        expires_at=expires_at,
+    )
+    link_id = await iq.create_determination(finding_ref, options)
+    session.add(
+        IqDeterminationLink(finding_id=finding.id, policy_waiver_id=link_id, expiry=expires_at)
+    )
+
+    finding.outcome = FindingOutcome.NOT_AFFECTED
+    finding.tier = tier
+    finding.justification = justification
+    finding.confidence = confidence
+
+
 __all__ = [
     "DeterminationError",
     "build_not_affected_determination",
+    "commit_reviewer_clear",
     "determine",
 ]

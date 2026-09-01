@@ -248,7 +248,7 @@ async def _run_pipeline(
     return findings
 
 
-def _derive_evidence_refs(
+def derive_evidence_refs(
     finding: Finding, rule_results: Sequence[RuleResult], ai_verdict: AiVerdictRow | None
 ) -> list[str]:
     """Reconstruct the evidence references behind a committed clear from
@@ -273,7 +273,7 @@ def _derive_evidence_refs(
     return refs or [f"rule:unknown:{finding.cve}"]
 
 
-async def _latest_blocked_by(db: AsyncSession, finding_id: str) -> set[str]:
+async def latest_blocked_by(db: AsyncSession, finding_id: str) -> set[str]:
     result = await db.execute(
         select(AuditEntry)
         .where(AuditEntry.subject_type == "finding", AuditEntry.subject_id == finding_id)
@@ -304,9 +304,9 @@ async def _finding_out(db: AsyncSession, finding: Finding) -> FindingOut:
         .scalars()
         .first()
     )
-    blocked_by = await _latest_blocked_by(db, finding.id)
+    blocked_by = await latest_blocked_by(db, finding.id)
     missing_evidence = list(ai_verdict.missing_evidence_json) if ai_verdict is not None else []
-    evidence_refs = _derive_evidence_refs(finding, rule_results, ai_verdict)
+    evidence_refs = derive_evidence_refs(finding, rule_results, ai_verdict)
     reason = plain_language_reason(
         outcome=finding.outcome,
         tier=finding.tier,
@@ -600,4 +600,9 @@ async def list_applications(
     ]
 
 
-__all__ = ["recompute_assessment_state", "router"]
+__all__ = [
+    "derive_evidence_refs",
+    "latest_blocked_by",
+    "recompute_assessment_state",
+    "router",
+]
