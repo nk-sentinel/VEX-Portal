@@ -1,0 +1,49 @@
+# VEX Portal — API service, fronted by Traefik.
+#
+# Public entry: vex.shadow-lab.org -> Cloudflare tunnel -> Traefik (web
+# entrypoint) -> vex-portal-api. TLS terminates at Cloudflare — no
+# certresolver label here.
+#
+# Service name is stack-unique (vex-portal-api) per house convention: the
+# `proxy` network is shared across every stack on this host, and Compose
+# registers each service name as a DNS alias on it. A generic name like
+# `api` would collide with another stack's identically-named service and
+# Docker DNS would round-robin between them.
+#
+# The portal's database is a single SQLite file (see backend/app/db.py), and
+# this project is single-replica by design (see CLAUDE.md) — this
+# container's data volume is its own, never bind-mounted to the host venv's
+# backend/data/, which `just dev-api` and `just migrate` use. Running both
+# against the same file at once would be two writers against one
+# single-replica database. Migrations for THIS container are not wired up
+# yet (no auto-migrate-at-boot entrypoint); only `just migrate`, against the
+# host-venv database, is — see Task 5's brief and the report's concerns.
+#
+# Deploy:  docker compose up -d --build
+# Secrets: .env (gitignored) — see .env.example.
+
+services:
+  vex-portal-api:
+    build: ./backend
+    image: vex-portal-api:latest
+    container_name: vex-portal-api
+    env_file: [.env]
+    volumes:
+      - vex_portal_data:/app/data
+    networks: [proxy]
+    restart: unless-stopped
+    # No `ports:` — never publish to the host; only Traefik reaches it, and
+    # publishing 8000 here would collide with `just dev-api`'s host port.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.vex-portal-api.rule=Host(`vex.shadow-lab.org`)"
+      - "traefik.http.routers.vex-portal-api.entrypoints=web"
+      - "traefik.http.services.vex-portal-api.loadbalancer.server.port=8000"
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  vex_portal_data: {}

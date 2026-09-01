@@ -2,8 +2,19 @@
 default:
     just --list
 
-# No dev infrastructure to start: the database is a SQLite file under
-# backend/data/. `just migrate` creates it.
+# No dev database container to start — the database is a SQLite file under
+# backend/data/, and `just migrate` creates it. `just up` brings up the
+# containerized API (vex-portal-api) behind Traefik at vex.shadow-lab.org;
+# it uses its own volume, separate from the host-venv database `just
+# dev-api`/`just migrate` use, since this project is single-replica by
+# design and the two must never write the same SQLite file concurrently.
+
+# --- Deploy ---
+up:
+    docker compose up -d --build
+
+down:
+    docker compose down
 
 # --- Backend ---
 install:

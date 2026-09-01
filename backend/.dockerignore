@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+tests/
+htmlcov/
+.coverage
+# Local SQLite database — never bake into the image or send in build context.
+data/

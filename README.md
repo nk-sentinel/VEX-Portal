@@ -82,6 +82,12 @@ just dev-api     # http://localhost:8000
 just dev-web     # http://localhost:4200
 ```
 
+`just up` builds and runs the containerized API (`vex-portal-api`) behind Traefik at
+`vex.shadow-lab.org`, on its own SQLite volume — separate from the host-venv database above,
+since the portal is single-replica by design and the two must never write the same file
+concurrently. `just down` stops it. `GET /health` reports `status`, `adapter_mode` (`fake` or
+`real` — never ambiguous about which systems it's talking to) and `version`, and nothing else.
+
 ## Documentation
 
 - [`docs/design.md`](docs/design.md) — full design: architecture, evidence tiers, provenance,
