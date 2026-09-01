@@ -44,8 +44,9 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import JSON, ForeignKey, MetaData, UniqueConstraint, event
+from sqlalchemy import JSON, DateTime, ForeignKey, MetaData, TypeDecorator, UniqueConstraint, event
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -121,6 +122,42 @@ class FindingOutcome(StrEnum):
         }[self]
 
 
+class UtcDateTime(TypeDecorator[datetime]):
+    """A timestamp that is always timezone-aware UTC, on every dialect.
+
+    SQLite has no native timezone type, so a plain ``DateTime`` silently drops
+    the offset on the way in and hands back a naive value. These columns are
+    the audit trail — a timestamp that does not say when it happened is not
+    much of a record — and ``expires_at`` is compared against an aware
+    ``now``, so a naive value there is a ``TypeError`` waiting in the expiry
+    path.
+
+    Naive input is rejected rather than assumed to be UTC: guessing would
+    make a wrong timestamp look authoritative.
+
+    ``impl = DateTime`` means the compiled column type — and therefore the
+    schema a migration creates — is unchanged (still ``DATETIME``/
+    ``TIMESTAMP``); only the Python-level bind/result processing differs, so
+    this is not schema drift relative to the existing ``0001_initial``
+    migration.
+    """
+
+    impl = DateTime
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("naive datetime rejected; timestamps must carry a timezone")
+        return value.astimezone(UTC)
+
+    def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        if value is None:
+            return None
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 class Base(MappedAsDataclass, DeclarativeBase, kw_only=True):
     """Declarative base for the portal schema.
 
@@ -150,6 +187,12 @@ class Base(MappedAsDataclass, DeclarativeBase, kw_only=True):
         Confidence: SAEnum(Confidence, native_enum=False, length=32),
         dict[str, Any]: JSON,
         list[str]: JSON,
+        #: Every timestamp column in this schema (`created_at`, `expires_at`,
+        #: ...) goes through `UtcDateTime` via this one entry, rather than
+        #: each `mapped_column()` needing to say so individually — there is
+        #: no correct reason for a timestamp in this schema to be anything
+        #: other than timezone-aware UTC.
+        datetime: UtcDateTime(),
     }
 
 

@@ -1,5 +1,8 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, StatementError
 
 from app.domain.determination import State
 from app.repos.models import Assessment, AssessmentState, AuditEntry, Finding, FindingOutcome
@@ -39,6 +42,48 @@ async def test_timestamps_are_generated_in_python_not_by_the_database(session):
     a = Assessment(application_id="a", report_id="r", requester="u")
     assert a.created_at is not None
     assert a.created_at.tzinfo is not None
+
+
+@pytest.mark.asyncio
+async def test_timestamps_are_timezone_aware_after_a_round_trip(session):
+    # The in-memory object being aware proves nothing; a plain DateTime drops
+    # the offset on the way to storage and hands back a naive value.
+    a = Assessment(application_id="x", report_id="r", requester="u")
+    session.add(a)
+    await session.commit()
+    session.expunge_all()
+
+    loaded = (await session.execute(select(Assessment))).scalar_one()
+
+    assert loaded.created_at.tzinfo is not None
+    assert loaded.created_at.utcoffset() == timedelta(0)
+
+
+@pytest.mark.asyncio
+async def test_a_naive_timestamp_is_rejected_rather_than_assumed_utc(session):
+    # Guessing a timezone would make a wrong timestamp look authoritative.
+    a = Assessment(application_id="x", report_id="r", requester="u")
+    a.created_at = datetime(2026, 9, 1, 12, 0, 0)  # no tzinfo
+    session.add(a)
+    # SQLAlchemy wraps a bind-param processing error raised during flush in
+    # StatementError (see cause chain) rather than letting it propagate
+    # as-is; the original ValueError's message still comes through in the
+    # wrapped exception's string, which is what `match` checks below.
+    with pytest.raises(StatementError, match="naive datetime"):
+        await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_a_non_utc_timestamp_is_normalised_not_stored_as_is(session):
+    a = Assessment(application_id="x", report_id="r", requester="u")
+    a.created_at = datetime(2026, 9, 1, 12, 0, tzinfo=timezone(timedelta(hours=8)))
+    session.add(a)
+    await session.commit()
+    session.expunge_all()
+
+    loaded = (await session.execute(select(Assessment))).scalar_one()
+    assert loaded.created_at.utcoffset() == timedelta(0)
+    assert loaded.created_at.hour == 4  # 12:00+08:00 is 04:00 UTC
 
 
 def test_finding_outcomes_map_onto_vex_states_without_drift():
