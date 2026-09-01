@@ -23,6 +23,7 @@ from importlib.metadata import version as package_version
 
 from fastapi import FastAPI
 
+from app.api.auth import router as auth_router
 from app.config import get_settings
 from app.db import get_engine
 
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     sharing one process-wide instance.
     """
     app = FastAPI(title="VEX Portal", lifespan=lifespan)
+    app.include_router(auth_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

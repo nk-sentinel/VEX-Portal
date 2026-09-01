@@ -80,6 +80,14 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "SIM", "S"]
 ignore = ["S101"]  # assert is expected in tests
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's own dependency-injection idiom is `param: X = Depends(get_x)` —
+# the call in the default is how FastAPI recognises a dependency at all, not
+# the mutable-default-argument footgun B008 exists to catch. `app/api/auth.py`
+# is the first module in this project to use it; every route Tasks 3-6 add
+# will hit the same pattern.
+extend-immutable-calls = ["fastapi.Depends"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S"]
 
