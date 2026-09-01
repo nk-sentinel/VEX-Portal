@@ -53,7 +53,28 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 
 ## Current state
 
-**Branch `feat/evidence-foundation` — all 10 plan tasks complete. 242 tests, ruff + mypy clean.**
+**Branch `feat/evidence-foundation` — evidence engine + portal foundations. 344 backend tests
++ 31 fakes tests, ruff + mypy clean. Service live at `vex.shadow-lab.org`.**
+
+Two plans are complete: the evidence engine (`docs/plans/2026-08-31-evidence-foundation.md`)
+and the portal foundations (`docs/plans/2026-09-01-portal-foundations.md`) — settings with a
+fail-safe fake/real switch, SQLite with enforced pragmas, the eight-table schema, Alembic,
+the FastAPI app behind Traefik, adapter Protocols, four fake vendor servers, and the real
+HTTP clients exercised against them.
+
+**Carry into Phase 3 (decision logic):**
+- `IqClient.create_determination` cannot resolve a current `policyViolationId` from
+  `FindingRef` alone — it needs report/violation context the Protocol does not carry. Resolved
+  today with an extra call; fix the Protocol before the determination-commit service is built.
+- IQ's waiver-creation returns `204 No Content`, so the suppression id comes from a follow-up
+  `applicableWaivers` read, not from the create call.
+- IQ's `rootCauses[].listOfPaths` can contain a bare jar filename — filter to `.class`.
+- Migrations are not wired for the containerised instance; the first DB-backed route in the
+  container needs an entrypoint decision.
+
+**Verify at work, cannot be confirmed here:** Bitbucket DC's code-search response shape;
+server-side search scoping (the client filters client-side today); IQ's `waiverReasonId`
+catalogue (matched by text today).
 
 The offline evidence engine: artifact inventory, Java constant-pool parsing, Tier 1 class
 presence, Tier 2 reference scanning with dynamic-dispatch anti-checks, container image layer
