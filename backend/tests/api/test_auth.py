@@ -9,6 +9,9 @@ from collections.abc import Iterable
 import pytest
 from argon2 import PasswordHasher
 
+from app.api import auth as auth_module
+from app.auth.ldap import LdapUnavailable
+from app.config import get_settings
 from app.middleware.session import SESSION_COOKIE_NAME
 from app.repos.models import Role, User
 
@@ -180,3 +183,94 @@ async def test_login_response_never_contains_a_password_hash(db_client):
     assert "$argon2" not in response.text
     assert "password_hash" not in response.text
     assert "password" not in response.json()
+
+
+# --- Cookie flags ------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_login_cookie_is_always_httponly_and_samesite_lax(db_client):
+    # HttpOnly keeps the cookie away from any script that reaches the page;
+    # SameSite=Lax is the right level for a portal where the only
+    # cross-site navigation is someone following a link to it. Neither
+    # depends on any setting — both must always be present.
+    client, factory = db_client
+    await _seed_user(factory)
+
+    response = client.post("/api/auth/login", json={"username": "alice", "password": _PASSWORD})
+
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "httponly" in set_cookie.lower()
+    assert "samesite=lax" in set_cookie.lower()
+
+
+@pytest.mark.asyncio
+async def test_login_cookie_is_not_secure_by_default(db_client):
+    # Default settings (session_cookie_secure=False) — local HTTP dev must
+    # keep working, so no Secure flag here.
+    client, factory = db_client
+    await _seed_user(factory)
+
+    response = client.post("/api/auth/login", json={"username": "alice", "password": _PASSWORD})
+
+    assert "secure" not in response.headers.get("set-cookie", "").lower()
+
+
+@pytest.mark.asyncio
+async def test_login_cookie_is_secure_when_session_cookie_secure_is_enabled(db_client, monkeypatch):
+    # Cloudflare terminates TLS at the edge; this app cannot infer HTTPS
+    # from inside the process, so Secure must come from this setting.
+    client, factory = db_client
+    await _seed_user(factory)
+
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "true")
+    get_settings.cache_clear()
+    try:
+        response = client.post(
+            "/api/auth/login", json={"username": "alice", "password": _PASSWORD}
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert "secure" in response.headers.get("set-cookie", "").lower()
+
+
+# --- Directory-unavailable is 503, distinct from a rejected credential's 401
+
+
+@pytest.mark.asyncio
+async def test_a_directory_that_cannot_be_reached_returns_503_not_401(db_client, monkeypatch):
+    client, _factory = db_client
+
+    class _BrokenProvider:
+        async def authenticate(self, username: str, password: str) -> None:
+            raise LdapUnavailable("simulated directory outage")
+
+    monkeypatch.setattr(
+        auth_module, "get_auth_provider", lambda settings, session: _BrokenProvider()
+    )
+
+    response = client.post("/api/auth/login", json={"username": "alice", "password": "whatever"})
+
+    assert response.status_code == 503
+    assert "unavailable" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_a_directory_outage_response_never_leaks_the_password(db_client, monkeypatch):
+    client, _factory = db_client
+    secret_password = "definitely-not-in-the-response"  # noqa: S105 - test fixture
+
+    class _BrokenProvider:
+        async def authenticate(self, username: str, password: str) -> None:
+            raise LdapUnavailable(f"could not reach the directory (password was {password!r})")
+
+    monkeypatch.setattr(
+        auth_module, "get_auth_provider", lambda settings, session: _BrokenProvider()
+    )
+
+    response = client.post(
+        "/api/auth/login", json={"username": "alice", "password": secret_password}
+    )
+
+    assert secret_password not in response.text

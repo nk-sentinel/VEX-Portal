@@ -23,6 +23,14 @@ secret itself is never read out of ``settings.session_secret`` by this
 module — only handed, still wrapped in a ``SecretStr``, to
 ``create_session_cookie``/``read_session_cookie``, which are the only two
 functions that ever call ``.get_secret_value()`` on it.
+
+**A downed or misconfigured directory is not the same failure as a bad
+password.** ``LdapAuthProvider`` (``app/auth/ldap.py``) raises
+``LdapUnavailable`` — never returns ``None`` — when the directory itself
+could not be reached, bound to, or queried; ``login`` turns that into 503,
+distinct from the 401 a rejected credential gets. Collapsing the two would
+mean a downed AD server looks, from the outside, identical to one person
+mistyping their password.
 """
 
 from __future__ import annotations
@@ -34,6 +42,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_session
+from app.auth.ldap import LdapUnavailable
 from app.auth.providers import get_auth_provider
 from app.config import Settings, get_settings
 from app.db import get_session
@@ -69,7 +78,18 @@ async def login(
     db_session: AsyncSession = Depends(get_session),
 ) -> IdentityResponse:
     provider = get_auth_provider(settings, db_session)
-    user = await provider.authenticate(body.username, body.password)
+    try:
+        user = await provider.authenticate(body.username, body.password)
+    except LdapUnavailable as exc:
+        # The directory itself is unreachable/misconfigured — a different
+        # fact from "this credential was rejected", and worth a different
+        # status code so it is not mistaken for one. The response stays
+        # generic; exc's detail (never a secret — see app/auth/ldap.py) is
+        # for whoever reads the exception chain, not for the caller.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="authentication service unavailable",
+        ) from exc
     if user is None:
         # Deliberately identical whether the username exists or not — see
         # this module's docstring and app/auth/local.py.
@@ -83,6 +103,7 @@ async def login(
         cookie_value,
         httponly=True,
         samesite="lax",
+        secure=settings.session_cookie_secure,
         path="/",
     )
     return _identity(user.username, user.roles)

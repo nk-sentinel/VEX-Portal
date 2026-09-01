@@ -71,10 +71,22 @@ class Settings(BaseSettings):
 
     ldap_url: str = ""
     ldap_base_dn: str = ""
+    #: The DN template `app/auth/ldap.py` binds as, e.g.
+    #: ``uid={username},{base_dn}`` (LDAP-standard) or
+    #: ``{username}@example.com`` (AD UPN binds) — directories differ in how
+    #: they key a user's DN and this project has no real AD to confirm
+    #: against. Left empty (the default) falls back to the
+    #: ``uid={username},{base_dn}`` template `app/auth/ldap.py` assumes,
+    #: which is itself unverified against a real directory — see that
+    #: module's docstring. Set this explicitly once the real directory's
+    #: shape is known.
+    ldap_bind_dn_template: str = ""
     ldap_group_reviewer: str = ""
     ldap_group_approver: str = ""
     ldap_group_auditor: str = ""
     ldap_group_risk_manager: str = ""
+    ldap_group_requester: str = ""
+    ldap_group_admin: str = ""
 
     #: Where the fake servers listen when adapter_mode is FAKE.
     fake_iq_url: str = "http://localhost:9101"
@@ -83,6 +95,18 @@ class Settings(BaseSettings):
     fake_bedrock_url: str = "http://localhost:9104"
 
     session_secret: SecretStr = SecretStr("dev-only-change-me")
+    #: How long a session cookie is valid after login, in hours. A security
+    #: parameter, not a constant: a value that requires a code change to
+    #: adjust does not get adjusted.
+    session_ttl_hours: int = 12
+    #: Whether the session cookie carries the `Secure` flag (HTTPS only).
+    #: **Must be true in any deployment reachable from outside the host** —
+    #: false only for local HTTP development. Cloudflare terminates TLS at
+    #: the edge in front of Traefik, so this app itself sees plain HTTP even
+    #: in a real deployment; there is no way to derive "am I actually
+    #: reachable over HTTPS" from inside the process, so this is a setting,
+    #: not an inference.
+    session_cookie_secure: bool = False
 
     @model_validator(mode="after")
     def _real_mode_needs_endpoints(self) -> Settings:

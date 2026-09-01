@@ -14,31 +14,45 @@ it.
 **The bind is direct, not search-then-bind.** ``app/config.py`` carries no
 service/bind account for LDAP (only ``ldap_url`` and ``ldap_base_dn``), so
 there is no credential available to search the directory before knowing who
-is logging in. ``authenticate`` binds as
-``uid=<username>,<ldap_base_dn>`` directly, using the caller's own
+is logging in. ``authenticate`` binds directly, using the caller's own
 password, then reuses that same bound connection to read its own
 ``memberOf`` attribute — AD conventionally lets an authenticated user read
 that about itself, so no second credential is needed for the group lookup
-either. **This DN shape is an assumption, not a fact confirmed against a
-real directory** — flagged explicitly in the Task 1-3 report. A real AD tree
-that keys entries by ``sAMAccountName``, uses a UPN
-(``user@domain``), or nests users under a deeper OU than a flat child of
-``ldap_base_dn`` will need this template revisited; nothing else in this
-module depends on the shape being right beyond this one f-string.
+either.
 
-**Group-to-role mapping is config-driven and closed.** Only four of the six
-``Role`` values have a configured LDAP group
-(``ldap_group_{reviewer,approver,auditor,risk_manager}`` in
-``app/config.py``) — there is no ``ldap_group_requester`` or
-``ldap_group_admin`` setting. A ``memberOf`` value with no configured
-mapping — which, as configured today, includes any group standing in for
-REQUESTER or ADMIN — contributes no role, never a default one. **This means
-an LDAP-authenticated user can never hold REQUESTER or ADMIN as configured
-today.** That may be intentional (Requester open to every authenticated
-user regardless of group; Admin reserved to local break-glass accounts) or
-may be a gap in ``app/config.py``'s settings — flagged in the Task 1-3
-report as context the brief did not supply data for, not resolved here by
-guessing a default.
+**The bind DN shape is configurable, not hardcoded** — ``app/config.py``'s
+``ldap_bind_dn_template`` (e.g. ``uid={username},{base_dn}`` or
+``{username}@example.com`` for AD UPN binds). Left unset, this falls back to
+``uid={username},{base_dn}``, which is **an assumption, not a fact confirmed
+against a real directory** (there is no AD reachable from this host to
+confirm it against) — a real AD tree that keys entries by
+``sAMAccountName``, uses a UPN, or nests users under a deeper OU will need
+``ldap_bind_dn_template`` set explicitly. See the Task 1-3 report's
+"verify at work" list.
+
+**Group-to-role mapping is config-driven and closed.** Every ``Role`` value
+has a corresponding ``ldap_group_*`` setting in ``app/config.py``
+(``ldap_group_{requester,reviewer,approver,auditor,risk_manager,admin}``);
+``tests/auth/test_ldap.py``'s ``test_every_role_has_a_configured_ldap_group_mapping``
+iterates ``Role`` and asserts each one is covered, specifically so a role
+added later without a matching setting fails loudly here rather than
+silently becoming unreachable over LDAP. A ``memberOf`` value with no
+configured mapping contributes no role, never a default one — deliberately:
+a user who matches no group should hold nothing, not something guessed.
+
+**A rejected credential and an unreachable/malformed directory are
+different failures, distinguished by type, not just by log message.** A
+directory that responds and says "no" (wrong password, unknown user, a
+disabled account) returns ``None`` from :meth:`authenticate` — the same
+"this credential did not check out" contract every ``AuthProvider`` shares.
+Anything else going wrong while getting that answer — the server cannot be
+reached, the TLS handshake fails, the response cannot be parsed, a
+misconfigured DN template — raises :class:`LdapUnavailable` instead of
+quietly becoming the same ``None`` a wrong password would. Conflating the
+two would mean a downed AD server or a bad ``LDAP_URL`` looks, from the
+outside, identical to "this one person typed their password wrong" — exactly
+the distinction someone debugging a work outage at an unhelpful hour needs
+the system to have kept for them.
 """
 
 from __future__ import annotations
@@ -58,6 +72,14 @@ from app.repos.models import Role
 #: connection instead (see this module's docstring), so nothing here needs
 #: a reachable AD.
 ConnectionFactory = Callable[[Server, str, str], Connection]
+
+
+class LdapUnavailable(Exception):
+    """The directory could not be reached, bound to, queried, or parsed —
+    a connectivity or configuration problem, distinct from a credential the
+    directory examined and rejected (which is ``None``, not this). See this
+    module's docstring.
+    """
 
 
 def _default_connection_factory(server: Server, user_dn: str, password: str) -> Connection:
@@ -84,20 +106,37 @@ class LdapAuthProvider:
         self._connection_factory = connection_factory
         # Built once at construction, not per call: a group with no
         # configured mapping (falsy setting value) is never a lookup key —
-        # see this module's docstring on why REQUESTER/ADMIN are absent.
+        # a user who matches no group should hold nothing, not a default.
         self._group_roles: dict[str, Role] = {
             group: role
             for group, role in (
+                (settings.ldap_group_requester, Role.REQUESTER),
                 (settings.ldap_group_reviewer, Role.REVIEWER),
                 (settings.ldap_group_approver, Role.APPROVER),
                 (settings.ldap_group_auditor, Role.AUDITOR),
                 (settings.ldap_group_risk_manager, Role.RISK_MANAGER),
+                (settings.ldap_group_admin, Role.ADMIN),
             )
             if group
         }
 
     async def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
         return await asyncio.to_thread(self._authenticate_sync, username, password)
+
+    def _bind_dn(self, username: str) -> str:
+        """The DN to bind as for ``username`` — see this module's docstring
+        on why the fallback is an assumption, not a confirmed fact.
+        """
+        template = self._settings.ldap_bind_dn_template
+        if not template:
+            return f"uid={username},{self._settings.ldap_base_dn}"
+        try:
+            return template.format(username=username, base_dn=self._settings.ldap_base_dn)
+        except (KeyError, IndexError) as exc:
+            # A malformed template (an unknown {placeholder}) is a config
+            # problem, not a rejected credential — same bucket as a
+            # directory that cannot be reached.
+            raise LdapUnavailable(f"ldap_bind_dn_template is malformed: {exc}") from exc
 
     def _authenticate_sync(self, username: str, password: str) -> AuthenticatedUser | None:
         if not password:
@@ -106,11 +145,17 @@ class LdapAuthProvider:
             # empty password "succeed" as this user.
             return None
 
-        user_dn = f"uid={username},{self._settings.ldap_base_dn}"
-        server = Server(self._settings.ldap_url)
-        connection = self._connection_factory(server, user_dn, password)
+        user_dn = self._bind_dn(username)
+        connection: Connection | None = None
         try:
+            server = Server(self._settings.ldap_url)
+            connection = self._connection_factory(server, user_dn, password)
             if not connection.bind():
+                # The directory answered and said no: wrong password,
+                # unknown user, or a disabled account. This is the ordinary
+                # AuthProvider "did not check out" contract, not
+                # LdapUnavailable — the directory is fine, this credential
+                # is not.
                 return None
             connection.search(
                 user_dn, "(objectClass=*)", search_scope=BASE, attributes=["memberOf"]
@@ -122,11 +167,17 @@ class LdapAuthProvider:
                 self._group_roles[group] for group in groups if group in self._group_roles
             )
             return AuthenticatedUser(username=username, roles=roles)
-        except LDAPException:
-            return None
+        except LDAPException as exc:
+            # Anything from ldap3 itself — socket/TLS failure, a malformed
+            # response, an unreachable server — is a directory/config
+            # problem, never silently folded into "wrong password". See
+            # this module's docstring.
+            raise LdapUnavailable(
+                f"could not reach, bind to, or query the LDAP directory: {exc}"
+            ) from exc
         finally:
-            if connection.bound:
+            if connection is not None and connection.bound:
                 connection.unbind()
 
 
-__all__ = ["LdapAuthProvider"]
+__all__ = ["LdapAuthProvider", "LdapUnavailable"]

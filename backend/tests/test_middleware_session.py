@@ -1,23 +1,28 @@
 """Tests for `app/middleware/session.py` — signed, stateless session cookies.
 
-Expiry is tested by monkeypatching `_SESSION_MAX_AGE_SECONDS` to a negative
-value rather than sleeping: itsdangerous rejects when `age > max_age`, and a
-negative `max_age` is already exceeded by any cookie's age (which can never
-be negative), so this is deterministic regardless of how fast the test runs
-— no real time needs to pass.
+Expiry is tested by jumping `time.time()` far into the future rather than
+sleeping or reaching into module internals: itsdangerous computes
+`age = now - signed_timestamp` and rejects when `age > max_age`, so a `now`
+decades ahead of the signed timestamp is expired under any
+`session_ttl_hours` value, deterministically, with no real time needing to
+pass. This also means the test proves expiry against whatever TTL is
+actually configured, rather than a value the test controls directly.
 """
 
 from __future__ import annotations
 
+import time
+
 from app.auth.providers import AuthenticatedUser
 from app.config import Settings
-from app.middleware import session as session_module
 from app.middleware.session import SessionData, create_session_cookie, read_session_cookie
 from app.repos.models import Role
 
+_FAR_FUTURE_OFFSET_SECONDS = 100 * 365 * 24 * 60 * 60  # +100 years
 
-def _settings(secret: str = "a-test-only-session-secret") -> Settings:
-    return Settings(_env_file=None, session_secret=secret)
+
+def _settings(secret: str = "a-test-only-session-secret", **overrides: object) -> Settings:
+    return Settings(_env_file=None, session_secret=secret, **overrides)  # type: ignore[arg-type]
 
 
 def _tamper(cookie: str) -> str:
@@ -81,9 +86,34 @@ def test_an_expired_session_is_rejected(monkeypatch):
     user = AuthenticatedUser(username="alice", roles=frozenset())
     cookie = create_session_cookie(user, settings=settings)
 
-    monkeypatch.setattr(session_module, "_SESSION_MAX_AGE_SECONDS", -1)
+    real_time = time.time
+    monkeypatch.setattr(time, "time", lambda: real_time() + _FAR_FUTURE_OFFSET_SECONDS)
 
     assert read_session_cookie(cookie, settings=settings) is None
+
+
+def test_session_ttl_is_read_from_settings_not_hardcoded(monkeypatch):
+    # A regression test for exactly the shape of bug that made TTL a
+    # hardcoded constant in the first place: prove read_session_cookie
+    # actually consults settings.session_ttl_hours rather than a fixed
+    # value, by giving two sessions different TTLs and jumping the clock to
+    # a point between them.
+    short_lived = _settings(session_ttl_hours=1)
+    long_lived = _settings(session_ttl_hours=24)
+    user = AuthenticatedUser(username="alice", roles=frozenset())
+    short_cookie = create_session_cookie(user, settings=short_lived)
+    long_cookie = create_session_cookie(user, settings=long_lived)
+
+    real_time = time.time
+    ten_hours_later = real_time() + 10 * 60 * 60
+    monkeypatch.setattr(time, "time", lambda: ten_hours_later)
+
+    assert read_session_cookie(short_cookie, settings=short_lived) is None
+    assert read_session_cookie(long_cookie, settings=long_lived) is not None
+
+
+def test_session_ttl_hours_defaults_to_twelve():
+    assert Settings(_env_file=None).session_ttl_hours == 12
 
 
 def test_the_session_secret_never_appears_in_the_cookie_value():

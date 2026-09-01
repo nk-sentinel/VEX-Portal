@@ -5,9 +5,9 @@ The session is the cookie: everything ``GET /api/auth/me`` and
 and roles — is serialised into the cookie value itself and signed with
 ``settings.session_secret`` via ``itsdangerous``. There is no server-side
 session table to look up, so a session is valid exactly when its signature
-verifies and it has not outlived ``_SESSION_MAX_AGE_SECONDS`` — nothing else
-to keep in sync, and nothing else that could drift from what the cookie
-says.
+verifies and it has not outlived ``settings.session_ttl_hours`` — nothing
+else to keep in sync, and nothing else that could drift from what the
+cookie says.
 
 **This is why ``GET /api/auth/me`` can be trusted**: the payload this module
 hands back came from unwrapping ``itsdangerous``'s signature, not from
@@ -20,10 +20,9 @@ what a request merely claims.
 ``itsdangerous.BadSignature`` (raised for a tampered cookie) and its
 subclass ``SignatureExpired`` (raised for a validly-signed but outlived one)
 are both treated identically here: an invalid session, full stop, not
-distinguished for the caller. Session TTL — 12 hours — is not called out
-anywhere in ``app/config.py``; there is no setting for it in the brief this
-task worked from, so it is a fixed constant here rather than an invented
-setting. Flagged in the Task 1-3 report.
+distinguished for the caller. Session TTL is ``settings.session_ttl_hours``
+— a security parameter, deliberately not a hardcoded constant, since a
+value that needs a code change to adjust does not get adjusted.
 """
 
 from __future__ import annotations
@@ -43,10 +42,6 @@ SESSION_COOKIE_NAME = "vex_session"
 #: cookie's signature can never be replayed against some other signed value
 #: this app might sign in the future for a different reason.
 _SESSION_SALT = "vex-portal.session.v1"
-
-#: A session is valid for 12 hours after login, then must be re-established.
-#: Not derived from any setting — see this module's docstring.
-_SESSION_MAX_AGE_SECONDS = 12 * 60 * 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,13 +69,14 @@ def read_session_cookie(cookie_value: str | None, *, settings: Settings) -> Sess
     """Verify and decode a session cookie value.
 
     Returns ``None`` — never raises — for a missing cookie, a tampered one,
-    or one that has outlived ``_SESSION_MAX_AGE_SECONDS``: all three are
+    or one that has outlived ``settings.session_ttl_hours``: all three are
     "no valid session" from every caller's point of view.
     """
     if not cookie_value:
         return None
+    max_age_seconds = settings.session_ttl_hours * 60 * 60
     try:
-        payload = _serializer(settings).loads(cookie_value, max_age=_SESSION_MAX_AGE_SECONDS)
+        payload = _serializer(settings).loads(cookie_value, max_age=max_age_seconds)
     except BadSignature:
         return None
     return SessionData(
