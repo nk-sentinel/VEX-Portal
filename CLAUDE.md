@@ -53,87 +53,48 @@ handled by the app team with their risk manager, out of band. The IQ violation s
 
 ## Current state
 
-**Branch `feat/evidence-foundation` — evidence engine + portal foundations. 344 backend tests
-+ 31 fakes tests, ruff + mypy clean. Service live at `vex.shadow-lab.org`.**
+**All six phases complete. The portal runs end to end at `vex.shadow-lab.org`.**
+608 backend tests, 348 Karma specs, 95 live API round-trips. ruff + mypy strict clean.
 
-Two plans are complete: the evidence engine (`docs/plans/2026-08-31-evidence-foundation.md`)
-and the portal foundations (`docs/plans/2026-09-01-portal-foundations.md`) — settings with a
-fail-safe fake/real switch, SQLite with enforced pragmas, the eight-table schema, Alembic,
-the FastAPI app behind Traefik, adapter Protocols, four fake vendor servers, and the real
-HTTP clients exercised against them.
+Evidence engine → decision engine → API + access → nine screens. Four fake vendor servers
+stand in for Nexus IQ, JFrog, Bitbucket and Bedrock; one setting swaps them for the real
+systems at work.
 
-**Carry into Phase 3 (decision logic):**
-- `IqClient.create_determination` cannot resolve a current `policyViolationId` from
-  `FindingRef` alone — it needs report/violation context the Protocol does not carry. Resolved
-  today with an extra call; fix the Protocol before the determination-commit service is built.
-- IQ's waiver-creation returns `204 No Content`, so the suppression id comes from a follow-up
-  `applicableWaivers` read, not from the create call.
-- IQ's `rootCauses[].listOfPaths` can contain a bare jar filename — filter to `.class`.
-- Migrations are not wired for the containerised instance; the first DB-backed route in the
-  container needs an entrypoint decision.
+### Decide before the work deployment
 
-**Verify at work, cannot be confirmed here:** Bitbucket DC's code-search response shape;
-server-side search scoping (the client filters client-side today); IQ's `waiverReasonId`
-catalogue (matched by text today).
+1. **No per-user Nexus IQ token exists.** App entitlement is meant to be inherited by calling
+   IQ with the *user's* token, precisely so the portal never keeps a parallel permission model
+   that drifts. Neither auth provider issues one; the session username is a placeholder. The
+   intended mechanism is IQ's User Token feature — decide where the token lives (session-only
+   vs encrypted at rest) and how it is captured.
+2. **Collector failures are not persisted.** `EvidencePack.failures` is built but never stored
+   or exposed, so the UI cannot actually distinguish a failed collector from an abstention —
+   a distinction the design depends on, since one is an outage and the other a limit of the
+   evidence.
+3. **`/docs` is publicly reachable** through the Cloudflare tunnel. Endpoints require auth but
+   the full API surface is readable.
+4. **Bulk approval has no eligible target** — the pipeline auto-commits everything safe before
+   a finding reaches the queue, so every queued row needs individual attention. Either drop
+   bulk from the design or add a "proposed but uncommitted" state.
+5. **`java/lang/Class` is too broad an escape-hatch marker** — `Object.getClass()` is
+   ubiquitous, so Tier 2 will rarely fire on real bytecode. Narrowing it is the *unsafe*
+   direction, so it needs a human decision. Fix is resolving `CONSTANT_Methodref` so the
+   marker requires `Class.forName` specifically.
 
-The offline evidence engine: artifact inventory, Java constant-pool parsing, Tier 1 class
-presence, Tier 2 reference scanning with dynamic-dispatch anti-checks, container image layer
-walking, provenance fingerprinting, the evidence pack, a CLI, security hardening, and
-performance benchmarks. Standard library only.
+### Verify at work, cannot be confirmed here
 
-Went through a whole-branch review plus three adversarial fix/re-review rounds. Five Criticals
-were found and fixed, four of them by attacking the seam a previous fix created.
+Bitbucket DC's code-search response shape; server-side search scoping (the client filters
+client-side today); IQ's `waiverReasonId` catalogue (matched by text); the LDAP bind-DN shape;
+the six AD group DNs; `SESSION_COOKIE_SECURE=true`; and that escape-hatch markers fire on real
+`javac` output — there is no JDK here.
 
-### Fixed since the review
+### Known gaps, documented not hidden
 
-**`git.properties` ordering (N4) — resolved.** Canonical ties now resolve by documented
-precedence (`BOOT-INF/classes/` > `WEB-INF/classes/` > root), never by ZIP order, so the
-determinism the code comment claims is now true. Where two canonical files disagree about the
-commit, the higher-precedence value is returned AND `Inventory.git_properties_ambiguous` is
-set and surfaced in the evidence pack — an artifact claiming two different commits is a fact a
-reviewer should see, not something to resolve silently. The comparison is made on the
-*resolved* commit (walking the `git.commit.id.full` -> `git.commit.id` -> `.abbrev` fallback
-chain), not one raw key, so a disagreement expressed only through a fallback key still flags.
-Raising on a tie was rejected: `commit_sha()` is attacker-authored metadata that no
-determination rests on, so refusing an artifact over it would cost availability for nothing.
+Three rules are written, tested and deliberately UNREGISTERED because their evidence source
+does not exist (`t1-cve-withdrawn`, `t2-gadget-absent`, `t2-runtime-immune`) — see
+`app/rules/registry.py::PENDING_EVIDENCE`. No SSO endpoint despite the mockups showing one.
+No branch field on assessments. No time-series dashboard data. Migrations are not wired for
+the containerised instance.
 
-**Duplicate entry names (N3) — resolved.** An archive is rejected when a duplicated raw entry
-name would be READ as evidence: library-prefix entries, and nested archives the presence walk
-recurses into. Duplicates that are never read — `META-INF/LICENSE`, `META-INF/services/*`,
-routine in shaded JARs — are tolerated, because rejecting them buys no security and a control
-that fires on honest builds gets switched off. Note the finding's narrative was slightly wrong:
-reads via a captured `ZipInfo` happen to address the correct occurrence, but that is a CPython
-implementation detail rather than a guarantee. The genuinely exploitable case was the by-name
-read in nested-archive recursion outside a library directory (an EAR module), where duplication
-did make `contains_class` return False. Guarded at every read site regardless.
-
-### Decide before merge
-
-1. **Declared metadata is untrusted — apply the rule everywhere.** `file_size` and
-   `compress_size` are attacker-controlled. Fixed at the guards that gate evidence; still
-   trusted by `enforce_limits`' budget arithmetic and the two `git.properties` reads. Consider
-   a central-vs-local-header consistency check.
-2. **Surplus tolerance (5%)** means a 100-component build tolerates five entirely unscanned
-   bundled JARs and still returns MATCH.
-3. **`java/lang/Class` marker breadth.** `Object.getClass()` is ubiquitous, so
-   `is_conclusive()` will be False on most real bytecode and Tier 2 will rarely fire. NOT
-   changed unattended: narrowing markers makes `is_conclusive()` True more often, the unsafe
-   direction. Fix is ~30 lines resolving `CONSTANT_Methodref` so the marker requires
-   `Class.forName` specifically.
-
-### Watch
-
-- **Cross-prefix key collisions now raise `MalformedArtifact`** — fail-closed and correct, but
-  a new way a legitimate artifact gets refused. Monitor on real builds.
-- **`excluded_class_count` is a coverage counter, not a completeness proof.** It counts only
-  classes reaching the key function; anything dropped earlier is invisible. Read
-  `excluded_classes == 0` as "no *known* gap", never "no gap".
-- **Escape-hatch markers were only ever exercised against synthetic class files.** No JDK here,
-  so nobody has confirmed they fire on real `javac` output.
-
-Full decision log — 47 rulings with rationale and cost-if-wrong:
-`.superpowers/sdd/2026-08-31-evidence-foundation/progress.md` (git-ignored, local only).
-
-- UI spec: `docs/design/ui-spec.md`; mockups `docs/design/ui-mockups.html`. Angular not started.
-- Plans 2 (adapters + persistence) and 3 (rule engine + services + API) outlined at the end of
-  the plan document.
+Full decision log — 60+ rulings with rationale and cost-if-wrong — lives in
+`.superpowers/sdd/*/progress.md` (git-ignored, local only).
