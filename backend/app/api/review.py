@@ -188,7 +188,7 @@ def _escalation_signals(rule_results: list[RuleResult], blocked_by: set[str]) ->
     )
 
 
-async def _finding_detail(
+async def build_finding_detail(
     db: AsyncSession, finding: Finding, assessment: Assessment
 ) -> ReviewFindingDetail:
     rule_results = (
@@ -363,7 +363,7 @@ async def get_finding(
 ) -> ReviewFindingDetail:
     """The Evidence Drawer's payload."""
     finding, assessment = await _load_finding_and_assessment(db, finding_id)
-    return await _finding_detail(db, finding, assessment)
+    return await build_finding_detail(db, finding, assessment)
 
 
 @router.post("/findings/{finding_id}/recommend", response_model=RecommendationRecorded)
@@ -577,4 +577,4 @@ async def decide(
     return _row_out(finding, assessment)
 
 
-__all__ = ["router"]
+__all__ = ["build_finding_detail", "router"]

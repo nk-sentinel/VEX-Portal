@@ -23,9 +23,12 @@ from importlib.metadata import version as package_version
 
 from fastapi import FastAPI
 
+from app.api.admin import router as admin_router
 from app.api.assessments import router as assessments_router
 from app.api.auth import router as auth_router
+from app.api.dashboard import router as dashboard_router
 from app.api.review import router as review_router
+from app.api.risk import router as risk_router
 from app.config import get_settings
 from app.db import get_engine
 
@@ -47,6 +50,9 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(assessments_router)
     app.include_router(review_router)
+    app.include_router(admin_router)
+    app.include_router(risk_router)
+    app.include_router(dashboard_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

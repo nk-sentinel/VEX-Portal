@@ -41,6 +41,15 @@ class Capability(StrEnum):
     COMMIT_DETERMINATION = "commit_determination"
     VIEW_DASHBOARD = "view_dashboard"
     VIEW_RISK_ACCEPTANCE = "view_risk_acceptance"
+    #: Setting the hand-off status (Awaiting hand-off / With risk manager /
+    #: Accepted / Rejected) on a risk-acceptance row — added in Task 6,
+    #: distinct from ``VIEW_RISK_ACCEPTANCE`` on purpose: an auditor can see
+    #: the risk-acceptance queue (that capability) but must not be able to
+    #: mutate its status — an auditor is a read-only role by definition, and
+    #: folding a write action into the view capability would quietly grant
+    #: one anyway. See ``docs/design/ui-spec.md`` screen 8: "Status is
+    #: manually set by the risk manager."
+    MANAGE_RISK_ACCEPTANCE = "manage_risk_acceptance"
     MANAGE_RULES = "manage_rules"
 
 
@@ -54,6 +63,7 @@ CAPABILITY_ROLES: dict[Capability, frozenset[Role]] = {
     Capability.COMMIT_DETERMINATION: frozenset({Role.APPROVER}),
     Capability.VIEW_DASHBOARD: frozenset({Role.AUDITOR, Role.ADMIN}),
     Capability.VIEW_RISK_ACCEPTANCE: frozenset({Role.RISK_MANAGER, Role.AUDITOR}),
+    Capability.MANAGE_RISK_ACCEPTANCE: frozenset({Role.RISK_MANAGER}),
     Capability.MANAGE_RULES: frozenset({Role.ADMIN}),
 }
 

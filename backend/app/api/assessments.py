@@ -86,6 +86,25 @@ router = APIRouter(tags=["assessments"])
 #: that are, in practice, all created within the same request.
 _EXPIRY = timedelta(days=7)
 
+#: Prefixes ``Finding.decided_by`` (and, via ``determine()``'s own
+#: ``actor`` passthrough, the resulting ``AuditEntry.actor``) for every
+#: finding the automated pipeline decided on its own — Tier 1/2 rule clears,
+#: an AI-confirmed clear, or an AI-confident reject. ``app/api/review.py``'s
+#: ``/decide`` always sets ``decided_by`` to the committing approver's own
+#: (unprefixed) username instead, and separation of duties
+#: (``assert_may_commit_own_determination``) guarantees that can never equal
+#: the requester who raised the assessment — so this prefix is a genuine,
+#: unambiguous signal, not a heuristic, for "the automation split" dashboard
+#: panel (``app/api/dashboard.py``) to tell auto-determined and
+#: human-reviewed findings apart.
+AUTOMATED_ACTOR_PREFIX = "system:"
+
+
+def is_automated_decision(finding: Finding) -> bool:
+    """Whether ``finding`` was decided by the automated pipeline rather than
+    a human reviewer/approver — see :data:`AUTOMATED_ACTOR_PREFIX`."""
+    return finding.decided_by is not None and finding.decided_by.startswith(AUTOMATED_ACTOR_PREFIX)
+
 
 def _iq_user_token(session: SessionData) -> str:
     """The token passed to ``IqClient.applications_for_user`` to scope the
@@ -241,7 +260,7 @@ async def _run_pipeline(
             session=db,
             iq=iq,
             adjudicator=adjudicator,
-            actor=actor,
+            actor=f"{AUTOMATED_ACTOR_PREFIX}{actor}",
         )
         findings.append(finding)
 
@@ -601,7 +620,9 @@ async def list_applications(
 
 
 __all__ = [
+    "AUTOMATED_ACTOR_PREFIX",
     "derive_evidence_refs",
+    "is_automated_decision",
     "latest_blocked_by",
     "recompute_assessment_state",
     "router",

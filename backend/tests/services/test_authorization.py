@@ -35,6 +35,7 @@ _EXPECTED: dict[Capability, set[Role]] = {
     Capability.COMMIT_DETERMINATION: {Role.APPROVER},
     Capability.VIEW_DASHBOARD: {Role.AUDITOR, Role.ADMIN},
     Capability.VIEW_RISK_ACCEPTANCE: {Role.RISK_MANAGER, Role.AUDITOR},
+    Capability.MANAGE_RISK_ACCEPTANCE: {Role.RISK_MANAGER},
     Capability.MANAGE_RULES: {Role.ADMIN},
 }
 
@@ -72,6 +73,14 @@ def test_holding_only_non_admitting_roles_is_rejected():
 def test_holding_no_roles_at_all_is_rejected_by_every_capability():
     for capability in Capability:
         assert not has_capability(frozenset(), capability)
+
+
+def test_an_auditor_can_view_risk_acceptance_but_not_manage_it():
+    # An auditor is read-only by definition — VIEW_RISK_ACCEPTANCE and
+    # MANAGE_RISK_ACCEPTANCE are deliberately different capabilities so a
+    # write action can never ride along with the view one.
+    assert has_capability({Role.AUDITOR}, Capability.VIEW_RISK_ACCEPTANCE)
+    assert not has_capability({Role.AUDITOR}, Capability.MANAGE_RISK_ACCEPTANCE)
 
 
 # --- Separation of duties ---------------------------------------------------
