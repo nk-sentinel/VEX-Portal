@@ -1,0 +1,233 @@
+// Shell chrome — sidebar rail, nav, persona, topbar. Lifted verbatim from
+// `docs/design/ui-mockups.html`'s `app-shell.scss` block. Consumed by
+// `web/src/app/core/shell/`.
+
+.shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100%; }
+.shell.collapsed { grid-template-columns: 76px 1fr; }
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-sidebar);
+  padding: var(--space-4) var(--space-3);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-sidebar);
+}
+.brand .logo {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.04em;
+  background: var(--accent-fill);
+  color: var(--fg-onAccent);
+}
+.brand h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-sidebar-active); white-space: nowrap; }
+.brand span { font-family: var(--font-mono); font-size: 11px; color: var(--fg-sidebar); opacity: 0.7; }
+
+.nav { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-4); flex: 1; }
+.nav-group-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-sidebar);
+  opacity: 0.55;
+  padding: var(--space-3) var(--space-2) var(--space-1);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--fg-sidebar);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-item .icon {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  opacity: 0.9;
+}
+.nav-item:hover { background: var(--bg-sidebar-hover); color: var(--fg-sidebar-active); }
+.nav-item.active {
+  background: var(--bg-sidebar-active);
+  color: var(--fg-sidebar-active);
+  box-shadow: inset 2px 0 0 var(--accent-fill);
+}
+.nav-item__count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-sidebar);
+  opacity: 0.8;
+}
+
+.persona {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.persona .role {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-fill);
+}
+.persona .name { font-size: 14px; font-weight: 600; color: var(--fg-sidebar-active); }
+
+.main { min-width: 0; background: var(--bg-page); display: flex; flex-direction: column; }
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  flex: none;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 440px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+}
+.search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: 14px;
+}
+.search input:focus { outline: none; }
+.search:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--fg-primary); }
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  flex: none;
+}
+
+.page { padding: var(--space-4) var(--space-5) var(--space-6); display: grid; gap: var(--space-4); }
+.page__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.page__head h1 {
+  margin: var(--space-1) 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg-primary);
+}
+.page__head .sub { margin: var(--space-1) 0 0; font-size: 14px; color: var(--fg-secondary); }
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.card__title { font-size: 14px; font-weight: 600; color: var(--fg-primary); margin: 0; }
+.card__body { padding: var(--space-3); }
+
+.metric { display: grid; gap: 2px; }
+.metric__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.metric__value {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+.metric__delta { font-size: 12px; color: var(--fg-secondary); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

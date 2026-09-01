@@ -1,0 +1,74 @@
+// The one table style — Review Queue, Assessment Detail, My Assessments,
+// Risk Acceptance Queue, Rules & Thresholds all share this. Lifted verbatim
+// from `docs/design/ui-mockups.html`'s `data-table.scss` block.
+
+.data-table-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+}
+.data-table th.is-sorted { color: var(--fg-primary); }
+.data-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  color: var(--fg-primary);
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table .row { transition: background 0.12s ease; }
+.data-table .row:hover { background: var(--bg-hover); }
+.data-table .row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.data-table--clickable .row { cursor: pointer; }
+.data-table .empty td { text-align: center; color: var(--fg-muted); padding: var(--space-5); }
+
+.data-table .row.is-open {
+  background: var(--accent-softer);
+  box-shadow: inset 3px 0 0 var(--accent-fill);
+}
+.data-table .row.is-selected { background: var(--accent-softer); }
+
+// Risk Acceptance Required rows get a dashed hand-off edge, never the solid
+// selection/open treatment above — see `tokens.scss` on `--handoff`.
+.data-table .row.is-handoff { box-shadow: inset 3px 0 0 var(--handoff); }
+.data-table .row.is-handoff td:first-child { position: relative; }
+
+.data-table .mono { font-family: var(--font-mono); font-size: 13px; }
+.data-table .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.data-table .group-head td {
+  background: var(--bg-surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-secondary);
+  padding: 6px var(--space-3);
+}
+
+.skeleton {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-surface-2), var(--bg-hover), var(--bg-surface-2));
+  background-size: 200% 100%;
+  animation: vex-shimmer 1.2s linear infinite;
+}
+@keyframes vex-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}

@@ -1,0 +1,17 @@
+// Global styles. Every partial below is either self-hosted assets
+// (`assets/fonts/fonts.scss`) or the design system lifted from
+// `docs/design/ui-mockups.html` (`app/core/design/`) — see that folder's
+// `tokens.scss` for why these are copied verbatim, not re-derived.
+//
+// `@use` (not `@import`) — each partial is plain global CSS with no
+// SCSS members (variables/mixins), so there is nothing to namespace; `@use`
+// still dedupes correctly if a partial is ever `@use`d from more than one
+// place.
+@use 'assets/fonts/fonts';
+@use 'app/core/design/tokens';
+@use 'app/core/design/base';
+@use 'app/core/design/app-shell';
+@use 'app/core/design/controls';
+@use 'app/core/design/data-table';
+@use 'app/core/design/outcome';
+@use 'app/core/design/evidence-drawer';

@@ -1,0 +1,298 @@
+// VEX Portal design tokens — lifted VERBATIM from `docs/design/ui-mockups.html`
+// (the `vex-portal.css — generated from styles/*.scss` block), not re-derived.
+//
+// docs/design/ui-spec.md section 4: "The visual system is DAST-Portal's,
+// lifted from its `web/src/app/core/design/`... Only what VEX needs and DAST
+// has no concept of is new." This file mirrors that split: the base Signal
+// palette (spacing, backgrounds, foreground, borders, accent, semantic,
+// severity, radii, shadows, typography) is DAST-Portal's system, restated
+// here token-for-token; everything under VEX-SPECIFIC is new to this portal
+// and exists nowhere in DAST.
+//
+// DO NOT re-derive or "clean up" a value here without re-reading the mockup.
+// Three things below are load-bearing decisions, not styling choices:
+//
+//   - `--handoff` sits OUTSIDE the outcome/verdict ramp (`--outcome-*`) on
+//     purpose. Risk Acceptance Required is a hand-off, not a resolution —
+//     giving it its own hue (violet) rather than a shade of the clear-green
+//     or review-orange ramp is what stops it ever reading as "this got
+//     decided". See ui-spec: "It borrows nothing from the green of a
+//     cleared finding."
+//   - There is NO `--sev-*`-style token for EPSS/severity coloured red
+//     anywhere near a Not Affected verdict. `--signal-*` (the escalation
+//     block) is deliberately monochrome — grey text on a grey recessed
+//     surface — so no future edit can reach for a token that would place a
+//     severity colour beside a clearing verdict.
+//   - The evidence-tier ramp (`--tier1` / `--tier2` / `--tier3`) descends in
+//     *authority*, not severity: Tier 3 shares `--tier3`'s muted grey
+//     treatment with the escalation block on purpose (`--signal-*`) —
+//     Tier 3 evidence and escalation signals are the same claim: routing,
+//     never resolution.
+//
+// Test coverage: `web/src/app/core/design/tokens.spec.ts` reads these back
+// via `getComputedStyle` in both themes and fails if a value here drifts
+// from the mockup.
+
+:root {
+  /* ---------- Spacing scale ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+
+  /* ---------- Backgrounds ---------- */
+  --bg-page: #f4f6fb;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #eaeef7;
+  --bg-hover: #e6ebf5;
+  --bg-press: #dbe2f0;
+
+  /* The navigation rail is dark in both themes, deliberately. */
+  --bg-sidebar: #0b101c;
+  --bg-sidebar-hover: #18203a;
+  --bg-sidebar-active: #2c3623;
+
+  /* ---------- Foreground ---------- */
+  --fg-primary: #0d1424;
+  --fg-secondary: #47536f;
+  --fg-muted: #5a6782;
+  --fg-onAccent: #070a12;
+  --fg-sidebar: #94a3c0;
+  --fg-sidebar-active: #ffffff;
+
+  /* ---------- Borders ---------- */
+  --border-subtle: #d5dcea;
+  --border-strong: #a9b4cb;
+  --border-focus: #586f00;
+  --border-sidebar: #1e2940;
+
+  /* ---------- Accent ---------- */
+  --accent: #586f00;
+  --accent-hover: #46590a;
+  --accent-fill: #d8ff4a;
+  --accent-fill-hover: #e6ff7a;
+  --accent-soft: #eef8cf;
+  --accent-softer: #f7fce9;
+
+  /* ---------- Semantic ---------- */
+  --success: #1a7f37;
+  --success-soft: #dafbe1;
+  --warning: #9a6700;
+  --warning-soft: #fff8c5;
+  --danger: #cf222e;
+  --danger-soft: #ffebe9;
+
+  /* ---------- Severity scale ---------- */
+  --sev-critical: #cf222e;
+  --sev-critical-soft: #ffebe9;
+  --sev-high: #b54708;
+  --sev-high-soft: #fff4e5;
+  --sev-medium: #9a6700;
+  --sev-medium-soft: #fff8c5;
+  --sev-low: #0969da;
+  --sev-low-soft: #ddf4ff;
+  --sev-info: #59636e;
+  --sev-info-soft: #f2f4f7;
+
+  /* ---------- Radii ---------- */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* ---------- Shadows ---------- */
+  --shadow-sm: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+  --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+
+  /* ---------- Typography ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-sans-operative: "IBM Plex Sans", var(--font-sans);
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* ==========================================================================
+     VEX-SPECIFIC — new to this portal, no equivalent in DAST-Portal's system.
+     ========================================================================== */
+
+  /* ---------- Outcome ramp ---------- */
+  /* No `--handoff` entry here — see this file's header. Handoff lives in its
+     own block below, outside this ramp. */
+  --outcome-clear: #1a7f37;
+  --outcome-clear-soft: #dafbe1;
+  --outcome-affected: #cf222e;
+  --outcome-affected-soft: #ffebe9;
+  --outcome-review: #b54708;
+  --outcome-review-soft: #fff4e5;
+
+  /* ---------- Hand-off (Risk Acceptance Required) — deliberately OUTSIDE
+     the outcome ramp above. A hand-off, never a resolution. ---------- */
+  --handoff: #6639ba;
+  --handoff-soft: #fbefff;
+  --handoff-border: #c9a8f0;
+
+  /* ---------- Evidence-tier ramp — descends in AUTHORITY, not severity.
+     Tier 3 deliberately shares the muted `--signal-*` treatment below:
+     Tier 3 evidence and escalation signals are the same claim. ---------- */
+  --tier1: #0e6b52;
+  --tier1-soft: #d7f5ec;
+  --tier2: #1f5d9e;
+  --tier2-soft: #e0edfb;
+  --tier3: #5a6782;
+  --tier3-soft: #eaeef7;
+
+  /* ---------- Escalation signals — deliberately colourless. No red-EPSS
+     token exists anywhere in this file; see this file's header. ---------- */
+  --signal-surface: #eef1f8;
+  --signal-border: #d5dcea;
+  --signal-fg: #47536f;
+  --signal-label: #5a6782;
+
+  /* ---------- Assessment-state ramp ---------- */
+  --state-draft: #59636e;
+  --state-draft-soft: #f2f4f7;
+  --state-admission: #0969da;
+  --state-admission-soft: #ddf4ff;
+  --state-admission-failed: #cf222e;
+  --state-admission-failed-soft: #ffebe9;
+  --state-analysing: #0969da;
+  --state-analysing-soft: #ddf4ff;
+  --state-needs-review: #b54708;
+  --state-needs-review-soft: #fff4e5;
+  --state-awaiting-approval: #6639ba;
+  --state-awaiting-approval-soft: #fbefff;
+  --state-completed: #1a7f37;
+  --state-completed-soft: #dafbe1;
+  --state-expired: #9a6700;
+  --state-expired-soft: #fff8c5;
+
+  /* ---------- Determination validity (expiry bands) ---------- */
+  /* Determinations last 7 days and are never auto-renewed, so expiry is a
+     first-class visual state: normal, within 48 hours, lapsed — each with
+     its own token, used identically on the assessment list and dashboard. */
+  --expiry-ok: #47536f;
+  --expiry-near: #9a6700;
+  --expiry-near-soft: #fff8c5;
+  --expiry-lapsed: #cf222e;
+  --expiry-lapsed-soft: #ffebe9;
+
+  /* ---------- Rule trace ---------- */
+  --trace-rail: #d5dcea;
+  --trace-pass: #1a7f37;
+  --trace-neutral: #5a6782;
+  --trace-hatch: #b54708;
+  --trace-fail: #cf222e;
+}
+
+:root[data-theme="dark"] {
+  /* ---------- Backgrounds ---------- */
+  --bg-page: #070a12;
+  --bg-surface: #101727;
+  --bg-surface-2: #141d31;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-press: rgba(255, 255, 255, 0.08);
+  --bg-sidebar: #0b101c;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --bg-sidebar-active: #2c3623;
+
+  /* ---------- Foreground ---------- */
+  --fg-primary: #e8edf7;
+  --fg-secondary: #94a3c0;
+  --fg-muted: #7987a8;
+  --fg-onAccent: #070a12;
+  --fg-sidebar: #94a3c0;
+  --fg-sidebar-active: #ffffff;
+
+  /* ---------- Borders ---------- */
+  --border-subtle: #1e2940;
+  --border-strong: #2c3b5e;
+  --border-focus: #d8ff4a;
+  --border-sidebar: #1e2940;
+
+  /* ---------- Accent ---------- */
+  --accent: #d8ff4a;
+  --accent-hover: #e6ff7a;
+  --accent-fill: #d8ff4a;
+  --accent-fill-hover: #e6ff7a;
+  --accent-soft: rgba(216, 255, 74, 0.14);
+  --accent-softer: rgba(216, 255, 74, 0.06);
+
+  /* ---------- Semantic ---------- */
+  --success: #43e6a0;
+  --success-soft: rgba(67, 230, 160, 0.12);
+  --warning: #ffd166;
+  --warning-soft: rgba(255, 209, 102, 0.12);
+  --danger: #ff5d6e;
+  --danger-soft: rgba(255, 93, 110, 0.12);
+
+  /* ---------- Severity scale ---------- */
+  --sev-critical: #ff5d6e;
+  --sev-critical-soft: rgba(255, 93, 110, 0.12);
+  --sev-high: #ff9e57;
+  --sev-high-soft: rgba(255, 158, 87, 0.12);
+  --sev-medium: #ffd166;
+  --sev-medium-soft: rgba(255, 209, 102, 0.12);
+  --sev-low: #57a9ff;
+  --sev-low-soft: rgba(87, 169, 255, 0.12);
+  --sev-info: #94a3c0;
+  --sev-info-soft: rgba(148, 163, 192, 0.12);
+
+  /* ---------- Shadows ---------- */
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 3px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  /* ---------- VEX-SPECIFIC (dark) ---------- */
+  --outcome-clear: #43e6a0;
+  --outcome-clear-soft: rgba(67, 230, 160, 0.12);
+  --outcome-affected: #ff5d6e;
+  --outcome-affected-soft: rgba(255, 93, 110, 0.12);
+  --outcome-review: #ff9e57;
+  --outcome-review-soft: rgba(255, 158, 87, 0.12);
+  --handoff: #b78cff;
+  --handoff-soft: rgba(183, 140, 255, 0.14);
+  --handoff-border: rgba(183, 140, 255, 0.45);
+
+  --tier1: #43e6a0;
+  --tier1-soft: rgba(67, 230, 160, 0.12);
+  --tier2: #57a9ff;
+  --tier2-soft: rgba(87, 169, 255, 0.12);
+  --tier3: #94a3c0;
+  --tier3-soft: rgba(148, 163, 192, 0.12);
+
+  --signal-surface: rgba(148, 163, 192, 0.07);
+  --signal-border: #1e2940;
+  --signal-fg: #94a3c0;
+  --signal-label: #7987a8;
+
+  --state-draft: #94a3c0;
+  --state-draft-soft: rgba(148, 163, 192, 0.12);
+  --state-admission: #57d7ff;
+  --state-admission-soft: rgba(87, 215, 255, 0.12);
+  --state-admission-failed: #ff5d6e;
+  --state-admission-failed-soft: rgba(255, 93, 110, 0.12);
+  --state-analysing: #57d7ff;
+  --state-analysing-soft: rgba(87, 215, 255, 0.12);
+  --state-needs-review: #ff9e57;
+  --state-needs-review-soft: rgba(255, 158, 87, 0.12);
+  --state-awaiting-approval: #b78cff;
+  --state-awaiting-approval-soft: rgba(183, 140, 255, 0.14);
+  --state-completed: #43e6a0;
+  --state-completed-soft: rgba(67, 230, 160, 0.12);
+  --state-expired: #ffd166;
+  --state-expired-soft: rgba(255, 209, 102, 0.12);
+
+  --expiry-ok: #94a3c0;
+  --expiry-near: #ffd166;
+  --expiry-near-soft: rgba(255, 209, 102, 0.12);
+  --expiry-lapsed: #ff5d6e;
+  --expiry-lapsed-soft: rgba(255, 93, 110, 0.12);
+
+  --trace-rail: #1e2940;
+  --trace-pass: #43e6a0;
+  --trace-neutral: #94a3c0;
+  --trace-hatch: #ff9e57;
+  --trace-fail: #ff5d6e;
+}

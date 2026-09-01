@@ -1,0 +1,14 @@
+// Base reset — lifted verbatim from `docs/design/ui-mockups.html`'s third,
+// small `<style>` block (the one outside the `vex-portal.css` comment).
+
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg-page); color: var(--fg-primary); font-family: var(--font-sans-operative); }
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+*, *::before, *::after { box-sizing: border-box; }
+
+// Reserves room for the Evidence Drawer (460px, `evidence-drawer.scss`) so
+// it overlays without covering the queue's own scrollbar. Applied to the
+// scrolling content region while the drawer is open.
+.has-drawer { padding-right: 460px; }
+@media (max-width: 1100px) { .has-drawer { padding-right: 0; } }

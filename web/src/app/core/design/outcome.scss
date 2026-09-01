@@ -1,0 +1,220 @@
+// Outcome pills, tier badges, assessment-state pills, the escalation-signal
+// block, rule trace, expiry/SLA badges, callouts, checks, progress bars.
+// Lifted verbatim from `docs/design/ui-mockups.html`'s `outcome.scss` block.
+//
+// `.outcome--handoff` is the one outcome that is NOT a filled pill — dashed
+// outline, transparent fill, borrows nothing from `.outcome--clear`'s green.
+// See `tokens.scss`'s header.
+
+.outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.outcome__icon { font-family: var(--font-mono); font-size: 12px; line-height: 1; }
+
+.outcome--clear { background: var(--outcome-clear-soft); color: var(--outcome-clear); }
+.outcome--affected { background: var(--outcome-affected-soft); color: var(--outcome-affected); }
+.outcome--review { background: var(--outcome-review-soft); color: var(--outcome-review); }
+
+.outcome--handoff {
+  background: transparent;
+  color: var(--handoff);
+  border: 1px dashed var(--handoff-border);
+  border-radius: var(--radius-sm);
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.state--DRAFT { background: var(--state-draft-soft); color: var(--state-draft); }
+.state--ADMISSION { background: var(--state-admission-soft); color: var(--state-admission); }
+.state--ADMISSION_FAILED { background: var(--state-admission-failed-soft); color: var(--state-admission-failed); }
+.state--ANALYSING { background: var(--state-analysing-soft); color: var(--state-analysing); }
+.state--NEEDS_REVIEW { background: var(--state-needs-review-soft); color: var(--state-needs-review); }
+.state--AWAITING_APPROVAL { background: var(--state-awaiting-approval-soft); color: var(--state-awaiting-approval); }
+.state--COMPLETED { background: var(--state-completed-soft); color: var(--state-completed); }
+.state--EXPIRED { background: var(--state-expired-soft); color: var(--state-expired); }
+
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tier--1 { background: var(--tier1-soft); color: var(--tier1); }
+.tier--2 { background: var(--tier2-soft); color: var(--tier2); }
+.tier--3 { background: var(--tier3-soft); color: var(--tier3); }
+
+// The escalation-signal block. Structurally its own component, never
+// rendered inside `.trace` or beside `.outcome--clear` — see
+// `docs/design/ui-spec.md`'s "never render adjacent to a Not Affected
+// verdict in a way that reads as supporting it".
+.signals {
+  background: var(--signal-surface);
+  border: 1px solid var(--signal-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  color: var(--signal-fg);
+}
+.signals__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.signals__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--signal-label);
+}
+.signals__disclaimer {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--signal-label);
+}
+.signals__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-2) var(--space-3);
+  font-size: 12px;
+}
+.signals__k { color: var(--signal-label); font-size: 11px; }
+.signals__v { font-family: var(--font-mono); font-size: 13px; color: var(--signal-fg); }
+
+.trace { display: grid; gap: 2px; }
+.trace__row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.trace__row:hover { background: var(--bg-hover); }
+.trace__tier {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--trace-neutral);
+}
+.trace__name { color: var(--fg-secondary); }
+.trace__result {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.trace__result--pass { color: var(--trace-pass); }
+.trace__result--neutral { color: var(--trace-neutral); }
+.trace__result--hatch { color: var(--trace-hatch); }
+.trace__result--fail { color: var(--trace-fail); }
+.trace__detail {
+  grid-column: 2 / -1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+// A rule trace row whose collector FAILED (an outage). Deliberately unlike
+// the missing-evidence list (abstention) — see
+// `web/src/app/core/design/evidence-drawer.scss` and ui-spec: "A failed
+// collector must never render as a passed check."
+.trace__row--degraded {
+  border: 1px dashed var(--trace-fail);
+  background: var(--danger-soft);
+}
+
+.expiry { font-size: 12px; color: var(--expiry-ok); }
+.expiry--near {
+  color: var(--expiry-near);
+  font-weight: 700;
+  background: var(--expiry-near-soft);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+.expiry--lapsed {
+  color: var(--expiry-lapsed);
+  font-weight: 700;
+  background: var(--expiry-lapsed-soft);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.sla { font-family: var(--font-mono); font-size: 12px; color: var(--fg-secondary); }
+.sla--breach { color: var(--danger); font-weight: 700; }
+.sla--soon { color: var(--warning); font-weight: 700; }
+
+.callout {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  font-size: 13px;
+  color: var(--fg-secondary);
+}
+.callout__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-primary);
+}
+.callout--handoff {
+  background: var(--handoff-soft);
+  border-color: var(--handoff-border);
+  border-left: 3px solid var(--handoff);
+}
+.callout--handoff .callout__title { color: var(--handoff); }
+.callout--danger { background: var(--danger-soft); border-color: var(--danger); }
+.callout--danger .callout__title { color: var(--danger); }
+.callout--warning { background: var(--warning-soft); border-color: var(--warning); }
+.callout--warning .callout__title { color: var(--warning); }
+.callout--info { background: var(--sev-low-soft); border-color: var(--sev-low); }
+.callout--info .callout__title { color: var(--sev-low); }
+
+.check { display: flex; align-items: flex-start; gap: var(--space-2); font-size: 12px; }
+.check__mark { font-family: var(--font-mono); font-weight: 700; flex: none; }
+.check--pass .check__mark { color: var(--success); }
+.check--pass { color: var(--fg-secondary); }
+.check--fail .check__mark { color: var(--danger); }
+.check--fail { color: var(--danger); }
+.check--busy .check__mark { color: var(--fg-muted); }
+.check--busy { color: var(--fg-muted); }
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-surface-2);
+  overflow: hidden;
+}
+.progress__fill { height: 100%; background: var(--accent-fill); border-radius: 999px; }
+.progress__fill--split { background: var(--outcome-clear); }
