@@ -19,3 +19,6 @@ web/.angular/
 
 # Evidence scratch — artifact downloads are large and never committed
 backend/.evidence-cache/
+
+# Local SQLite database — a committed db file would be noise and a leak
+backend/data/
