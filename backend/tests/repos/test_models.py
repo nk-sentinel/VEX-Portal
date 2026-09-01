@@ -1,7 +1,8 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.repos.models import Assessment, AssessmentState, AuditEntry, Finding
+from app.domain.determination import State
+from app.repos.models import Assessment, AssessmentState, AuditEntry, Finding, FindingOutcome
 
 
 @pytest.mark.asyncio
@@ -38,3 +39,27 @@ async def test_timestamps_are_generated_in_python_not_by_the_database(session):
     a = Assessment(application_id="a", report_id="r", requester="u")
     assert a.created_at is not None
     assert a.created_at.tzinfo is not None
+
+
+def test_finding_outcomes_map_onto_vex_states_without_drift():
+    # Two vocabularies at different layers. Nothing stops someone renaming a
+    # value on one side, so pin the bridge rather than trusting it.
+    assert FindingOutcome.NOT_AFFECTED.to_vex_state() is State.NOT_AFFECTED
+    assert FindingOutcome.AFFECTED.to_vex_state() is State.AFFECTED
+    assert FindingOutcome.NEEDS_REVIEW.to_vex_state() is State.UNDER_INVESTIGATION
+    assert FindingOutcome.NOT_AFFECTED.value == State.NOT_AFFECTED.value
+    assert FindingOutcome.AFFECTED.value == State.AFFECTED.value
+
+
+def test_risk_acceptance_has_no_vex_state_because_it_is_not_a_determination():
+    # No fix exists, the app team takes it to their risk manager, and the IQ
+    # violation stays open. Exporting it as a VEX state would report a
+    # hand-off as a resolution.
+    assert FindingOutcome.RISK_ACCEPTANCE_REQUIRED.to_vex_state() is None
+
+
+def test_every_outcome_is_covered_by_the_mapping():
+    # A new outcome added later must be considered here, not silently
+    # KeyError at export time.
+    for outcome in FindingOutcome:
+        outcome.to_vex_state()

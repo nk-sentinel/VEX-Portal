@@ -94,12 +94,31 @@ class FindingOutcome(StrEnum):
     do overlap, the string values are kept identical on purpose
     (``not_affected`` / ``affected``) so the vocabulary never drifts for the
     outcomes they share.
+
+    Two vocabularies at different layers with no explicit bridge drift
+    silently — that is how holes opened on the previous branch. See
+    :meth:`to_vex_state` for the pinned, tested bridge between them.
     """
 
     NOT_AFFECTED = "not_affected"
     AFFECTED = "affected"
     NEEDS_REVIEW = "needs_review"
     RISK_ACCEPTANCE_REQUIRED = "risk_acceptance_required"
+
+    def to_vex_state(self) -> State | None:
+        """The VEX state this outcome exports as, or None if it is not a determination.
+
+        RISK_ACCEPTANCE_REQUIRED has no VEX counterpart on purpose: no fix
+        exists, the app team takes it to their risk manager, and the IQ
+        violation stays open. Mapping it to a VEX state would export a
+        hand-off as a resolution.
+        """
+        return {
+            FindingOutcome.NOT_AFFECTED: State.NOT_AFFECTED,
+            FindingOutcome.AFFECTED: State.AFFECTED,
+            FindingOutcome.NEEDS_REVIEW: State.UNDER_INVESTIGATION,
+            FindingOutcome.RISK_ACCEPTANCE_REQUIRED: None,
+        }[self]
 
 
 class Base(MappedAsDataclass, DeclarativeBase, kw_only=True):
@@ -164,12 +183,12 @@ class Assessment(Base, kw_only=True):
     state: Mapped[AssessmentState] = mapped_column(default=AssessmentState.DRAFT)
     requester: Mapped[str] = mapped_column()
 
-    #: A free-standing summary justification for the assessment as a whole.
-    #: Reuses the domain vocabulary rather than free text so it can never
-    #: drift from the per-finding values it summarizes — see the task
-    #: report for why this column's meaning is an assumption, not something
-    #: the brief pins down.
-    justification: Mapped[Justification | None] = mapped_column(default=None)
+    #: The requester's own words on why the assessment is needed — the
+    #: intake form's "Why is this needed?" box. Free text, and NOT a VEX
+    #: justification: a VEX justification explains why one vulnerability
+    #: does not apply and belongs on a Finding. Reviewer context only; the
+    #: rule engine never reads it.
+    requester_note: Mapped[str | None] = mapped_column(default=None)
 
     created_at: Mapped[datetime] = mapped_column(default_factory=_now)
     submitted_at: Mapped[datetime | None] = mapped_column(default=None)
