@@ -43,6 +43,28 @@ async def build_info(build_name: str, build_number: str) -> dict[str, Any]:
     return dict(info)
 
 
+# Added beyond the Task 7 brief's literal route list: ArtifactStore.build_info
+# (backend/app/adapters/protocols.py) is asked to answer with the SAME opaque
+# `coordinates` fetch() uses, but the real Build Info API above is keyed by
+# (build name, build number), not by an artifact's own path. The real,
+# documented bridge between the two is Artifactory's Item Properties API
+# (GET /api/storage/{path}?properties=build.name,build.number), which
+# answers the build.name/build.number properties Artifactory attaches when an
+# artifact is deployed with build info. Added here per fakes/README.md's own
+# standing policy on adding the smallest fake route a real client genuinely
+# needs — see backend/app/adapters/jfrog/client.py's module docstring.
+@app.get("/api/storage/{artifact_path:path}")
+async def artifact_properties(artifact_path: str, properties: str | None = None) -> dict[str, Any]:
+    info = _DATA["build_info"]["buildInfo"]
+    return {
+        "uri": f"/api/storage/{artifact_path}",
+        "properties": {
+            "build.name": [info["name"]],
+            "build.number": [info["number"]],
+        },
+    }
+
+
 # Registered last: a generic download matches any path not already claimed
 # by a more specific route above, mirroring how Artifactory serves a repo
 # path directly rather than through a dedicated "/download" prefix.

@@ -81,6 +81,31 @@ async def applications() -> dict[str, Any]:
     return {"applications": _DATA["applications"]}
 
 
+# Added beyond the Task 7 brief's literal route list: Task 8's real IQ client
+# needs a way to discover an application's *current* report id without
+# already knowing one, because IqClient.create_determination's FindingRef
+# carries no report_id or policyViolationId (see backend/app/adapters/iq/
+# client.py's module docstring, design finding 3). This is a real, documented
+# Sonatype endpoint (help.sonatype.com/en/report-rest-api.html, "Report REST
+# APIs" — GET /api/v2/reports/applications/{applicationInternalId}, answering
+# a per-stage summary whose reportDataUrl embeds the report id), added here
+# per fakes/README.md's own standing policy: "If a real client needs a new
+# fake route to be testable, add the smallest possible canned response for
+# it." Not otherwise used by this fake's own tests.
+@app.get("/api/v2/reports/applications/{application_id}")
+async def application_reports(application_id: str) -> list[dict[str, Any]]:
+    reports = _DATA["reports"].get(application_id, {})
+    return [
+        {
+            "stage": "build",
+            "applicationId": application_id,
+            "evaluationDate": "2026-08-20T10:15:00.000-0700",
+            "reportDataUrl": f"api/v2/applications/{application_id}/reports/{report_id}",
+        }
+        for report_id in reports
+    ]
+
+
 @app.get("/api/v2/applications/{application_id}/reports/{report_id}/raw")
 async def raw_report(application_id: str, report_id: str) -> dict[str, Any]:
     try:

@@ -72,3 +72,14 @@ ignore = ["S101"]  # assert is expected in tests
 python_version = "3.12"
 strict = true
 warn_unreachable = true
+
+# boto3/botocore ship no py.typed marker and no bundled stubs, and adding a
+# stub-only package (`boto3-stubs`/`types-boto3-bedrock-runtime`) would be a
+# new dependency this project's pinned-versions rule (pyproject.toml, top of
+# file) does not currently carry. app/adapters/llm/client.py (the one place
+# either is imported) is otherwise fully strict-typed; this override only
+# silences "missing library stubs" for these two third-party packages, it
+# does not loosen strictness for any first-party code.
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
