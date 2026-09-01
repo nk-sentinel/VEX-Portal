@@ -16,7 +16,7 @@ from app.domain.determination import EvidenceTier, Justification
 from app.evidence.pack import ComponentEvidence, EvidencePack
 from app.provenance.fingerprint import FingerprintResult, Verdict
 from app.repos.models import FindingOutcome
-from app.rules.engine import Rule, RuleEngine, RuleResult, RuleVerdict, Tier3Signals
+from app.rules.engine import Rule, RuleEngine, RuleEvaluation, RuleVerdict, Tier3Signals
 
 PACK = EvidencePack(
     provenance=FingerprintResult(
@@ -56,9 +56,9 @@ class AlwaysSatisfied:
 
     def evaluate(
         self, pack: EvidencePack, component: ComponentEvidence, tier3_signals: Tier3Signals
-    ) -> RuleResult:
+    ) -> RuleEvaluation:
         del pack, component, tier3_signals
-        return RuleResult(
+        return RuleEvaluation(
             rule_id=self.id,
             rule_version=self.version,
             tier=self.tier,
@@ -77,9 +77,9 @@ class AlwaysNotSatisfied:
 
     def evaluate(
         self, pack: EvidencePack, component: ComponentEvidence, tier3_signals: Tier3Signals
-    ) -> RuleResult:
+    ) -> RuleEvaluation:
         del pack, component, tier3_signals
-        return RuleResult(
+        return RuleEvaluation(
             rule_id=self.id,
             rule_version=self.version,
             tier=self.tier,
@@ -97,9 +97,9 @@ class Inapplicable:
 
     def evaluate(
         self, pack: EvidencePack, component: ComponentEvidence, tier3_signals: Tier3Signals
-    ) -> RuleResult:
+    ) -> RuleEvaluation:
         del pack, component, tier3_signals
-        return RuleResult(
+        return RuleEvaluation(
             rule_id=self.id,
             rule_version=self.version,
             tier=self.tier,
@@ -117,9 +117,9 @@ class Unanswerable:
 
     def evaluate(
         self, pack: EvidencePack, component: ComponentEvidence, tier3_signals: Tier3Signals
-    ) -> RuleResult:
+    ) -> RuleEvaluation:
         del pack, component, tier3_signals
-        return RuleResult(
+        return RuleEvaluation(
             rule_id=self.id,
             rule_version=self.version,
             tier=self.tier,
@@ -413,15 +413,15 @@ class TestDefaultOutcome:
         assert outcome.proposed is FindingOutcome.NEEDS_REVIEW
 
 
-class TestRuleResultShape:
+class TestRuleEvaluationShape:
     def test_detail_defaults_to_an_empty_dict(self) -> None:
-        result = RuleResult(
+        result = RuleEvaluation(
             rule_id="x", rule_version="1", tier=EvidenceTier.PROOF, verdict=RuleVerdict.SATISFIED
         )
         assert result.detail == {}
 
     def test_detail_can_carry_free_form_evidence(self) -> None:
-        result = RuleResult(
+        result = RuleEvaluation(
             rule_id="x",
             rule_version="1",
             tier=EvidenceTier.PROOF,

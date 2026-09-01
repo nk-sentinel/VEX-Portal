@@ -109,8 +109,20 @@ class RuleVerdict(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-class RuleResult:
+class RuleEvaluation:
     """One rule's verdict against one component.
+
+    The engine evaluates rules, producing ``RuleEvaluation`` objects; those
+    are persisted as :class:`~app.repos.models.RuleResult` rows. The two
+    names are deliberately different even though the shapes rhyme
+    (``rule_id``/``rule_version``/``tier``/verdict on both): this class is
+    an in-flight evaluation result exchanged between :class:`Rule` and
+    :class:`RuleEngine`, never itself written to the database, while
+    ``app.repos.models.RuleResult`` is the persisted row a later task
+    (Phase 4, Task 8) writes from it. Sharing one name across those two
+    layers is exactly the kind of ambiguity that has already cost this
+    project real holes — see the Task 1 report — so the names stay
+    distinct on purpose.
 
     Self-describing — carries its own ``rule_id``/``rule_version``/``tier``
     rather than just ``(verdict, justification, detail)`` — so
@@ -163,7 +175,7 @@ class Rule(Protocol):
         pack: EvidencePack,
         component: ComponentEvidence,
         tier3_signals: Tier3Signals,
-    ) -> RuleResult:
+    ) -> RuleEvaluation:
         """Evaluate this rule against one component's evidence.
 
         Must never raise for missing evidence — return
@@ -178,17 +190,25 @@ class Tier3Signals:
     """External, per-CVE escalation signals: CVSS, EPSS, KEV, and IQ's own
     reachability call.
 
+    Plainly, for whoever builds Task 4's ``t3-*`` rules against this shape:
+    :class:`~app.evidence.pack.EvidencePack` is built by the evidence layer
+    from *this artifact* — what ships, what is referenced, what the archive
+    contains. CVSS, EPSS and KEV are not that. They come from IQ's
+    vulnerability lookup, describe the *CVE itself* rather than this
+    artifact, and do not depend on anything the evidence layer inspected.
+    Two different systems, on two different cadences, answering two
+    different questions — so they arrive through two different channels
+    rather than being merged onto one pack.
+
     These are threaded into :meth:`RuleEngine.evaluate_component` (and from
     there into every :meth:`Rule.evaluate` call) as their own argument
-    rather than as fields on :class:`~app.evidence.pack.EvidencePack` or
-    :class:`~app.evidence.pack.ComponentEvidence`, because they do not come
-    from the evidence layer's artifact inspection at all — they come from
-    the IQ vulnerability lookup (KEV/EPSS/CVSS) and from IQ's own
-    auto-waiver reachability analysis. ``EvidencePack``'s own docstring
-    defines it as observation of what ships and what is referenced; mixing
-    in vendor-supplied risk scoring would blur that boundary and make it
-    easy to accidentally wire a Tier 3 field into a Tier 1/2 rule's
-    evaluation just because it was reachable off the same object.
+    rather than as fields on ``EvidencePack`` or
+    :class:`~app.evidence.pack.ComponentEvidence`. ``EvidencePack``'s own
+    docstring defines it as observation of what ships and what is
+    referenced; mixing in vendor-supplied risk scoring would blur that
+    boundary and make it easy to accidentally wire a Tier 3 field into a
+    Tier 1/2 rule's evaluation just because it was reachable off the same
+    object.
 
     This is the shape Task 4's ``app/rules/tier3.py`` (``t3-kev``,
     ``t3-epss``, ``t3-cvss-vector``, ``t3-no-fix-available``) builds
@@ -254,7 +274,7 @@ class EngineOutcome:
 
     #: Every rule that ran, in registration order, regardless of its
     #: verdict. The reviewer's trust surface and the audit record.
-    results: tuple[RuleResult, ...]
+    results: tuple[RuleEvaluation, ...]
 
 
 class RuleEngine:
@@ -322,7 +342,7 @@ class RuleEngine:
         )
 
     @staticmethod
-    def _best_clearing_result(results: Sequence[RuleResult]) -> RuleResult | None:
+    def _best_clearing_result(results: Sequence[RuleEvaluation]) -> RuleEvaluation | None:
         """The strongest rule result that may justify NOT_AFFECTED, if any.
 
         "Strongest" means the lowest ``EvidenceTier`` value — PROOF (1)
