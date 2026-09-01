@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "coordinates_hint": "libs-release-local/com/example/payments-api/1.0.0/payments-api-1.0.0.jar",
+    "sha1": "9fd0c5cf0805a7d3b3f835ed39b1543e36a8e7c5",
+    "sha256": "be8dc0e82fc26f97e432e65c4dcade10adb92add29a774c8d98b9dd270203316",
+    "size": 2668
+  },
+  "build_info": {
+    "uri": "https://artifactory.example.internal/api/build/payments-api/247",
+    "buildInfo": {
+      "version": "1.0.1",
+      "name": "payments-api",
+      "number": "247",
+      "type": "MAVEN",
+      "started": "2026-08-20T10:15:00.000-0700",
+      "durationMillis": 184320,
+      "vcs": [
+        {
+          "revision": "521d1b3b25ba930e3a8745189e14926e117a3270",
+          "branch": "release/2026.09",
+          "url": "https://bitbucket.example.internal/scm/pay/payments-api.git"
+        }
+      ],
+      "modules": [
+        {
+          "id": "com.example:payments-api:1.0.0",
+          "artifacts": [
+            {
+              "name": "payments-api-1.0.0.jar",
+              "type": "jar",
+              "sha1": "9fd0c5cf0805a7d3b3f835ed39b1543e36a8e7c5",
+              "sha256": "be8dc0e82fc26f97e432e65c4dcade10adb92add29a774c8d98b9dd270203316",
+              "md5": "935be7849792a89e1bb5463be7d98cfd"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "buildInfo.env.GIT_COMMIT": "521d1b3b25ba930e3a8745189e14926e117a3270",
+        "buildInfo.env.GIT_BRANCH": "release/2026.09"
+      }
+    }
+  }
+}

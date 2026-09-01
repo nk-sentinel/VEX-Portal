@@ -41,8 +41,65 @@ services:
       - "traefik.http.routers.vex-portal-api.entrypoints=web"
       - "traefik.http.services.vex-portal-api.loadbalancer.server.port=8000"
 
+  # --- Fake external systems (Task 7) — THROWAWAY, see /fakes/README.md ---
+  #
+  # Stand-ins for Nexus IQ, JFrog Artifactory, Bitbucket Data Center, and AWS
+  # Bedrock: the four systems this portal talks to that shadowlab cannot
+  # reach directly. One shared image (fakes/Dockerfile, built from THIS
+  # file's directory so it can copy fakes/ with its "fakes." import prefix
+  # intact) — which fake a container runs is chosen entirely by its
+  # `command:`.
+  #
+  # Service names are stack-unique (`vex-fake-*`) per house convention.
+  # Each joins BOTH `proxy` and `dev-network` (shared across every stack on
+  # this host) purely for the DNS alias, with no Traefik labels — these are
+  # never meant to be reachable from the public internet. vex-portal-api is
+  # already on `proxy`, so it can resolve these by name with no change to
+  # its own service block, which means no need to touch (or restart) the
+  # container already running from Task 5. Host ports 9101-9104 are
+  # published to match app/config.py's fake_*_url defaults exactly, so
+  # `just dev-api` (host venv) and pytest reach them at plain
+  # http://localhost:910x with zero .env changes.
+  vex-fake-iq:
+    build: {context: ., dockerfile: fakes/Dockerfile}
+    image: vex-fake-iq:latest
+    container_name: vex-fake-iq
+    command: ["uvicorn", "fakes.iq.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks: [proxy, dev-network]
+    ports: ["9101:8000"]
+    restart: unless-stopped
+
+  vex-fake-jfrog:
+    build: {context: ., dockerfile: fakes/Dockerfile}
+    image: vex-fake-jfrog:latest
+    container_name: vex-fake-jfrog
+    command: ["uvicorn", "fakes.jfrog.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks: [proxy, dev-network]
+    ports: ["9102:8000"]
+    restart: unless-stopped
+
+  vex-fake-bitbucket:
+    build: {context: ., dockerfile: fakes/Dockerfile}
+    image: vex-fake-bitbucket:latest
+    container_name: vex-fake-bitbucket
+    command: ["uvicorn", "fakes.bitbucket.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks: [proxy, dev-network]
+    ports: ["9103:8000"]
+    restart: unless-stopped
+
+  vex-fake-bedrock:
+    build: {context: ., dockerfile: fakes/Dockerfile}
+    image: vex-fake-bedrock:latest
+    container_name: vex-fake-bedrock
+    command: ["uvicorn", "fakes.bedrock.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks: [proxy, dev-network]
+    ports: ["9104:8000"]
+    restart: unless-stopped
+
 networks:
   proxy:
+    external: true
+  dev-network:
     external: true
 
 volumes:

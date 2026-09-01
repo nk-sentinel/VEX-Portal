@@ -48,6 +48,15 @@ filterwarnings = [
   "error::PendingDeprecationWarning",
 ]
 
+# `/fakes` (repo root, sibling of `backend/`) is deliberately OUT OF SCOPE for both ruff and
+# mypy here — `just lint` invokes `ruff check app tests` / `mypy app`, both already scoped to
+# directories under `backend/`, so `/fakes` was never implicitly covered and this is a
+# decision, not an accident. `/fakes` is throwaway scaffolding standing in for Nexus IQ,
+# JFrog, Bitbucket and Bedrock (see /fakes/README.md) — it never ships, is never imported by
+# `app/`, and isn't held to this project's strict-mypy/product bar. It is still written cleanly
+# and type-annotated; the exclusion is about not gating CI on disposable code, not license to
+# be sloppy. If `/fakes` is ever promoted to a real, shipped component, remove this comment and
+# add it to both commands' scope.
 [tool.ruff]
 line-length = 100
 target-version = "py312"

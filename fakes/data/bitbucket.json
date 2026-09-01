@@ -1,0 +1,10 @@
+{
+  "project_key": "PAY",
+  "repo_slug": "payments-api",
+  "default_ref": "release/2026.09",
+  "files": {
+    "src/main/java/com/example/payments/PaymentService.java": "package com.example.payments;\n\nimport org.apache.commons.text.StringSubstitutor;\n\nimport java.util.Map;\n\n/** Renders payment notification templates for the settlement batch job. */\npublic class PaymentService {\n\n    private final Map<String, String> templateValues;\n\n    public PaymentService(Map<String, String> templateValues) {\n        this.templateValues = templateValues;\n    }\n\n    public String renderNotification(String template) {\n        StringSubstitutor substitutor = new StringSubstitutor(templateValues);\n        return substitutor.replace(template);\n    }\n}\n",
+    "src/main/java/com/example/payments/ReflectiveConfigLoader.java": "package com.example.payments;\n\nimport java.lang.reflect.Method;\n\n/** Loads a pluggable settlement strategy named in application.yml via reflection. */\npublic class ReflectiveConfigLoader {\n\n    public Object loadStrategy(String className, String methodName) throws Exception {\n        Class<?> clazz = Class.forName(className);\n        Method factory = clazz.getMethod(methodName);\n        return factory.invoke(null);\n    }\n}\n",
+    "pom.xml": "<project>\n  <groupId>com.example</groupId>\n  <artifactId>payments-api</artifactId>\n  <version>1.0.0</version>\n  <dependencies>\n    <dependency>\n      <groupId>org.apache.commons</groupId>\n      <artifactId>commons-text</artifactId>\n      <version>1.9</version>\n    </dependency>\n    <dependency>\n      <groupId>org.apache.logging.log4j</groupId>\n      <artifactId>log4j-core</artifactId>\n      <version>2.14.1</version>\n    </dependency>\n    <dependency>\n      <groupId>commons-collections</groupId>\n      <artifactId>commons-collections</artifactId>\n      <version>3.2.1</version>\n    </dependency>\n  </dependencies>\n</project>\n"
+  }
+}

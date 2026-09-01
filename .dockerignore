@@ -1,0 +1,20 @@
+# Repo-root build context — used only by the fakes/ image (compose.yaml's
+# vex-fake-* services), which needs `fakes/` copied with its "fakes."
+# import prefix intact and so builds from the repo root rather than from
+# fakes/ alone. backend/'s own image still builds from ./backend with its
+# own backend/.dockerignore; this file just keeps the fakes build from
+# uploading the whole repo (in particular backend/.venv) as context.
+.git/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/*.egg-info/
+backend/data/
+backend/htmlcov/
+web/
+docs/
+.superpowers/
+.planning/

@@ -1,0 +1,44 @@
+{
+  "tool_name": "emit_verdict",
+  "default_verdict": {
+    "state": "in_triage",
+    "justification": null,
+    "confidence": "insufficient_evidence",
+    "evidence_refs": [],
+    "missing_evidence": [
+      "no canned adjudication is configured for this finding; the fake abstains by default rather than fabricate a verdict"
+    ]
+  },
+  "verdicts_by_cve": {
+    "CVE-2022-42889": {
+      "state": "affected",
+      "justification": null,
+      "confidence": "high",
+      "evidence_refs": [
+        "class_present:CVE-2022-42889:org/apache/commons/text/StringSubstitutor.class",
+        "referenced:CVE-2022-42889:com/example/payments/PaymentService.class"
+      ],
+      "missing_evidence": []
+    },
+    "CVE-2021-44228": {
+      "state": "in_triage",
+      "justification": null,
+      "confidence": "insufficient_evidence",
+      "evidence_refs": [
+        "class_present:CVE-2021-44228:org/apache/logging/log4j/core/lookup/JndiLookup.class"
+      ],
+      "missing_evidence": [
+        "conclusive reference scan \u2014 a reflection escape hatch elsewhere in the application (com/example/payments/ReflectiveConfigLoader.class) makes absence-of-reference untrustworthy"
+      ]
+    },
+    "CVE-2015-6420": {
+      "state": "not_affected",
+      "justification": "code_not_present",
+      "confidence": "high",
+      "evidence_refs": [
+        "class_absent:CVE-2015-6420:org/apache/commons/collections/functors/InvokerTransformer.class"
+      ],
+      "missing_evidence": []
+    }
+  }
+}
