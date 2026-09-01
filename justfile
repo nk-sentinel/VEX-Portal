@@ -33,5 +33,7 @@ migrate:
     cd backend && .venv/bin/alembic upgrade head
 
 # --- Frontend ---
+# Port 4200 is occupied by an unrelated DAST-Portal `ng serve` on this host
+# — 4201 avoids the collision (see the Task 3 report).
 dev-web:
-    cd web && npx ng serve --host 0.0.0.0 --port 4200
+    cd web && npx ng serve --host 0.0.0.0 --port 4201

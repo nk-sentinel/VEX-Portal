@@ -1,0 +1,384 @@
+<div style="position: relative; min-height: 100%" [class.has-drawer]="openFindingId() !== null">
+  <div class="page">
+    @if (scoped()) {
+      <!-- ============================== [6] Assessment Detail header ============================== -->
+      <div class="card">
+        <div style="padding: 16px; display: grid; gap: 10px; border-bottom: 1px solid var(--border-subtle)">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <a class="link-btn" routerLink="/review">← Review Queue</a>
+            @if (assessmentHeader(); as asm) {
+              <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em">
+                {{ asm.id }} · {{ asm.application_id }}
+              </h1>
+              <span class="state-pill state--{{ asm.state.toUpperCase() }}" style="margin-left: auto">{{ asm.state.replace('_', ' ') }}</span>
+            }
+          </div>
+          @if (assessmentHeader(); as asm) {
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--fg-secondary); font-family: var(--font-mono)">
+              <span>report {{ asm.report_id }}</span>
+              @if (asm.commit_sha) {
+                <span>commit {{ asm.commit_sha }}</span>
+              }
+              @if (asm.submitted_at) {
+                <span>submitted {{ asm.submitted_at | date: 'short' }}</span>
+              }
+              @if (asm.artifact_ref) {
+                <span>artifact {{ asm.artifact_ref }}</span>
+              }
+            </div>
+            @if (asm.provenance; as prov) {
+              <div class="callout callout--info" style="padding: 10px 12px">
+                <span class="callout__title">Provenance ✓ {{ prov['matched'] }}/{{ prov['report_total'] }} components matched</span>
+                <span>Every determination below rests on this. If the artifact were a different build, none of the evidence beneath would apply.</span>
+              </div>
+            } @else {
+              <div class="callout callout--warning" style="padding: 10px 12px">
+                <span class="callout__title">No provenance snapshot on file</span>
+                <span>Determinations below cannot be traced back to a verified artifact match.</span>
+              </div>
+            }
+            <p style="margin: 0; font-size: 13px; color: var(--fg-secondary)">
+              requester {{ asm.requester }}
+              @if (asm.requester_note) {
+                — "{{ asm.requester_note }}"
+              }
+            </p>
+          }
+        </div>
+        <div style="padding: 16px; display: grid; gap: 10px">
+          <div style="display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px">
+            <span style="color: var(--outcome-clear); font-weight: 600">{{ assessmentHeader()?.outcome_counts?.not_affected ?? 0 }} not affected</span>
+            <span style="color: var(--outcome-affected); font-weight: 600">{{ assessmentHeader()?.outcome_counts?.affected ?? 0 }} affected</span>
+            <span style="color: var(--outcome-review); font-weight: 600">{{ assessmentHeader()?.outcome_counts?.needs_review ?? 0 }} need review</span>
+            <span style="color: var(--handoff); font-weight: 600">{{ assessmentHeader()?.outcome_counts?.risk_acceptance_required ?? 0 }} risk acceptance</span>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <!-- ============================== [5] Review Queue header ============================== -->
+      <div class="page__head">
+        <div>
+          <p class="eyebrow">Review Queue</p>
+          <h1>{{ rowCount() }} {{ state.outcome() === 'needs_review' ? 'need review' : 'shown' }}</h1>
+          <p class="sub">Finding-level rows across every assessment. Sorted by SLA, most urgent first.</p>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <span style="font-size: 12px; color: var(--fg-muted)">group by</span>
+          <button type="button" class="chip" [class.is-active]="state.grouping() === 'none'" (click)="setGrouping('none')">finding</button>
+          <button type="button" class="chip" [class.is-active]="state.grouping() === 'assessment'" (click)="setGrouping('assessment')">
+            assessment
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end">
+        <label class="field" style="width: 158px">
+          <span class="field-label">outcome</span>
+          <select [ngModel]="state.outcome()" (ngModelChange)="onOutcomeFilter($event)">
+            <option value="all">all</option>
+            <option value="needs_review">needs review</option>
+            <option value="not_affected">not affected</option>
+            <option value="affected">affected</option>
+            <option value="risk_acceptance_required">risk acceptance</option>
+          </select>
+        </label>
+        <label class="field" style="width: 158px">
+          <span class="field-label">application</span>
+          <select [ngModel]="state.application()" (ngModelChange)="onApplicationFilter($event)">
+            <option value="all">all</option>
+            @for (app of applicationOptions(); track app) {
+              <option [value]="app">{{ app }}</option>
+            }
+          </select>
+        </label>
+        <label class="field" style="width: 158px">
+          <span class="field-label">SLA</span>
+          <select [ngModel]="state.sla()" (ngModelChange)="onSlaFilter($event)">
+            <option value="all">all</option>
+            <option value="breaching">breaching</option>
+            <option value="urgent">urgent</option>
+            <option value="ok">ok</option>
+          </select>
+        </label>
+        <label class="field" style="width: 158px">
+          <span class="field-label">tier</span>
+          <select [ngModel]="state.tier()" (ngModelChange)="onTierFilter($event)">
+            <option value="all">all</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <label class="search" style="width: 220px">
+          <span aria-hidden="true">⌕</span>
+          <input
+            #searchInput
+            type="search"
+            placeholder="search CVE or component"
+            [ngModel]="state.search()"
+            (ngModelChange)="onSearch($event)"
+            aria-label="search CVE or component"
+          />
+        </label>
+        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--fg-muted)">
+          <span class="kbd">j</span><span class="kbd">k</span> move · <span class="kbd">Enter</span> open ·
+          <span class="kbd">a</span> not affected · <span class="kbd">d</span> affected · <span class="kbd">s</span> skip ·
+          <span class="kbd">/</span> search · <span class="kbd">esc</span> close
+        </div>
+      </div>
+    }
+
+    <!-- ============================== Callouts ============================== -->
+    @if (bulkBlockList(); as blocks) {
+      <div class="callout callout--danger" role="alert">
+        <span class="callout__title">{{ scoped() ? 'Approve all reviewed' : 'Accept recommendations' }} refused</span>
+        <span>These rows require individual attention, so the whole selection was rejected rather than partially applied.</span>
+        @for (b of blocks; track b.cve) {
+          <span style="font-size: 12px"><span style="font-family: var(--font-mono); font-weight: 600">{{ b.cve }}</span> — {{ b.reason }}</span>
+        }
+      </div>
+    }
+    @if (savedMessage(); as msg) {
+      <div class="callout callout--info" role="status">
+        <span class="callout__title">Saved</span><span>{{ msg }}</span>
+      </div>
+    }
+    @if (refreshErrorMessage(); as msg) {
+      <div class="callout callout--warning" role="alert">
+        <span class="callout__title">Could not refresh</span>
+        <span
+          >{{ msg }} The table below is the last good result, as of {{ lastUpdated() | date: 'short' }}, and has not been
+          blanked — nothing you were working on has been lost.</span
+        >
+        <span><button type="button" class="link-btn" (click)="retry()">Retry</button></span>
+      </div>
+    }
+
+    <!-- ============================== Table states ============================== -->
+    @if (pageState() === 'error') {
+      <div class="callout callout--warning" role="alert">
+        <span class="callout__title">Could not load the queue</span>
+        <span>{{ loadErrorMessage() }}</span>
+        <span><button type="button" class="link-btn" (click)="retry()">Retry</button></span>
+      </div>
+    } @else if (pageState() === 'loading') {
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              @if (!scoped()) {
+                <th style="width: 30px"></th>
+              }
+              <th style="width: 26px"></th>
+              @if (!scoped()) {
+                <th style="width: 64px">ASM</th>
+                <th>Application</th>
+              }
+              <th>CVE</th>
+              <th>Component</th>
+              <th>Recommended</th>
+              <th style="width: 76px">SLA</th>
+              <th style="width: 58px">Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sk of [1, 2, 3, 4, 5, 6]; track sk) {
+              <tr>
+                @if (!scoped()) {
+                  <td><span class="skeleton" style="width: 14px"></span></td>
+                }
+                <td><span class="skeleton" style="width: 14px"></span></td>
+                @if (!scoped()) {
+                  <td><span class="skeleton" style="width: 60px"></span></td>
+                  <td><span class="skeleton" style="width: 90px"></span></td>
+                }
+                <td><span class="skeleton" style="width: 120px"></span></td>
+                <td><span class="skeleton" style="width: 100px"></span></td>
+                <td><span class="skeleton" style="width: 100px"></span></td>
+                <td><span class="skeleton" style="width: 30px"></span></td>
+                <td><span class="skeleton" style="width: 24px"></span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (pageState() === 'empty') {
+      <div class="card" style="padding: 48px; text-align: center">
+        @if (scoped()) {
+          <p style="margin: 0; font-size: 18px; font-weight: 600; color: var(--fg-primary)">No findings on this assessment.</p>
+        } @else if (!state.isFiltered()) {
+          <p style="margin: 0; font-size: 18px; font-weight: 600; color: var(--fg-primary)">Nothing needs review.</p>
+          <p style="margin: 8px 0 0; font-size: 14px; color: var(--fg-secondary)">
+            Every finding in every open assessment has a determination. This is good news, not an error.
+          </p>
+        } @else {
+          <p style="margin: 0; font-size: 18px; font-weight: 600; color: var(--fg-primary)">No findings match these filters.</p>
+          <p style="margin: 8px 0 16px; font-size: 14px; color: var(--fg-secondary)">
+            Nothing needs review is good news; this is just a narrow filter. Clear it to see the full queue.
+          </p>
+          <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">Clear filters</button>
+        }
+      </div>
+    } @else {
+      <div class="data-table-wrap">
+        <table class="data-table data-table--clickable">
+          <thead>
+            <tr>
+              @if (!scoped()) {
+                <th style="width: 30px"></th>
+              }
+              <th style="width: 26px"></th>
+              @if (!scoped()) {
+                <th style="width: 64px">ASM</th>
+                <th><button type="button" class="link-btn" style="text-decoration: none; color: inherit; font-weight: inherit" (click)="sortBy('application')">Application</button></th>
+              }
+              <th><button type="button" class="link-btn" style="text-decoration: none; color: inherit; font-weight: inherit" (click)="sortBy('cve')">CVE</button></th>
+              <th><button type="button" class="link-btn" style="text-decoration: none; color: inherit; font-weight: inherit" (click)="sortBy('component')">Component</button></th>
+              <th><button type="button" class="link-btn" style="text-decoration: none; color: inherit; font-weight: inherit" (click)="sortBy('recommended')">Recommended</button></th>
+              <th style="width: 76px" [class.is-sorted]="state.sortColumn() === 'sla'">
+                <button type="button" class="link-btn" style="text-decoration: none; color: inherit; font-weight: inherit" (click)="sortBy('sla')">SLA</button>
+              </th>
+              <th style="width: 58px">
+                <button type="button" class="link-btn" style="text-decoration: none; color: inherit; font-weight: inherit" (click)="sortBy('age')">Age</button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (state.grouping() === 'none' || scoped()) {
+              @for (row of sortedRows(); track row.id) {
+                <tr
+                  class="row"
+                  [class.is-open]="openFindingId() === row.id"
+                  [class.is-selected]="!openFindingId() && isSelected(row.id)"
+                  [class.is-handoff]="row.outcome === 'risk_acceptance_required'"
+                  [attr.data-row-id]="row.id"
+                  [tabIndex]="row.id === cursorId() ? 0 : -1"
+                  (click)="openRow(row.id)"
+                >
+                  @if (!scoped()) {
+                    <td (click)="$event.stopPropagation()">
+                      <input type="checkbox" [checked]="isSelected(row.id)" (change)="toggleSelected(row.id)" [attr.aria-label]="'select finding ' + row.cve" />
+                    </td>
+                  }
+                  <td>
+                    <span [class]="OUTCOME_META[row.outcome].cls" style="border: 0; background: transparent; padding: 0" [title]="OUTCOME_META[row.outcome].label">
+                      <span class="outcome__icon">{{ OUTCOME_META[row.outcome].icon }}</span>
+                    </span>
+                  </td>
+                  @if (!scoped()) {
+                    <td class="mono"><a class="link-btn" [routerLink]="['/review', row.assessment_id]" (click)="$event.stopPropagation()">{{ row.assessment_id }}</a></td>
+                    <td>{{ row.application_id }}</td>
+                  }
+                  <td class="mono" style="font-weight: 600">{{ row.cve }}</td>
+                  <td class="mono" style="color: var(--fg-secondary); font-size: 12px">{{ row.purl }}</td>
+                  <td>
+                    <span style="display: inline-flex; align-items: center; gap: 6px">
+                      <span [class]="OUTCOME_META[row.recommended_outcome].cls"><span class="outcome__icon">{{ OUTCOME_META[row.recommended_outcome].icon }}</span>{{ OUTCOME_META[row.recommended_outcome].shortLabel }}</span>
+                      @if (tierBadgeClass(row.tier); as cls) {
+                        <span [class]="cls">{{ tierLabel(row.tier) }}</span>
+                      }
+                    </span>
+                  </td>
+                  <td [class]="slaClass(row.sla_band)">{{ formatSla(row.sla_band, row.sla_hours_remaining) }}</td>
+                  <td class="num" style="color: var(--fg-secondary); font-size: 12px">{{ formatAge(row.age_hours) }}</td>
+                </tr>
+              }
+            } @else {
+              @for (group of groups(); track group.assessmentId) {
+                <tr class="group-head">
+                  <td [attr.colspan]="scoped() ? 6 : 9">{{ group.assessmentId }} · {{ group.applicationId }} · {{ group.rows.length }} finding(s) </td>
+                </tr>
+                @for (row of group.rows; track row.id) {
+                  <tr
+                    class="row"
+                    [class.is-open]="openFindingId() === row.id"
+                    [class.is-selected]="!openFindingId() && isSelected(row.id)"
+                    [class.is-handoff]="row.outcome === 'risk_acceptance_required'"
+                    [attr.data-row-id]="row.id"
+                    [tabIndex]="row.id === cursorId() ? 0 : -1"
+                    (click)="openRow(row.id)"
+                  >
+                    <td (click)="$event.stopPropagation()">
+                      <input type="checkbox" [checked]="isSelected(row.id)" (change)="toggleSelected(row.id)" [attr.aria-label]="'select finding ' + row.cve" />
+                    </td>
+                    <td>
+                      <span [class]="OUTCOME_META[row.outcome].cls" style="border: 0; background: transparent; padding: 0" [title]="OUTCOME_META[row.outcome].label">
+                        <span class="outcome__icon">{{ OUTCOME_META[row.outcome].icon }}</span>
+                      </span>
+                    </td>
+                    <td class="mono"><a class="link-btn" [routerLink]="['/review', row.assessment_id]" (click)="$event.stopPropagation()">{{ row.assessment_id }}</a></td>
+                    <td>{{ row.application_id }}</td>
+                    <td class="mono" style="font-weight: 600">{{ row.cve }}</td>
+                    <td class="mono" style="color: var(--fg-secondary); font-size: 12px">{{ row.purl }}</td>
+                    <td>
+                      <span style="display: inline-flex; align-items: center; gap: 6px">
+                        <span [class]="OUTCOME_META[row.recommended_outcome].cls"><span class="outcome__icon">{{ OUTCOME_META[row.recommended_outcome].icon }}</span>{{ OUTCOME_META[row.recommended_outcome].shortLabel }}</span>
+                        @if (tierBadgeClass(row.tier); as cls) {
+                          <span [class]="cls">{{ tierLabel(row.tier) }}</span>
+                        }
+                      </span>
+                    </td>
+                    <td [class]="slaClass(row.sla_band)">{{ formatSla(row.sla_band, row.sla_hours_remaining) }}</td>
+                    <td class="num" style="color: var(--fg-secondary); font-size: 12px">{{ formatAge(row.age_hours) }}</td>
+                  </tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (scoped()) {
+        <!-- ============================== [6] Assessment-level actions ============================== -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center">
+          @if (canCommit() && !isSelfRequested()) {
+            <button type="button" class="btn btn--primary" (click)="approveAllReviewed()">Approve all reviewed</button>
+          }
+          <button type="button" class="btn btn--ghost" disabled title="Not available yet — no backend endpoint exists for this action.">
+            Return to requester
+          </button>
+        </div>
+        <p style="margin: 0; font-size: 12px; color: var(--fg-muted)">
+          "Return to requester" has no backend support yet in this build — the control is shown disabled rather than silently
+          omitted, so the gap is visible rather than hidden.
+        </p>
+        @if (isSelfRequested()) {
+          <div class="callout callout--warning">
+            <span class="callout__title">Approval is not available to you on this assessment</span>
+            <span
+              >You raised this assessment. Separation of duties means the approver must be someone else, so the commit control
+              is absent rather than disabled — a greyed-out button would imply it could be turned on.</span
+            >
+          </div>
+        }
+      } @else {
+        <!-- ============================== [5] Bulk action bar ============================== -->
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+          <span style="font-size: 13px; color: var(--fg-secondary)">{{ selected().size }} selected</span>
+          <button type="button" class="btn btn--primary btn--sm" [disabled]="noSelection()" (click)="acceptRecommendations()">
+            Accept recommendations
+          </button>
+          <button type="button" class="btn btn--ghost btn--sm" [disabled]="noSelection()" (click)="sendToReview()">Send to review</button>
+          <span style="margin-left: auto; font-size: 12px; color: var(--fg-muted)">{{ rowCount() }} rows shown</span>
+          @if (state.isFiltered()) {
+            <button type="button" class="link-btn" (click)="clearFilters()">Clear filters</button>
+          }
+        </div>
+      }
+    }
+  </div>
+
+  @if (openFindingId(); as id) {
+    <app-evidence-drawer
+      [findingId]="id"
+      [readOnly]="isAuditorOnly()"
+      [hasPrev]="hasPrevRow()"
+      [hasNext]="hasNextRow()"
+      (closed)="closeDrawer()"
+      (prev)="goPrev()"
+      (next)="goNext()"
+      (rowUpdated)="onRowSaved($event)"
+    />
+  }
+</div>
+

@@ -1,0 +1,298 @@
+<aside class="drawer" aria-label="Evidence" role="dialog" aria-modal="true" #drawerEl>
+  @if (loadState() === 'loading') {
+    <div class="drawer__head">
+      <div style="min-width: 0">
+        <span class="skeleton" style="width: 140px; height: 16px; display: block"></span>
+        <span class="skeleton" style="width: 200px; margin-top: 6px"></span>
+      </div>
+      <button type="button" class="drawer__close" (click)="close()" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer__body">
+      <span class="skeleton" style="width: 100%"></span>
+      <span class="skeleton" style="width: 80%"></span>
+      <span class="skeleton" style="width: 90%"></span>
+    </div>
+  } @else if (loadState() === 'error') {
+    <div class="drawer__head">
+      <p class="drawer__cve">Could not load this finding</p>
+      <button type="button" class="drawer__close" (click)="close()" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer__body">
+      <div class="callout callout--warning" role="alert">
+        <span class="callout__title">{{ loadError() }}</span>
+        <span><button type="button" class="link-btn" (click)="retryLoad()">Retry</button></span>
+      </div>
+    </div>
+  } @else if (detail(); as d) {
+    <div class="drawer__head">
+      <div style="min-width: 0">
+        <p class="drawer__cve">{{ d.cve }}</p>
+        <p class="drawer__ident">
+          {{ d.purl }}
+          @if (d.threat_level != null) {
+            · threat {{ d.threat_level }}
+          }
+        </p>
+      </div>
+      <button type="button" class="drawer__close" (click)="close()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="drawer__body">
+      <!-- 1. Recommendation -->
+      <div class="drawer__section">
+        <span class="drawer__label">Recommendation</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px">
+          <span [class]="outcomeMeta()?.cls">
+            <span class="outcome__icon">{{ outcomeMeta()?.icon }}</span>{{ outcomeMeta()?.label }}
+          </span>
+          @if (tierBadgeClass(); as cls) {
+            <span [class]="cls">{{ tierLabel() }}</span>
+          }
+        </span>
+        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-secondary); text-wrap: pretty">
+          {{ d.recommendation.reason }}
+        </p>
+      </div>
+
+      <!-- Risk Acceptance Required: hand-off callout, never styled as a resolution -->
+      @if (isHandoff()) {
+        <div class="callout callout--handoff">
+          <span class="callout__title">This left the portal</span>
+          <span
+            >No fix is available, so this finding did not receive a determination. The Nexus IQ violation stays
+            open. Take the evidence package to your risk manager.</span
+          >
+          @if (canDownloadPackage()) {
+            <span
+              ><a class="btn btn--handoff btn--sm" [href]="downloadPackageUrl()" target="_blank" rel="noopener"
+                >↗ Download evidence package</a
+              ></span
+            >
+          } @else {
+            <span style="font-size: 12px; color: var(--fg-muted)"
+              >The evidence package is available from the Risk Acceptance Queue.</span
+            >
+          }
+        </div>
+      }
+
+      <!-- Already-decided: read-only audit facts, never a re-editable form -->
+      @if (d.determination; as det) {
+        <hr class="drawer__rule" />
+        <div class="drawer__section">
+          <span class="drawer__label">Determination</span>
+          <div class="signals__grid">
+            <div><div class="signals__k">Justification</div><div class="signals__v">{{ justificationLabel(det.justification) }}</div></div>
+            <div><div class="signals__k">Decided by</div><div class="signals__v">{{ det.decided_by }}</div></div>
+            <div><div class="signals__k">Decided at</div><div class="signals__v">{{ det.decided_at | date: 'short' }}</div></div>
+            <div>
+              <div class="signals__k">Nexus IQ</div>
+              <div class="signals__v">{{ det.iq_suppressed ? 'suppressed' : 'not suppressed' }}</div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <hr class="drawer__rule" />
+
+      <!-- 2. Rule trace -->
+      <div class="drawer__section">
+        <span class="drawer__label">Rule trace</span>
+        @if (d.rule_trace.length === 0) {
+          <p style="margin: 0; font-size: 12px; color: var(--fg-muted)">No Tier 1/2 rule ran against this finding.</p>
+        } @else {
+          <div class="trace">
+            @for (t of d.rule_trace; track t.rule_id) {
+              <div class="trace__row" [class.trace__row--degraded]="isDegraded(t)">
+                <span class="trace__tier">T{{ t.tier }}</span>
+                <span class="trace__name">{{ t.rule_id }}</span>
+                <span
+                  class="trace__result"
+                  [class.trace__result--pass]="t.verdict === 'satisfied'"
+                  [class.trace__result--fail]="t.verdict === 'not_satisfied'"
+                  [class.trace__result--hatch]="isDegraded(t)"
+                  [class.trace__result--neutral]="t.verdict === 'unanswerable' && !isDegraded(t)"
+                  >{{ t.verdict }}</span
+                >
+                <span class="trace__detail">
+                  @if (isDegraded(t)) {
+                    {{ degradedReason(t) }}
+                  } @else {
+                    {{ t.detail | json }}
+                  }
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- A failed collector -- an outage. Deliberately unlike the missing-evidence block below. -->
+      @if (degradedEntries().length > 0) {
+        <div class="callout callout--danger">
+          <span class="callout__title">Collector degraded</span>
+          @for (entry of degradedEntries(); track entry.rule_id) {
+            <span style="font-size: 12px">{{ entry.rule_id }}: {{ degradedReason(entry) }}</span>
+          }
+        </div>
+      }
+
+      <!-- Abstention -- a limit of the evidence, never an outage. -->
+      @if (hasMissingEvidence()) {
+        <div class="callout">
+          <span class="callout__title">The adjudicator abstained — evidence missing</span>
+          @for (item of d.missing_evidence; track item) {
+            <span style="font-size: 12px">· {{ item }}</span>
+          }
+        </div>
+      }
+
+      @if (d.ai_verdict; as ai) {
+        <p style="margin: 0; font-size: 11px; color: var(--fg-muted)">
+          Adjudicator: {{ ai.model_id }} · {{ ai.confidence }} confidence
+          @if (ai.refuted_by) {
+            · confirmed by {{ ai.refuted_by }}
+          }
+        </p>
+      }
+
+      <hr class="drawer__rule" />
+
+      <!-- 4. Escalation signals — structurally its own block, never beside a Not Affected verdict. -->
+      <div class="signals">
+        <div class="signals__head">
+          <span class="signals__title">Escalation signals</span>
+          <span class="signals__disclaimer">{{ d.escalation.note }}</span>
+        </div>
+        <div class="signals__grid">
+          <div><div class="signals__k">EPSS</div><div class="signals__v">{{ d.escalation.epss ?? '—' }}</div></div>
+          <div>
+            <div class="signals__k">KEV</div>
+            <div class="signals__v">{{ d.escalation.kev === null || d.escalation.kev === undefined ? '—' : d.escalation.kev ? 'yes' : 'no' }}</div>
+          </div>
+          <div>
+            <div class="signals__k">CVSS</div>
+            <div class="signals__v">
+              {{ d.escalation.cvss_base_score ?? '—' }} {{ d.escalation.cvss_vector ?? '' }}
+            </div>
+          </div>
+          <div>
+            <div class="signals__k">Fix available</div>
+            <div class="signals__v">
+              {{ d.escalation.fix_available === null || d.escalation.fix_available === undefined ? '—' : d.escalation.fix_available ? 'yes' : 'no' }}
+            </div>
+          </div>
+        </div>
+        @if (d.escalation.hard_blockers && d.escalation.hard_blockers.length > 0) {
+          <p style="margin: var(--space-2) 0 0; font-size: 11px; color: var(--signal-label)">
+            Routed to review because of: {{ d.escalation.hard_blockers.join(', ') }}
+          </p>
+        }
+      </div>
+
+      <!-- 5. Determination controls — only while there is something to decide. -->
+      @if (canDetermine()) {
+        <hr class="drawer__rule" />
+        <div class="drawer__section">
+          <span class="drawer__label">Determination</span>
+
+          @if (noEvidenceToClear()) {
+            <p style="margin: 0; font-size: 12px; color: var(--fg-muted)">
+              No Tier 1/2 evidence exists yet to support a Not Affected clear.
+            </p>
+          }
+
+          <button
+            type="button"
+            class="radio-row"
+            [class.is-active]="verdict() === 'not_affected'"
+            [disabled]="noEvidenceToClear()"
+            (click)="selectVerdict('not_affected')"
+          >
+            <span>Not Affected<span class="radio-row__hint">requires a justification permitted at the achieved tier</span></span>
+          </button>
+          <button type="button" class="radio-row" [class.is-active]="verdict() === 'affected'" (click)="selectVerdict('affected')">
+            <span>Affected<span class="radio-row__hint">remediation required</span></span>
+          </button>
+          <button
+            type="button"
+            class="radio-row"
+            [class.is-active]="verdict() === 'needs_review'"
+            (click)="selectVerdict('needs_review')"
+          >
+            <span>Under Investigation<span class="radio-row__hint">insufficient evidence; stays with a human</span></span>
+          </button>
+
+          @if (verdict() === 'not_affected') {
+            <label class="field">
+              <span class="field-label">justification</span>
+              <select [ngModel]="justification()" (ngModelChange)="justification.set($event)">
+                <option value="">select a justification…</option>
+                @for (j of justificationOptions(); track j) {
+                  <option [value]="j">{{ justificationLabel(j) }}</option>
+                }
+              </select>
+              <span class="field__help"
+                >Only justifications permitted at the achieved evidence tier are listed. Perimeter and
+                mitigating-control justifications are never available.</span
+              >
+            </label>
+          }
+
+          @if (needsSecondConfirmation()) {
+            <div class="second-conf">
+              <strong>Tier 2 — second confirmation required</strong>
+              @if (canCommit()) {
+                <label class="field" style="margin-top: 4px">
+                  <span class="field-label">second confirmer</span>
+                  <input
+                    type="text"
+                    [ngModel]="secondConfirmer()"
+                    (ngModelChange)="secondConfirmer.set($event)"
+                    placeholder="another reviewer's username"
+                  />
+                </label>
+                <span>You cannot provide both the clear and its second confirmation.</span>
+              } @else {
+                <span>This will need an independent second confirmation before an approver can commit it.</span>
+              }
+            </div>
+          }
+
+          <label class="field">
+            <span class="field-label">note</span>
+            <textarea
+              placeholder="Anything the next reviewer needs to know"
+              [ngModel]="note()"
+              (ngModelChange)="note.set($event)"
+            ></textarea>
+          </label>
+
+          @if (saveState() === 'error' && saveError()) {
+            <p class="form-error" role="alert">{{ saveError() }}</p>
+          }
+          @if (savedMessage()) {
+            <p style="margin: 0; font-size: 12px; color: var(--success)" role="status">{{ savedMessage() }}</p>
+          }
+        </div>
+      } @else if (readOnly()) {
+        <div class="callout">
+          <span class="callout__title">Read-only</span>
+          <span>Determinations are made by a reviewer or approver. This view carries the evidence only.</span>
+        </div>
+      }
+    </div>
+
+    <div class="drawer__foot">
+      @if (canDetermine()) {
+        <button type="button" class="btn btn--primary btn--sm" [disabled]="!canSave()" (click)="save()">
+          {{ saveState() === 'saving' ? 'Saving…' : 'Save' }}
+        </button>
+      }
+      <span style="margin-left: auto; display: flex; gap: 6px">
+        <button type="button" class="btn btn--ghost btn--sm" [disabled]="!hasPrev()" (click)="prev.emit()">↑ prev</button>
+        <button type="button" class="btn btn--ghost btn--sm" [disabled]="!hasNext()" (click)="next.emit()">next ↓</button>
+      </span>
+    </div>
+  }
+</aside>

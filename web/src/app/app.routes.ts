@@ -54,8 +54,18 @@ export const routes: Routes = [
       {
         path: 'review',
         canActivate: [capabilityGuard('view_queue')],
-        loadComponent: () => import('./core/shell/route-stub').then((m) => m.RouteStub),
+        loadComponent: () => import('./features/review/review-queue').then((m) => m.ReviewQueue),
         data: { title: 'Review Queue' },
+      },
+      {
+        // [6] Assessment Detail — the same component as [5], scoped by the
+        // `id` route param (`docs/design/ui-spec.md`: "one component,
+        // differently scoped"). Never a nav item on its own — reached from
+        // a Review Queue row's ASM link, or (once built) the Dashboard.
+        path: 'review/:id',
+        canActivate: [capabilityGuard('view_queue')],
+        loadComponent: () => import('./features/review/review-queue').then((m) => m.ReviewQueue),
+        data: { title: 'Assessment Detail' },
       },
       {
         path: 'dashboard',
