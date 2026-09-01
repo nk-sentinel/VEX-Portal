@@ -69,6 +69,23 @@ _NAMING_CONVENTION = {
 }
 
 
+class Role(StrEnum):
+    """A capability-granting role a user may hold.
+
+    Six roles, matching the RBAC table in ``docs/design/ui-spec.md``.
+    ``app/services/authorization.py`` maps these onto capabilities — the
+    call site checks a capability, never a role directly, so a role change
+    there is a mapping edit, not a code change.
+    """
+
+    REQUESTER = "requester"
+    REVIEWER = "reviewer"
+    APPROVER = "approver"
+    AUDITOR = "auditor"
+    RISK_MANAGER = "risk_manager"
+    ADMIN = "admin"
+
+
 class AssessmentState(StrEnum):
     """Where an assessment sits in its review lifecycle."""
 
@@ -202,6 +219,38 @@ def _uuid4() -> str:
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+class User(Base, kw_only=True):
+    """A local, database-backed account.
+
+    This is the LOCAL auth provider's identity store only
+    (``app/auth/local.py``) — for shadowlab and break-glass use. An
+    LDAP/AD-authenticated user is never a row here: their identity is just
+    the authenticated username, and their roles come live from group
+    membership on every login (``app/auth/ldap.py``), never persisted
+    locally, so there is nothing here to drift from AD's own group
+    membership.
+
+    ``password_hash`` is excluded from the generated ``__repr__``
+    (``repr=False`` below). ``MappedAsDataclass`` would otherwise include
+    every column in ``__repr__`` by default, and a hash in a log line, a
+    stack trace, or a debugger session is exactly the kind of secret this
+    schema promises never to surface.
+
+    ``roles_json`` follows this file's own convention for JSON-backed
+    columns (``detail_json``, ``evidence_refs_json``, ...): a list of
+    ``Role`` values, stored as their string form.
+    """
+
+    __tablename__ = "user"
+
+    id: Mapped[str] = mapped_column(primary_key=True, default_factory=_uuid4)
+    username: Mapped[str] = mapped_column(unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(repr=False)
+    roles_json: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
+
+    created_at: Mapped[datetime] = mapped_column(default_factory=_now)
 
 
 class Assessment(Base, kw_only=True):

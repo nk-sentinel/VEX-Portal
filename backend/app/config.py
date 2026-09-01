@@ -29,12 +29,25 @@ class AdapterMode(StrEnum):
     FAKE = "fake"
 
 
+class AuthProviderKind(StrEnum):
+    """Which implementation checks a username/password pair.
+
+    Mirrors ``AdapterMode`` above. Defaults to LOCAL, not LDAP: defaulting to
+    LDAP on a machine with no AD reachable means nobody can log in, and the
+    failure mode is a confusing connection error rather than an obvious one.
+    """
+
+    LOCAL = "local"
+    LDAP = "ldap"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore", frozen=True
     )
 
     adapter_mode: AdapterMode = AdapterMode.FAKE
+    auth_provider: AuthProviderKind = AuthProviderKind.LOCAL
 
     database_url: str = "sqlite+aiosqlite:///./data/vex.db"
 

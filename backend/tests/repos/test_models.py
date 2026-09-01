@@ -5,7 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from app.domain.determination import State
-from app.repos.models import Assessment, AssessmentState, AuditEntry, Finding, FindingOutcome
+from app.repos.models import (
+    Assessment,
+    AssessmentState,
+    AuditEntry,
+    Finding,
+    FindingOutcome,
+    Role,
+    User,
+)
 
 
 @pytest.mark.asyncio
@@ -108,3 +116,37 @@ def test_every_outcome_is_covered_by_the_mapping():
     # KeyError at export time.
     for outcome in FindingOutcome:
         outcome.to_vex_state()
+
+
+@pytest.mark.asyncio
+async def test_user_roles_round_trip_through_persistence(session):
+    user = User(
+        username="alice",
+        password_hash="argon2-hash-placeholder",
+        roles_json=[Role.REVIEWER.value, Role.APPROVER.value],
+    )
+    session.add(user)
+    await session.commit()
+    session.expunge_all()
+
+    loaded = (await session.execute(select(User).where(User.username == "alice"))).scalar_one()
+
+    assert frozenset(Role(value) for value in loaded.roles_json) == frozenset(
+        {Role.REVIEWER, Role.APPROVER}
+    )
+
+
+@pytest.mark.asyncio
+async def test_username_is_unique(session):
+    session.add(User(username="alice", password_hash="h1", roles_json=[]))
+    session.add(User(username="alice", password_hash="h2", roles_json=[]))
+    with pytest.raises(IntegrityError):
+        await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_user_password_hash_is_excluded_from_repr(session):
+    # MappedAsDataclass would otherwise include every column in __repr__ by
+    # default; password_hash is marked repr=False for exactly this reason.
+    user = User(username="alice", password_hash="super-secret-hash-value", roles_json=[])
+    assert "super-secret-hash-value" not in repr(user)
