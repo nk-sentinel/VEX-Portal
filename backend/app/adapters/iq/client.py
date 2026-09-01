@@ -158,6 +158,26 @@ def _component_identifier_from_purl(purl: str) -> dict[str, Any]:
     }
 
 
+def _parse_is_kev(body: dict[str, Any]) -> bool | None:
+    """Resolve the tri-state KEV fact from one vulnerability response body.
+
+    Three distinct facts, not two: ``kevData`` absent (or present but
+    missing ``isKev``) means KEV status was never established for this CVE
+    -> ``None``. A present ``kevData.isKev`` is trusted verbatim, whether
+    ``True`` or ``False``. Coercing the absent case to ``False`` (the
+    previous behaviour, ``bool((body.get("kevData") or {}).get("isKev",
+    False))``) silently asserted "not a known-exploited vulnerability",
+    which nobody established — and erased the very ``None`` that
+    ``VulnDetail.is_kev``/``Tier3Signals.kev`` exist to carry, making the
+    downstream tri-state fix unreachable from this adapter onward. See
+    ``VulnDetail.is_kev``'s own docstring.
+    """
+    kev_data = body.get("kevData")
+    if kev_data is None or "isKev" not in kev_data:
+        return None
+    return bool(kev_data["isKev"])
+
+
 def _format_iq_timestamp(value: datetime) -> str:
     """Render a UTC-aware datetime the way IQ's own timestamps are shaped
     (``2026-09-08T00:00:00.000+0000`` — see ``fakes/iq/main.py``)."""
@@ -294,6 +314,10 @@ class IqHttpClient:
         jar name reaching ``app.artifact.presence.contains_class`` (via
         ``app.evidence.pack.build_pack``) as though it were a class path
         produces a meaningless answer.
+
+        ``is_kev`` is tri-state — see :func:`_parse_is_kev` and
+        ``VulnDetail.is_kev``'s own docstring. An absent ``kevData`` block
+        becomes ``None`` ("never established"), never a coerced ``False``.
         """
         path = f"/api/v2/vulnerabilities/{vuln_id}"
         params = {"componentIdentifier": component_purl} if component_purl else None
@@ -319,7 +343,7 @@ class IqHttpClient:
             cvss_vector=main_severity.get("vector"),
             cvss_score=main_severity.get("score"),
             epss_score=(body.get("epssData") or {}).get("currentScore"),
-            is_kev=bool((body.get("kevData") or {}).get("isKev", False)),
+            is_kev=_parse_is_kev(body),
             cwe_ids=[cwe["id"] for cwe in (body.get("weakness") or {}).get("cweIds", [])],
             affected_version_range=affected_version_range,
             root_causes=root_causes,

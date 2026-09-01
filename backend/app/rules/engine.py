@@ -270,7 +270,32 @@ class Tier3Signals:
     #: (``ComponentEvidence.referenced``/``reference_scan_conclusive``) —
     #: IQ's reachability analysis sees dynamic call graphs this portal's
     #: static bytecode scan does not.
-    reachable_with_call_path: bool = False
+    #:
+    #: ``bool | None``, defaulting to ``None`` — tri-state, mirroring
+    #: ``kev``, but with the opposite hard-blocker treatment. ``None``
+    #: means "never checked", and today NOTHING in this system checks it:
+    #: no adapter, no collector, and no registered Tier 3 rule populates
+    #: this field (``RuleEngine._hard_blockers`` reads it directly with no
+    #: ``t3-reachable`` rule behind it — see this module's docstring, point
+    #: 1). See ``app/rules/registry.py``'s ``PENDING_EVIDENCE`` for this
+    #: gap documented alongside the three unregistered rules. Populating it
+    #: for real is a Phase 5+ Nexus IQ reachability-analysis integration.
+    #:
+    #: Unlike ``kev``, ``None`` here does NOT hard-block
+    #: (``RuleEngine._hard_blockers`` only blocks on a confirmed ``True``).
+    #: This is deliberate, not an oversight: docs/design.md frames IQ's
+    #: reachability analysis itself as opt-in and unreliable ("not
+    #: dependable enough to act on... opt-in at scan time"), unlike KEV,
+    #: which is always looked up. Since nothing populates this field today,
+    #: treating ``None`` as blocking would hard-block every single finding
+    #: unconditionally forever — not "unresolved input routes to a human",
+    #: but "this signal can never clear anything, ever", which defeats the
+    #: whole engine rather than protecting it. ``False`` still means exactly
+    #: what it always meant: "IQ confirmed a call path was not found" — and
+    #: nothing produces that value yet either, which is exactly why the type
+    #: must be able to say ``None`` instead of a caller (or this dataclass's
+    #: own bare default) asserting it on nothing.
+    reachable_with_call_path: bool | None = None
 
     #: Whether a fix is available for this CVE at this component's version.
     #: Read by ``t3-no-fix-available`` (Task 4); not itself a hard blocker —
@@ -405,7 +430,17 @@ class RuleEngine:
         # docstring's tri-state note.
         if signals.kev is None or signals.kev:
             blockers.add("kev")
-        if signals.reachable_with_call_path:
+        # Deliberately the OPPOSITE unknown-handling from kev: only a
+        # positively-confirmed True blocks. Nothing in this system
+        # populates this field today (see Tier3Signals.reachable_with_call_path's
+        # own docstring and app/rules/registry.py's PENDING_EVIDENCE) — since
+        # every finding would otherwise construct a bare/default Tier3Signals,
+        # treating `None` as blocking here would hard-block every finding
+        # unconditionally, forever, rather than routing an unresolved input to
+        # a human. `is True` (not truthy `if signals.reachable_with_call_path:`)
+        # makes that choice explicit rather than an accident of None/False
+        # both being falsy.
+        if signals.reachable_with_call_path is True:
             blockers.add("reachable")
         if signals.epss is not None and signals.epss >= self._epss_threshold:
             blockers.add("epss")

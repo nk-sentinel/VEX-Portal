@@ -21,6 +21,17 @@ their evidence exists, while keeping the rule classes and their tests: the
 day the evidence arrives (a data-model addition to ``ComponentEvidence`` or
 ``Tier3Signals``, or a different data source — see each entry in
 ``PENDING_EVIDENCE`` below), they are ready to wire in.
+
+**``PENDING_EVIDENCE`` also documents one gap that is not a rule (Task 5-8
+fix round 1).** ``Tier3Signals.reachable_with_call_path`` has no evidence
+source anywhere in this system either — the same "no data to build it
+from" situation as the three rule ids above — but it is not a registered
+``Rule`` at all: ``RuleEngine._hard_blockers`` reads it directly (see
+``app/rules/engine.py``'s module docstring, priority order point 1), with
+no ``t3-reachable`` rule behind it. It is listed here anyway, under a
+non-rule-id key, on the coordinator's explicit instruction: keep every
+"we cannot currently answer this" gap visible in one list rather than
+letting it be rediscovered independently later.
 """
 
 from __future__ import annotations
@@ -48,6 +59,12 @@ ACTIVE_RULES: tuple[Rule, ...] = (
 #: and deliberately NOT registered: each can only ever return UNANSWERABLE
 #: today, and one UNANSWERABLE rule forces every finding to human review,
 #: which would defeat the tier it belongs to. Each entry names what it needs.
+#:
+#: The final entry, ``"tier3signals.reachable_with_call_path"``, is not a
+#: rule id — see this module's docstring. It is listed here so every
+#: currently-unanswerable gap in the decision engine is visible in one
+#: place, not because ``TestPendingEvidenceExcludedFromActive`` (which
+#: checks rule ids against ``ACTIVE_RULES``) applies to it.
 PENDING_EVIDENCE: dict[str, str] = {
     "t1-cve-withdrawn": (
         "CVE lifecycle status (withdrawn/disputed/superseded) — available from "
@@ -62,5 +79,14 @@ PENDING_EVIDENCE: dict[str, str] = {
         "the artifact's runtime version (MANIFEST Build-Jdk or equivalent) against "
         "the affected range — the range is on VulnDetail already; the runtime "
         "version is not collected"
+    ),
+    "tier3signals.reachable_with_call_path": (
+        "IQ's own reachable-with-call-path hard blocker (docs/design.md, 'Hard "
+        "blockers') — not on RawReport/PolicyViolation, not on VulnDetail, and not "
+        "in fakes/data/iq.json's policy report shape (checked, not assumed absent). "
+        "Not a Rule — RuleEngine._hard_blockers reads Tier3Signals.reachable_with_"
+        "call_path directly. bool | None, defaulting to None; unlike kev, None does "
+        "NOT hard-block (see that field's own docstring for why). Populating it for "
+        "real is a Phase 5+ Nexus IQ reachability-analysis integration."
     ),
 }

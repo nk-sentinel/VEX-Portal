@@ -90,6 +90,60 @@ async def test_vulnerability_round_trips_kev_epss_and_cvss(client: IqHttpClient)
     assert vuln.root_causes == ["org/apache/commons/text/StringSubstitutor.class"]
 
 
+async def test_vulnerability_explicit_kev_false_stays_false(client: IqHttpClient) -> None:
+    """CVE-2015-6420 in fakes/data/iq.json carries a real, explicit
+    ``kevData: {"isKev": false}`` — a positively-confirmed non-KEV fact,
+    which must round-trip as ``False``, not be conflated with "unknown".
+    """
+    vuln = await client.vulnerability("CVE-2015-6420", None)
+    assert vuln.is_kev is False
+
+
+async def test_vulnerability_kev_data_absent_becomes_unknown_not_false() -> None:
+    """Task 5-8 fix round 1. A response with no ``kevData`` block at all —
+    KEV status never established for this CVE — must parse as ``None``, not
+    the coerced ``False`` a previous version of this client produced
+    (``bool((body.get("kevData") or {}).get("isKev", False))``). Coercing
+    the absence to ``False`` would silently assert "not a known-exploited
+    vulnerability", which nobody established, and would re-enable automatic
+    clearing for exactly the vulnerabilities most likely to be exploited.
+
+    None of the three sample CVEs in ``fakes/data/iq.json`` actually omit
+    ``kevData`` (all three set it explicitly, two true and one false — see
+    the two live-fake tests around this one), so this is exercised with a
+    synthetic response, the same way ``test_vulnerability_filters_root_causes_to_class_paths_only``
+    above handles a shape the live fake cannot produce on purpose.
+    """
+    body = {
+        "identifier": "CVE-2024-0001",
+        "rootCauses": [],
+        # No "kevData" key at all.
+    }
+    client = IqHttpClient(
+        base_url=IQ_BASE_URL,
+        service_user="svc",
+        service_token=_SECRET,
+        transport=responding(200, body),
+    )
+    vuln = await client.vulnerability("CVE-2024-0001", None)
+    assert vuln.is_kev is None
+
+
+async def test_vulnerability_kev_data_present_without_iskev_field_is_also_unknown() -> None:
+    """A ``kevData`` block present but missing its own ``isKev`` key is the
+    same "never established" fact as the block being absent entirely —
+    both must parse as ``None``, not ``False``."""
+    body = {"identifier": "CVE-2024-0001", "rootCauses": [], "kevData": {}}
+    client = IqHttpClient(
+        base_url=IQ_BASE_URL,
+        service_user="svc",
+        service_token=_SECRET,
+        transport=responding(200, body),
+    )
+    vuln = await client.vulnerability("CVE-2024-0001", None)
+    assert vuln.is_kev is None
+
+
 async def test_vulnerability_404_for_unknown_cve_is_an_error(client: IqHttpClient) -> None:
     with pytest.raises(UpstreamResponseError) as exc_info:
         await client.vulnerability("CVE-0000-00000", None)

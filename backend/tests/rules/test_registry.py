@@ -73,11 +73,15 @@ class TestPendingEvidenceExcludedFromActive:
 
     def test_pending_evidence_is_not_empty(self) -> None:
         """A trivially-true assertion above (vacuous over an empty dict) would
-        not actually guard anything — pin the expected three entries."""
+        not actually guard anything — pin the expected entries. Task 5-8 fix
+        round 1 added the fourth, non-rule-id entry documenting
+        Tier3Signals.reachable_with_call_path's identical "no evidence
+        source" situation alongside the three rule ids."""
         assert set(PENDING_EVIDENCE) == {
             "t1-cve-withdrawn",
             "t2-gadget-absent",
             "t2-runtime-immune",
+            "tier3signals.reachable_with_call_path",
         }
 
 

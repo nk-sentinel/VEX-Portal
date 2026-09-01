@@ -10,6 +10,8 @@ producing a failure on purpose.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,12 +24,15 @@ from app.adapters.protocols import (
     RawReport,
     ReportComponent,
     SourceControl,
+    VulnDetail,
 )
 from app.config import AdapterMode, Settings
+from app.evidence.pack import ComponentEvidence, EvidencePack
+from app.provenance.fingerprint import FingerprintResult, Verdict
 from app.repos.models import Assessment, Evidence, FindingOutcome
 from app.rules.engine import RuleEngine
 from app.rules.registry import ACTIVE_RULES
-from app.services.collection import CollectionFailure, collect_evidence
+from app.services.collection import CollectionFailure, build_tier3_signals, collect_evidence
 from tests.adapters.support import (
     BITBUCKET_BASE_URL,
     IQ_BASE_URL,
@@ -214,3 +219,74 @@ async def test_collector_failure_makes_the_finding_inconclusive_not_clear(
 
     outcome = RuleEngine(ACTIVE_RULES).evaluate_component(result.pack, component)
     assert outcome.proposed is FindingOutcome.NEEDS_REVIEW
+
+
+def test_build_tier3_signals_passes_kev_through_unchanged() -> None:
+    """The pure combination step, tested directly: this is what
+    ``test_unknown_kev_survives_into_the_signals_and_blocks_a_clear`` below
+    depends on staying true — kev must never be substituted with a guessed
+    default, in either direction."""
+    absent = VulnDetail(
+        cve="CVE-2024-0001",
+        cvss_vector=None,
+        cvss_score=None,
+        epss_score=None,
+        is_kev=None,
+        cwe_ids=[],
+        affected_version_range=None,
+        root_causes=[],
+    )
+    confirmed_false = replace(absent, is_kev=False)
+    confirmed_true = replace(absent, is_kev=True)
+
+    assert build_tier3_signals(absent, None).kev is None
+    assert build_tier3_signals(confirmed_false, None).kev is False
+    assert build_tier3_signals(confirmed_true, None).kev is True
+
+
+def test_unknown_kev_survives_into_the_signals_and_blocks_a_clear() -> None:
+    """The whole point of fix round 1: an absent kevData block must reach
+    the rule engine as an unresolved blocker, not be erased anywhere along
+    build_tier3_signals -> RuleEngine.evaluate_component. Without this fix,
+    this exact scenario — Tier 1 proof present, KEV status never
+    established — would have auto-cleared the finding.
+    """
+    vuln_with_unknown_kev = VulnDetail(
+        cve="CVE-2024-0001",
+        cvss_vector=None,
+        cvss_score=None,
+        epss_score=0.01,
+        is_kev=None,
+        cwe_ids=[],
+        affected_version_range=None,
+        root_causes=["com/example/Vulnerable.class"],
+    )
+
+    signals = build_tier3_signals(vuln_with_unknown_kev, None)
+    assert signals.kev is None
+
+    pack = EvidencePack(
+        provenance=FingerprintResult(
+            verdict=Verdict.MATCH,
+            matched=7,
+            report_total=7,
+            unmatched_report_hashes=[],
+            unmatched_artifact_hashes=[],
+            surplus_ratio=0.0,
+            ratio=1.0,
+        )
+    )
+    component = ComponentEvidence(
+        cve="CVE-2024-0001",
+        class_paths=["com/example/Vulnerable.class"],
+        # class_present=False alone would let t1-class-absent clear this at
+        # tier PROOF with no further evidence needed.
+        class_present=False,
+        referenced=False,
+        reference_scan_conclusive=True,
+    )
+
+    outcome = RuleEngine(ACTIVE_RULES).evaluate_component(pack, component, signals)
+
+    assert outcome.proposed is FindingOutcome.NEEDS_REVIEW
+    assert "kev" in outcome.blocked_by

@@ -119,7 +119,23 @@ class VulnDetail:
     cvss_vector: str | None
     cvss_score: float | None
     epss_score: float | None
-    is_kev: bool
+
+    #: ``bool | None``, not a plain ``bool`` — tri-state, matching
+    #: ``app.rules.engine.Tier3Signals.kev``. ``None`` means IQ's response
+    #: carried no ``kevData`` block at all (KEV status was never
+    #: established for this CVE), distinct from a confirmed ``False``
+    #: (IQ positively reported this CVE is not on the KEV list). The IQ
+    #: adapter (``app/adapters/iq/client.py``) is responsible for keeping
+    #: these three facts distinct all the way from the HTTP response body:
+    #: coercing an absent ``kevData`` block to ``False`` would silently
+    #: assert "not a known-exploited vulnerability", which nobody
+    #: established, and would re-enable automatic clearing for exactly the
+    #: vulnerabilities most likely to be exploited — the same hazard
+    #: ``Tier3Signals.kev``'s tri-state fix exists to prevent, reopened one
+    #: layer up if this field is ever allowed to erase the unknown state
+    #: before it reaches the engine.
+    is_kev: bool | None
+
     cwe_ids: list[str]
 
     #: The version range of the queried component in which this CVE applies.

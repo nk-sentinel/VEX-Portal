@@ -41,15 +41,14 @@ signal (docs/design.md's "Hard blockers": "reachable with call-path
 evidence") would need to come from the policy report's violation data, but
 neither ``PolicyViolation`` nor ``VulnDetail`` (``app/adapters/protocols.py``)
 carries any such field, and nothing in ``fakes/data/iq.json``'s policy report
-shape has one either — confirmed by inspection, not assumed absent. Unlike
-``kev``/``fix_available``, ``Tier3Signals.reachable_with_call_path`` is a
-plain, non-``Optional`` ``bool`` (``app/rules/engine.py``), so this module
-has no way to express "unknown" for it even if it had a source to distrust —
-widening that field to ``bool | None`` is an ``app/rules/engine.py`` change,
-outside this task's file scope. This module always constructs it at its
-type's only honest default, ``False``, and flags this prominently rather
-than silently treating "never checked" as "confirmed not reachable" — see
-the Task 5-8 report for the full note.
+shape has one either — confirmed by inspection, not assumed absent.
+``Tier3Signals.reachable_with_call_path`` is ``bool | None`` (Task 5-8 fix
+round 1 widened it, mirroring ``kev``), defaulting to ``None`` — this
+module always leaves it unset (``None``, "never checked"), never passes a
+guessed ``False``. See that field's own docstring in ``app/rules/engine.py``
+for why ``None`` deliberately does NOT hard-block here the way an unknown
+``kev`` does, and ``app/rules/registry.py``'s ``PENDING_EVIDENCE`` for this
+gap documented alongside the three unregistered rules.
 """
 
 from __future__ import annotations
@@ -63,6 +62,7 @@ from app.adapters.errors import AdapterError
 from app.adapters.protocols import (
     ArtifactStore,
     IqClient,
+    Remediation,
     SourceControl,
     SourceRepository,
     SymbolHit,
@@ -161,6 +161,45 @@ def _repo_from_url(repository_url: str) -> str | None:
     return f"{project_key.upper()}/{repo_slug}"
 
 
+def build_tier3_signals(vuln: VulnDetail, remediation: Remediation | None) -> Tier3Signals:
+    """The pure combination step: Nexus IQ's vuln lookup + remediation
+    lookup into the ``Tier3Signals`` the rule engine needs.
+
+    Extracted from :func:`collect_evidence`'s per-violation loop (which owns
+    the network I/O and per-CVE failure handling) so this mapping is
+    directly testable without a database session or adapter clients — in
+    particular so the unknown-KEV-survives-the-whole-path property (Task 5-8
+    fix round 1) has a narrow, dedicated test that would fail if a future
+    edit reintroduced a coercion to a safe-looking default anywhere in this
+    step.
+
+    Every field is passed through unchanged from its source, never
+    substituted with a guessed default:
+
+    - ``kev`` comes straight from ``vuln.is_kev`` — already tri-state (see
+      that field's own docstring): ``None`` means IQ's response carried no
+      ``kevData`` at all, and that ``None`` must reach ``Tier3Signals.kev``
+      exactly as-is, not become a coerced ``False``.
+    - ``fix_available`` is ``None`` when ``remediation is None`` — either
+      the lookup failed (the caller passes ``None`` in that case) or IQ has
+      never scanned this component (a legitimate, distinct absence — see
+      ``Remediation``'s own docstring); ``False`` only when IQ positively
+      confirmed no fix via its documented empty-``versionChanges`` shape;
+      ``True`` only when a fix version was found.
+    - ``reachable_with_call_path`` is always ``None`` (the type's default) —
+      see this module's docstring and ``Tier3Signals.reachable_with_call_path``'s
+      own docstring for why nothing populates this today, and why ``None``
+      is the only honest value here.
+    """
+    return Tier3Signals(
+        kev=vuln.is_kev,
+        epss=vuln.epss_score,
+        cvss_base_score=vuln.cvss_score,
+        cvss_vector=vuln.cvss_vector,
+        fix_available=None if remediation is None else remediation.fix_version is not None,
+    )
+
+
 async def collect_evidence(
     application_id: str,
     report_id: str,
@@ -231,7 +270,7 @@ async def collect_evidence(
         vuln_details[violation.cve] = vuln
         findings[violation.cve] = _class_paths_only(vuln.root_causes)
 
-        fix_available: bool | None
+        remediation: Remediation | None
         try:
             remediation = await iq.remediation(application_id, violation.purl)
         except AdapterError as exc:
@@ -242,21 +281,9 @@ async def collect_evidence(
                     reason=f"remediation lookup failed: {exc}",
                 )
             )
-            fix_available = None
-        else:
-            fix_available = None if remediation is None else remediation.fix_version is not None
+            remediation = None
 
-        tier3_signals[violation.cve] = Tier3Signals(
-            kev=vuln.is_kev,
-            epss=vuln.epss_score,
-            cvss_base_score=vuln.cvss_score,
-            cvss_vector=vuln.cvss_vector,
-            fix_available=fix_available,
-            # See this module's docstring: no evidence source exists for
-            # this signal anywhere in the system today. Left at its type's
-            # only honest default rather than guessed.
-            reachable_with_call_path=False,
-        )
+        tier3_signals[violation.cve] = build_tier3_signals(vuln, remediation)
 
     try:
         pack = build_pack(

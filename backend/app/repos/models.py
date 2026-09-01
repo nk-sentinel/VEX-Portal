@@ -331,9 +331,22 @@ class RuleResult(Base, kw_only=True):
     )
     rule_id: Mapped[str] = mapped_column()
     rule_version: Mapped[str] = mapped_column()
-    #: The VEX state this rule proposes — reuses the domain vocabulary
-    #: directly rather than a parallel copy, since a rule's verdict is
-    #: exactly a proposed ``State``.
+    #: A best-effort mapping onto the VEX-state vocabulary — NOT an
+    #: equivalent encoding of the rule's actual verdict, despite this
+    #: column's name suggesting otherwise. ``app.rules.engine.RuleEvaluation.verdict``
+    #: is a ``RuleVerdict`` (SATISFIED/NOT_SATISFIED/INAPPLICABLE/
+    #: UNANSWERABLE — a rule's judgement about its own condition), a
+    #: different, 4-valued vocabulary at a different layer than this
+    #: column's 3-valued ``State`` (a finding's VEX disposition); only
+    #: SATISFIED-with-a-clearing-justification maps onto this column
+    #: unambiguously. **The authoritative value is
+    #: ``detail_json["rule_verdict"]``, written by every caller that
+    #: persists a row here** (``app/services/determination.py``'s
+    #: ``_bridge_rule_verdict_to_state`` / ``_persist_rule_results``) —
+    #: trust that field, not this one, when the actual ``RuleVerdict``
+    #: matters. This column exists so simple VEX-state queries/filters stay
+    #: possible without joining out to JSON; it is a lossy projection of the
+    #: real verdict, not a second copy of it.
     verdict: Mapped[State] = mapped_column()
     tier: Mapped[EvidenceTier] = mapped_column()
     detail_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)

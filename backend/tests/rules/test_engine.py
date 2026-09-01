@@ -286,6 +286,38 @@ class TestHardBlockers:
         assert outcome.proposed is FindingOutcome.NEEDS_REVIEW
         assert "reachable" in outcome.blocked_by
 
+    def test_reachable_with_call_path_unknown_does_not_block(self) -> None:
+        """Task 5-8 fix round 1: reachable_with_call_path became bool | None,
+        but deliberately does NOT get kev's "unknown blocks like confirmed"
+        treatment — nothing in this system populates this field today (see
+        its own docstring and app/rules/registry.py's PENDING_EVIDENCE), so
+        treating None as blocking would hard-block every finding
+        unconditionally rather than routing an unresolved input to a human.
+        Only a positively-confirmed True blocks.
+        """
+        engine = RuleEngine(self._CLEARING)
+        outcome = engine.evaluate_component(
+            PACK,
+            COMPONENT,
+            tier3_signals=Tier3Signals(kev=False, reachable_with_call_path=None),
+        )
+        assert "reachable" not in outcome.blocked_by
+
+    def test_reachable_with_call_path_confirmed_false_does_not_block(self) -> None:
+        engine = RuleEngine(self._CLEARING)
+        outcome = engine.evaluate_component(
+            PACK,
+            COMPONENT,
+            tier3_signals=Tier3Signals(kev=False, reachable_with_call_path=False),
+        )
+        assert "reachable" not in outcome.blocked_by
+
+    def test_bare_tier3_signals_reachable_with_call_path_defaults_to_none(self) -> None:
+        # Nothing in this system measures IQ's reachability signal today —
+        # the default must say "unknown", never a guessed "confirmed not
+        # reachable".
+        assert Tier3Signals().reachable_with_call_path is None
+
     def test_epss_at_or_above_threshold_blocks(self) -> None:
         engine = RuleEngine(self._CLEARING, epss_threshold=0.10)
         outcome = engine.evaluate_component(PACK, COMPONENT, tier3_signals=Tier3Signals(epss=0.10))

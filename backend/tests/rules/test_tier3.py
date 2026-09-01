@@ -247,7 +247,8 @@ class TestNeverClears:
         cvss_score_values = (None, 0.0, 4.0, 7.0, 9.0, 10.0)
         cvss_vector_values = (None, _NETWORK_VECTOR, _LOCAL_VECTOR)
         fix_available_values = (True, False, None)
-        reachable_values = (True, False)
+        # Task 5-8 fix round 1: reachable_with_call_path became bool | None.
+        reachable_values = (True, False, None)
 
         engine = RuleEngine([Kev(), Epss(), CvssVector(), NoFixAvailable()])
 

@@ -300,6 +300,22 @@ async def determine(
     of the four terminal outcomes, persist it, and commit ``NOT_AFFECTED``
     to Nexus IQ.
 
+    **Hard blockers are resolved before the AI is ever consulted, and this
+    is load-bearing, not a redundant-looking early return.** The adjudicator
+    is blind to hard blockers, not merely forbidden from using them: its
+    prompt (``app/adapters/llm/client.py``'s ``_build_prompt``) never
+    includes CVSS, EPSS, or KEV at all, so a model that has never seen
+    evidence of a KEV finding could still confidently propose
+    ``NOT_AFFECTED`` for one. Checking ``engine_outcome.blocked_by`` first —
+    before the "otherwise, ask the AI" branch even runs — is the only
+    ordering under which a hard-blocked finding can never reach the model in
+    the first place. If a future edit moves this check to run *after*
+    consulting the AI (e.g. to "only override an AI clear"), it reopens
+    exactly the gap this ordering exists to close: the sample scenario's own
+    KEV finding (CVE-2022-42889) would sail past this check unnoticed
+    because the AI was never shown a reason to say anything but
+    ``NOT_AFFECTED``.
+
     Args:
         finding: the persisted ``Finding`` row for this (CVE, purl) case.
             Mutated in place with the decided outcome.
