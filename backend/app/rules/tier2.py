@@ -60,7 +60,7 @@ def _make(
     )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class NotReferenced:
     """``t2-not-referenced``: nothing in the app's own bytecode references any
     implicated class, and the constant-pool scan was conclusive.
@@ -154,7 +154,7 @@ class NotReferenced:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class GadgetAbsent:
     """``t2-gadget-absent``: SATISFIED when a required companion/gadget
     component is absent from the classpath (docs/design.md Tier 2 item 8).
@@ -201,7 +201,7 @@ class GadgetAbsent:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class RuntimeImmune:
     """``t2-runtime-immune``: SATISFIED when the runtime version falls
     outside the CVE's affected range (docs/design.md Tier 2 item 10).

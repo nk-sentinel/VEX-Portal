@@ -220,9 +220,33 @@ class Tier3Signals:
     blocker-free outcome rather than a crash — ``epss``/``cvss_base_score``
     default to ``None``, never ``0``/coerced-false, so "not looked up" is
     never silently read as "does not block".
+
+    **``kev``/``fix_available`` are a tri-state ``bool | None``, not a plain
+    ``bool`` — fixed in Task 2/3/4's review round.** ``None`` means "unknown":
+    the vuln lookup for this CVE either was not performed or the KEV/fix
+    portion of it failed. This is deliberately distinct from a confirmed
+    ``False``, for the same reason ``epss``/``cvss_base_score`` are
+    ``Optional`` rather than defaulting to ``0``: a caller that read a
+    broken or unavailable KEV feed as plain ``False`` would have a silent
+    failure present itself as a safe answer — "we could not check KEV" and
+    "this is not on KEV" are different facts, and confusing them is exactly
+    the failure mode this project has been fighting throughout. Unlike
+    ``epss``/``cvss_base_score``, the *default* value of ``kev`` and
+    ``fix_available`` is intentionally left at their pre-existing safe
+    constants (``False``/``True``) rather than changed to ``None`` — an
+    omitted ``Tier3Signals`` (the "no vuln enrichment yet" case
+    ``RuleEngine.evaluate_component`` documents) stays blocker-free exactly
+    as before; only a caller that explicitly knows the KEV/fix lookup
+    resolved to "unknown" — as opposed to never having been attempted at all
+    — should construct ``Tier3Signals(kev=None)`` /
+    ``Tier3Signals(fix_available=None)``. Flagged as a judgment call in the
+    Task 2/3/4 report: the alternative (default ``None``, blocking by
+    default whenever ``Tier3Signals`` is omitted) is arguably more
+    consistent with "unknown must not read as false", but is a larger,
+    more invasive change than this fix round's scope.
     """
 
-    kev: bool = False
+    kev: bool | None = False
 
     #: EPSS probability, 0-1. None means "not looked up".
     epss: float | None = None
@@ -241,8 +265,11 @@ class Tier3Signals:
     reachable_with_call_path: bool = False
 
     #: Whether a fix is available for this CVE at this component's version.
-    #: Read by ``t3-no-fix-available`` (Task 4); not itself a hard blocker.
-    fix_available: bool = True
+    #: Read by ``t3-no-fix-available`` (Task 4); not itself a hard blocker —
+    #: unlike ``kev``, ``None`` here ("unknown") does not add to
+    #: ``blocked_by``; it only makes ``t3-no-fix-available`` report
+    #: UNANSWERABLE. See the class docstring's tri-state note.
+    fix_available: bool | None = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -363,7 +390,12 @@ class RuleEngine:
 
     def _hard_blockers(self, signals: Tier3Signals) -> frozenset[str]:
         blockers: set[str] = set()
-        if signals.kev:
+        # Unknown KEV status blocks exactly like confirmed KEV: an outage or
+        # failure in the KEV feed must not quietly re-enable auto-clearing
+        # for the vulnerabilities most likely to be exploited. Only a
+        # positively-confirmed `False` skips the block — see Tier3Signals'
+        # docstring's tri-state note.
+        if signals.kev is None or signals.kev:
             blockers.add("kev")
         if signals.reachable_with_call_path:
             blockers.add("reachable")

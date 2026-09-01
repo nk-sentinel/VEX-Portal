@@ -66,7 +66,7 @@ def _make(
     )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ClassAbsent:
     """``t1-class-absent``: none of the CVE's implicated classes ship in the artifact.
 
@@ -118,7 +118,7 @@ class ClassAbsent:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ComponentAbsent:
     """``t1-component-absent``: the whole component is not in the runtime
     artifact at all — not just the implicated class, the entire dependency.
@@ -130,21 +130,26 @@ class ComponentAbsent:
     ``devDependencies`` and never packaged), not merely shaded/filtered out
     of an otherwise-bundled library.
 
-    **Interpretive gap, flagged in the Task 2/3/4 report.**
-    ``ComponentEvidence`` carries no independent component identity (no
-    sha1/purl) distinct from ``class_present``, so this rule cannot literally
-    check "is library X present" the way its name and docs/design.md's
-    phrasing imply — no such field exists anywhere reachable from
-    ``Rule.evaluate``. What it CAN do, using only fields the pack already
-    carries, is require a higher evidentiary bar before granting the
-    stronger claim: the class-presence check must hold, AND the artifact
-    must be a confirmed (``Verdict.MATCH``) rendering of the report's own
-    component set. An artifact whose overall provenance is unproven
-    (``Verdict.INSUFFICIENT_DATA``) should not be trusted to prove "not
-    present AT ALL", even where it would be trusted for the narrower
-    per-class claim ``t1-class-absent`` makes. This is an inference, not a
-    literal reading of the brief — under this evidence model the two rules
-    are otherwise evidentially identical.
+    **This is NOT the literal check docs/design.md names — read this before
+    trusting the rule ID.** "Component absent from the runtime artifact
+    entirely (inspect artifact, not manifest)" implies checking a specific
+    library's presence by its own identity. ``ComponentEvidence`` carries no
+    such identity (no sha1/purl) distinct from ``class_present`` — no field
+    anywhere reachable from ``Rule.evaluate`` can answer "is library X
+    present" the way the name and docs/design.md's phrasing imply. What this
+    rule does instead, using only fields the pack already carries, is
+    require a higher evidentiary bar before granting the *narrower*
+    ``class_present``-based claim the STRONGER label: the class-presence
+    check must hold, AND the artifact must be a confirmed (``Verdict.MATCH``)
+    rendering of the report's own component set. An artifact whose overall
+    provenance is unproven (``Verdict.INSUFFICIENT_DATA``) should not be
+    trusted to prove "not present AT ALL", even where it would be trusted for
+    the narrower per-class claim ``t1-class-absent`` makes. Coordinator
+    fix-round-1 review: this reading is accepted as reasonable, on the
+    explicit condition that this gap stays documented here rather than
+    implied — this docstring is that documentation. Under the evidence model
+    as built, this rule and ``t1-class-absent`` are otherwise evidentially
+    identical; the provenance gate is the only real difference between them.
     """
 
     id: str = field(default="t1-component-absent", init=False)
@@ -221,7 +226,7 @@ class ComponentAbsent:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class CveWithdrawn:
     """``t1-cve-withdrawn``: the CVE itself is withdrawn, disputed, or superseded.
 

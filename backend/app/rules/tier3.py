@@ -27,17 +27,26 @@ determination service (Phase 4, Task 8), made by inspecting
 layer above this module's aggregation step. This rule's only job is to make
 that fact appear in the trace.
 
-**Two of the four rules cannot detect missing evidence.** ``t3-kev`` and
-``t3-no-fix-available`` read ``Tier3Signals.kev``/``fix_available``, which
-are plain ``bool`` fields with safe defaults (``False``/``True``) rather than
-``Optional`` — per ``Tier3Signals``'s own docstring, this was Task 1's
-deliberate choice: "nothing known" reads as "no blocker implied", which is
-the safe direction *because Tier 3 evidence can only ever escalate, never
-clear*. But it does mean a lookup that never ran is indistinguishable, to
-these two rules, from a lookup that positively confirmed the safe answer —
-flagged in detail on each rule and in the Task 2/3/4 report. ``t3-epss`` and
-``t3-cvss-vector`` read ``Optional`` fields (``None`` means "not looked up")
-and so genuinely support ``UNANSWERABLE``.
+**All four rules now support UNANSWERABLE (fix round 1).** ``Tier3Signals.kev``
+and ``fix_available`` were originally plain ``bool`` fields with safe
+defaults (``False``/``True``); Task 1's own reasoning for that shape was
+"nothing known" reading as "no blocker implied", which seemed like the safe
+direction because Tier 3 evidence can only ever escalate, never clear. The
+coordinator's fix round 1 review correctly identified the hazard that logic
+missed: a lookup that never ran (or a KEV feed outage) was indistinguishable
+from a lookup that positively confirmed the safe answer — "we could not
+check KEV" and "this is not on KEV" are different facts, and a rule that
+conflates them is a silent failure presenting as a safe answer. Both fields
+are now ``bool | None`` (``None`` = unknown); see ``Tier3Signals``'s own
+docstring for the full tri-state note, including why the field *default*
+was deliberately left unchanged (a judgment call flagged in the Task 2/3/4
+report). ``t3-kev`` and ``t3-no-fix-available`` now report UNANSWERABLE on
+``None`` exactly like ``t3-epss``/``t3-cvss-vector`` do on their own
+``Optional`` fields. The one remaining asymmetry: unknown KEV is also a
+hard *blocker* (``RuleEngine._hard_blockers`` treats ``kev is None`` the
+same as ``kev is True``) — "if we cannot establish KEV status, a human
+decides" — while unknown ``fix_available`` is not, matching
+``fix_available``'s pre-existing non-blocking role.
 """
 
 from __future__ import annotations
@@ -116,7 +125,7 @@ def _parse_cvss_vector(vector: str) -> dict[str, str]:
     return metrics
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Kev:
     """``t3-kev``: IQ's own vuln lookup flags this CVE as a known,
     actively-exploited vulnerability (CISA KEV).
@@ -129,8 +138,11 @@ class Kev:
     (``EngineOutcome.results``) rather than only implicitly through
     ``blocked_by``.
 
-    **No UNANSWERABLE state is possible** — see the module docstring's note
-    on ``Tier3Signals.kev``'s non-``Optional`` shape.
+    UNANSWERABLE when ``tier3_signals.kev is None`` — "unknown", not
+    "confirmed not KEV" (fix round 1: see the module docstring's tri-state
+    note). ``RuleEngine._hard_blockers`` treats this same ``None`` state as
+    a hard blocker, identically to ``kev=True``: an unresolved KEV lookup
+    must route to a human, never silently permit an auto-clear.
     """
 
     id: str = field(default="t3-kev", init=False)
@@ -144,6 +156,13 @@ class Kev:
         tier3_signals: Tier3Signals,
     ) -> RuleEvaluation:
         del pack
+        if tier3_signals.kev is None:
+            return _make(
+                self.id,
+                self.version,
+                RuleVerdict.UNANSWERABLE,
+                detail={"cve": component.cve, "reason": "kev not looked up"},
+            )
         verdict = RuleVerdict.SATISFIED if tier3_signals.kev else RuleVerdict.NOT_SATISFIED
         return _make(
             self.id,
@@ -153,7 +172,7 @@ class Kev:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Epss:
     """``t3-epss``: signals an elevated EPSS exploitation-probability score.
 
@@ -195,7 +214,7 @@ class Epss:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class CvssVector:
     """``t3-cvss-vector``: signals a CVSS vector shape worth a reviewer's
     attention — unauthenticated, no user interaction, over the network
@@ -252,7 +271,7 @@ class CvssVector:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class NoFixAvailable:
     """``t3-no-fix-available``: SATISFIED when no remediation exists for this
     CVE at this component's version.
@@ -263,10 +282,11 @@ class NoFixAvailable:
     routing itself is the determination service's job (Task 8), not this
     engine's or this rule's.
 
-    **No UNANSWERABLE state is possible** — see the module docstring's note
-    on ``Tier3Signals.fix_available``'s non-``Optional`` shape. Unlike
-    ``t3-kev``, the safe default here is ``True`` ("assume a fix exists"),
-    matching ``Tier3Signals.fix_available``'s own default.
+    UNANSWERABLE when ``tier3_signals.fix_available is None`` — "unknown",
+    not "confirmed a fix exists" (fix round 1: see the module docstring's
+    tri-state note). Unlike ``t3-kev``, unknown ``fix_available`` is NOT a
+    hard blocker: ``fix_available`` never was one, and that has not
+    changed — only its ability to express "unknown" at all has.
     """
 
     id: str = field(default="t3-no-fix-available", init=False)
@@ -280,6 +300,13 @@ class NoFixAvailable:
         tier3_signals: Tier3Signals,
     ) -> RuleEvaluation:
         del pack
+        if tier3_signals.fix_available is None:
+            return _make(
+                self.id,
+                self.version,
+                RuleVerdict.UNANSWERABLE,
+                detail={"cve": component.cve, "reason": "fix_available not looked up"},
+            )
         verdict = (
             RuleVerdict.NOT_SATISFIED
             if tier3_signals.fix_available
