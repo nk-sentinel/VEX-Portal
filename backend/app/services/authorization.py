@@ -9,6 +9,20 @@ below is the only place a role/capability relationship is written down, so
 changing which role may do something is a one-line edit here, not a sweep
 through every route that happens to care.
 
+**ADMIN holds every capability.** ``FULL_ACCESS_ROLES`` is folded into every
+entry of :data:`CAPABILITY_ROLES` below, rather than listed capability by
+capability, so a capability added later cannot accidentally omit it — the
+failure mode would be an administrator who cannot administer one new thing,
+discovered only when someone tries.
+
+One consequence worth stating rather than leaving implicit: an
+administrator can both set a rule's thresholds and commit a determination,
+so the "someone else configured the bar I am approving against" control
+does not hold for that role. Separation of duties still does (see below) —
+an admin who raised an assessment cannot commit it — but the configure-then-
+approve path is open to anyone holding ADMIN, and the audit log is what
+makes it visible after the fact rather than preventing it.
+
 **Separation of duties is enforced here, in the service layer, and tested
 here — not at the route.** A route-only check is decoration: it protects
 exactly the one call site it sits in front of, and is bypassed the moment a
@@ -53,18 +67,33 @@ class Capability(StrEnum):
     MANAGE_RULES = "manage_rules"
 
 
-#: The single source of truth for which roles grant which capability. See
-#: the module docstring: this is the one place that changes when a role's
-#: permissions change.
-CAPABILITY_ROLES: dict[Capability, frozenset[Role]] = {
+#: Roles that hold every capability, present or future — see the module
+#: docstring. Folded into every entry of :data:`CAPABILITY_ROLES` so a
+#: capability added later includes them without a second edit.
+FULL_ACCESS_ROLES: frozenset[Role] = frozenset({Role.ADMIN})
+
+#: Which roles grant each capability *in addition to* FULL_ACCESS_ROLES.
+#: Not read directly by anything outside this module — ``CAPABILITY_ROLES``
+#: below is the resolved table every caller uses.
+_GRANTS: dict[Capability, frozenset[Role]] = {
     Capability.RAISE_ASSESSMENT: frozenset({Role.REQUESTER}),
     Capability.VIEW_QUEUE: frozenset({Role.REVIEWER, Role.APPROVER, Role.AUDITOR}),
     Capability.RECOMMEND_DETERMINATION: frozenset({Role.REVIEWER, Role.APPROVER}),
     Capability.COMMIT_DETERMINATION: frozenset({Role.APPROVER}),
-    Capability.VIEW_DASHBOARD: frozenset({Role.AUDITOR, Role.ADMIN}),
+    Capability.VIEW_DASHBOARD: frozenset({Role.AUDITOR}),
     Capability.VIEW_RISK_ACCEPTANCE: frozenset({Role.RISK_MANAGER, Role.AUDITOR}),
     Capability.MANAGE_RISK_ACCEPTANCE: frozenset({Role.RISK_MANAGER}),
-    Capability.MANAGE_RULES: frozenset({Role.ADMIN}),
+    Capability.MANAGE_RULES: frozenset(),
+}
+
+#: The single source of truth for which roles grant which capability. See
+#: the module docstring: this is the one place that changes when a role's
+#: permissions change. Built from :data:`_GRANTS` with
+#: :data:`FULL_ACCESS_ROLES` added to every entry, and keyed over
+#: ``Capability`` itself so a capability missing from ``_GRANTS`` fails at
+#: import rather than silently granting nothing.
+CAPABILITY_ROLES: dict[Capability, frozenset[Role]] = {
+    capability: _GRANTS[capability] | FULL_ACCESS_ROLES for capability in Capability
 }
 
 
@@ -113,6 +142,7 @@ def assert_may_commit_own_determination(*, assessment: Assessment, actor_usernam
 
 __all__ = [
     "CAPABILITY_ROLES",
+    "FULL_ACCESS_ROLES",
     "Capability",
     "SeparationOfDutiesError",
     "assert_may_commit_own_determination",

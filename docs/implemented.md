@@ -66,20 +66,26 @@ permission change is a one-line mapping edit (`app/services/authorization.py`).
 
 | Capability | requester | reviewer | approver | auditor | risk_manager | admin |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
-| `raise_assessment` | ● | | | | | |
-| `view_queue` | | ● | ● | ● | | |
-| `recommend_determination` | | ● | ● | | | |
-| `commit_determination` | | | ● | | | |
+| `raise_assessment` | ● | | | | | ● |
+| `view_queue` | | ● | ● | ● | | ● |
+| `recommend_determination` | | ● | ● | | | ● |
+| `commit_determination` | | | ● | | | ● |
 | `view_dashboard` | | | | ● | | ● |
-| `view_risk_acceptance` | | | | ● | ● | |
-| `manage_risk_acceptance` | | | | | ● | |
+| `view_risk_acceptance` | | | | ● | ● | ● |
+| `manage_risk_acceptance` | | | | | ● | ● |
 | `manage_rules` | | | | | | ● |
 
 Notes:
+- **Admin holds every capability.** Granted through `FULL_ACCESS_ROLES`, folded into every
+  row rather than listed per capability, so a capability added later cannot omit it
+- The trade that comes with it: an admin can set a rule's thresholds *and* commit
+  determinations against them, so "someone else configured the bar I approve against" does
+  not hold for that role. The audit log makes it visible after the fact; nothing prevents it
+- **Separation of duties is not waived for admin** — an admin who raised an assessment still
+  cannot commit it. The check is keyed on `Assessment.requester`, deliberately independent
+  of role
 - An auditor can **see** the risk-acceptance queue but not change its status — read-only by
   definition, so the write is a separate capability
-- `commit_determination` is approver-only, and additionally blocked when the actor raised
-  the assessment (`SeparationOfDutiesError` → 403)
 - A test iterates `Role` and asserts every member has an LDAP group setting, so a role added
   without a mapping fails the suite rather than becoming silently unreachable
 - Authentication: local provider (argon2, dummy-hash compare to avoid a username oracle) or

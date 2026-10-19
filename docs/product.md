@@ -58,11 +58,23 @@ Four deliberate properties, each of which costs something:
 | **Approver** (AppSec lead) | Commits a determination. Cannot commit one they raised themselves |
 | **Risk manager** | Owns the risk-acceptance queue where no fix exists |
 | **Auditor** | Read-only across the queue, the evidence and the dashboard |
-| **Admin** | Rule toggles, thresholds, the review schedule |
+| **Admin** | Rule toggles, thresholds, the review schedule — and every other capability |
 
 Permissions are capability-based: every call site checks a capability, never a role, so a
 permission change is a one-line mapping edit rather than a hunt through the code. The full
 matrix is in `docs/implemented.md`.
+
+Two things about the shape of this:
+
+- **Reviewer and approver are both AppSec seats, not app-team seats.** The app team raises
+  the request; the security team decides it. A reviewer works the queue and recommends an
+  outcome; an approver — a senior or lead on the same team — is the one who commits it. The
+  split exists so that the person who studies a case and the person who accepts
+  responsibility for clearing it are not automatically the same person.
+- **Admin has full access, but is not exempt from separation of duties.** An admin who
+  raised an assessment still cannot approve it. What admin access does remove is the
+  separation between configuring the thresholds and approving against them — that is a
+  deliberate trade for a small team, and the audit log is what makes it reviewable.
 
 ## How a request flows
 

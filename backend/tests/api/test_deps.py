@@ -58,10 +58,19 @@ def test_view_queue_admits_exactly_its_roles(role):
     assert _client_as(role).get("/queue").status_code == 200
 
 
-@pytest.mark.parametrize("role", [Role.REQUESTER, Role.RISK_MANAGER, Role.ADMIN])
+@pytest.mark.parametrize("role", [Role.REQUESTER, Role.RISK_MANAGER])
 def test_view_queue_rejects_the_rest(role):
     response = _client_as(role).get("/queue")
     assert response.status_code == 403
+
+
+def test_an_admin_is_admitted_everywhere_including_routes_it_does_not_own():
+    # ADMIN holds every capability (app/services/authorization.py's
+    # FULL_ACCESS_ROLES), so it reaches the review queue as well as the
+    # admin routes. Separation of duties is what still constrains it, and
+    # that is enforced in the service layer, not here.
+    assert _client_as(Role.ADMIN).get("/queue").status_code == 200
+    assert _client_as(Role.ADMIN).post("/rules").status_code == 200
 
 
 def test_unauthenticated_request_is_401_not_403():

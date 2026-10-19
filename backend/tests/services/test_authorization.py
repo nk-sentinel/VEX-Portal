@@ -18,6 +18,7 @@ import pytest
 from app.repos.models import Assessment, Role
 from app.services.authorization import (
     CAPABILITY_ROLES,
+    FULL_ACCESS_ROLES,
     Capability,
     SeparationOfDutiesError,
     assert_may_commit_own_determination,
@@ -28,14 +29,19 @@ from app.services.authorization import (
 #: The RBAC table from the plan document, restated here as the expected
 #: value every test below checks the real mapping against — if a future
 #: edit to CAPABILITY_ROLES drifts from this table, these tests catch it.
+#: ADMIN appears in every row: it holds every capability (see
+#: ``FULL_ACCESS_ROLES``), and it is written out longhand here rather than
+#: folded in programmatically so this table stays a literal statement of
+#: the intended matrix and cannot agree with the implementation by sharing
+#: its logic.
 _EXPECTED: dict[Capability, set[Role]] = {
-    Capability.RAISE_ASSESSMENT: {Role.REQUESTER},
-    Capability.VIEW_QUEUE: {Role.REVIEWER, Role.APPROVER, Role.AUDITOR},
-    Capability.RECOMMEND_DETERMINATION: {Role.REVIEWER, Role.APPROVER},
-    Capability.COMMIT_DETERMINATION: {Role.APPROVER},
+    Capability.RAISE_ASSESSMENT: {Role.REQUESTER, Role.ADMIN},
+    Capability.VIEW_QUEUE: {Role.REVIEWER, Role.APPROVER, Role.AUDITOR, Role.ADMIN},
+    Capability.RECOMMEND_DETERMINATION: {Role.REVIEWER, Role.APPROVER, Role.ADMIN},
+    Capability.COMMIT_DETERMINATION: {Role.APPROVER, Role.ADMIN},
     Capability.VIEW_DASHBOARD: {Role.AUDITOR, Role.ADMIN},
-    Capability.VIEW_RISK_ACCEPTANCE: {Role.RISK_MANAGER, Role.AUDITOR},
-    Capability.MANAGE_RISK_ACCEPTANCE: {Role.RISK_MANAGER},
+    Capability.VIEW_RISK_ACCEPTANCE: {Role.RISK_MANAGER, Role.AUDITOR, Role.ADMIN},
+    Capability.MANAGE_RISK_ACCEPTANCE: {Role.RISK_MANAGER, Role.ADMIN},
     Capability.MANAGE_RULES: {Role.ADMIN},
 }
 
@@ -75,6 +81,15 @@ def test_holding_no_roles_at_all_is_rejected_by_every_capability():
         assert not has_capability(frozenset(), capability)
 
 
+@pytest.mark.parametrize("capability", list(Capability))
+def test_a_full_access_role_holds_every_capability(capability):
+    # ADMIN is granted through FULL_ACCESS_ROLES rather than listed per
+    # capability, so this must hold for a capability added later too — that
+    # is the whole point of folding it in at the table instead.
+    for role in FULL_ACCESS_ROLES:
+        assert has_capability({role}, capability)
+
+
 def test_an_auditor_can_view_risk_acceptance_but_not_manage_it():
     # An auditor is read-only by definition — VIEW_RISK_ACCEPTANCE and
     # MANAGE_RISK_ACCEPTANCE are deliberately different capabilities so a
@@ -108,6 +123,18 @@ def test_this_holds_even_when_the_requester_also_holds_approver():
 
     with pytest.raises(SeparationOfDutiesError, match="own assessment"):
         assert_may_commit_own_determination(assessment=assessment, actor_username="j.doe")
+
+
+def test_full_access_does_not_exempt_an_admin_from_separation_of_duties():
+    # ADMIN holds COMMIT_DETERMINATION like every other capability, so the
+    # capability table admits it — and that is exactly why this check has to
+    # be independent of role. Full access to the API is not an exemption
+    # from the one rule that is about WHO raised THIS assessment.
+    assessment = _assessment("a.admin")
+    assert has_capability({Role.ADMIN}, Capability.COMMIT_DETERMINATION)
+
+    with pytest.raises(SeparationOfDutiesError):
+        assert_may_commit_own_determination(assessment=assessment, actor_username="a.admin")
 
 
 def test_a_different_approver_may_commit_the_determination():
