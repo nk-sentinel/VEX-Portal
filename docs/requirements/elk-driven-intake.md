@@ -77,6 +77,88 @@ confirms or refutes, and disagreement goes to a human.
 Language scope: Java first, matching the existing sample and `rootCauses` format. The module
 is structured per-language so a second one is an addition, not a rewrite.
 
+### R1.1 — `t1-not-shipped`: the one script-only clear
+
+Everything above is Tier 2 and needs the AI. One source check earns Tier 1 — a clear with
+no model call and no human — because it is not a reachability inference at all.
+
+**Claim:** the vulnerable component is declared only in a scope that never reaches the
+deployed application, so it is not in the product. Justification `code_not_present`, tier
+`PROOF`.
+
+**Why PROOF rather than STRONG.** What defeats a source reachability claim is runtime
+dynamism — reflection, `ServiceLoader`, DI, SpEL. None of it can load a class that was
+never packaged into the deployable. The residual risk here is not dynamism but *packaging*:
+a build that puts test-scope dependencies into the artifact anyway. That is a static,
+checkable fact about the build, which is why each one below becomes an anti-check rather
+than leftover uncertainty. Same argument that made `t1-component-absent` PROOF on the
+artifact.
+
+**Input:** the dependency declarations for the vulnerable `purl`, read from every build file
+in the source tree at the assessed commit. Maven `<scope>test</scope>`; Gradle
+`testImplementation` / `testRuntimeOnly` / `testCompileOnly`.
+
+Deliberately **not** treated as non-shipping:
+
+- Maven `provided` — provided means the container supplies it at runtime. It *is* present.
+- Gradle `compileOnly` — compiled against, absent at runtime unless something provides it.
+  Too close to `provided` to call proof.
+
+**Anti-checks. Every one of these must hold before SATISFIED:**
+
+| Condition | Why |
+|---|---|
+| The component is **direct**, not transitive | A transitive component has no declaration site to judge. `iq.remediation()` already returns `is_transitive` |
+| It is declared test-only in **every** build file in the tree, unanimously | One compile-scope declaration anywhere means something ships it. Unanimity across all modules is also what makes this safe in a multi-module repo without needing to know which module produced the scanned artifact |
+| Every build file parsed cleanly | A file that did not parse cannot contribute to unanimity |
+| No shading or fat-jar packaging in play | `maven-shade-plugin`, `maven-assembly-plugin`, Gradle `shadow` can package test scope under a non-default configuration. Spring Boot's `repackage` does not, by default, and is fine |
+
+**Verdict discipline — this part is load-bearing.** `UNANSWERABLE` from any registered rule
+forces the whole finding to human review (`app/rules/engine.py`, priority order point 2). A
+rule that answered `UNANSWERABLE` whenever the repo is not Maven or Gradle would route
+*every finding in every other repository* to a human. So:
+
+| Situation | Verdict |
+|---|---|
+| Declared test-only, unanimously, all anti-checks pass | `SATISFIED` + `CODE_NOT_PRESENT` |
+| Declared in a shipping scope somewhere | `NOT_SATISFIED` |
+| Build files parsed, but unanimity not established (parse failure, shading present) | `NOT_SATISFIED` — the conjunction is not established, which is a complete answer of "no" |
+| Component is transitive | `INAPPLICABLE` — the rule judges declaration sites and there is none |
+| No build file, or an unsupported build tool | `INAPPLICABLE` — there is no evidence of this class to be had, which is not the same as a failed collector |
+| The source tree could not be fetched or walked at all | never reached — that is a `CollectionError` upstream |
+
+`INAPPLICABLE` does not force review; `UNANSWERABLE` does. The middle row follows the
+precedent `t2-not-referenced` already set for an inconclusive scan: when a conjunction's
+second half is false, the conjunction is false, and that is `NOT_SATISFIED`.
+
+**One cross-check worth having.** If `sbom_data` carries a per-component scope or
+dependency-type field (CycloneDX has one — `required` / `optional` / `excluded`), it
+corroborates this rule from an independent system and makes it much harder to get wrong.
+Added to the P0 verification list.
+
+**What this rule inherits from the flow.** It trusts that the build file at the assessed
+commit describes the build that produced the scanned report. Nothing proves that under
+source-only evidence — R5's report↔index agreement check is the only thing standing behind
+it, which makes that hard stop load-bearing for this rule specifically.
+
+### R1.2 — Version outside the affected range (deferred)
+
+A second genuine Tier 1 candidate, held until P0: the flagged component's version falls
+outside the CVE's affected range. A factual comparison, immune to every dynamism argument.
+
+Blocked on two things, neither resolvable here:
+
+- **Is IQ's `affected_version_range` machine-parsable?** It is collected and snapshotted
+  already (`VulnDetail.affected_version_range`), but its syntax is unconfirmed, and a range
+  comparison built on a guessed grammar is worse than no rule.
+- **Plumbing.** `Rule.evaluate` receives `EvidencePack`, `ComponentEvidence` and
+  `Tier3Signals` — not `VulnDetail`. Threading it in is a signature change touching every
+  rule, so it is worth doing once, for this and `t2-runtime-immune` together, rather than
+  twice.
+
+Expected to fire rarely — IQ would not normally raise a violation for a version it believes
+unaffected — so it earns its keep on range-metadata disagreements, not volume.
+
 ## R2 — AI pass
 
 Handles what the script cannot settle: configuration-dependent CVEs, "only exploitable when

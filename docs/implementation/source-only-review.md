@@ -27,6 +27,8 @@ Ordered so each phase leaves the portal working. The artifact flow keeps running
 | Indexing timestamp field? | assumed present | the scheduler needs another watermark |
 | Does `rootCauses` carry a method name? | class paths only today | the method-level check in R1 is not buildable; type-level only |
 | Does the vuln lookup return reachability? | unknown | if yes, `reachable_with_call_path` starts hard-blocking |
+| Does `sbom_data` carry per-component scope? | unknown — CycloneDX has `required`/`optional`/`excluded` | if yes, it corroborates `t1-not-shipped` from an independent system (R1.1) |
+| Is `affected_version_range` machine-parsable? | syntax unconfirmed | decides whether R1.2 is buildable at all |
 | Bitbucket archive endpoint path? | `/rest/api/latest/.../archive?at=&format=zip` | fall back to per-file `raw` reads, which already honour `at` |
 
 One real `_search` response, one real vuln-lookup response, one archive request. Capture all
@@ -65,6 +67,7 @@ offline, standard library only.
 | `app/source/imports.py` | Which packages first-party source imports. Java `import` statements, with the package-level and wildcard cases |
 | `app/source/usage.py` | Where a type is referenced, and where a named method is called on it. Line + snippet per hit |
 | `app/source/hatches.py` | Escape hatches: `Class.forName`, `ServiceLoader`, DI annotations, SpEL, JNDI, string-built class names. Any hit marks the scan inconclusive |
+| `app/source/manifests.py` | Dependency declarations per build file: Maven `pom.xml` scopes, Gradle `build.gradle`/`.kts` configurations, and whether a shading or fat-jar plugin is in play. Feeds `t1-not-shipped` (R1.1) |
 | `app/source/scan.py` | Assembles the above into a `SourceScan` with an `is_conclusive()` in the same shape as `ReferenceScan` |
 
 Per CVE, the script produces:
@@ -72,27 +75,38 @@ Per CVE, the script produces:
 ```
 cve, purl
   ├─ is_transitive        ← iq.remediation()       (branch on this first)
+  ├─ declared_scopes      ← manifests.py          per build file; unanimity required
+  ├─ packaging_repackages ← manifests.py          shade / assembly / shadow present?
   ├─ package_imported     ← imports.py            (meaningless if transitive)
   ├─ types_referenced     ← usage.py              [(path, line, snippet), ...]
   ├─ method_called        ← usage.py              None if IQ gave no method name
   └─ conclusive           ← hatches.py            False ⇒ nothing above is absence
 ```
 
-The two tests that matter most:
+The three tests that matter most:
 
 - A **transitive** dependency with no first-party import must **not** resolve to non-use.
 - An **inconclusive** scan must **not** resolve to non-use.
+- A component declared test-scope in one module and compile-scope in another must **not**
+  resolve to not-shipped.
 
-Both are the failure modes that would clear live vulnerabilities on no evidence.
+All three are the failure modes that would clear live vulnerabilities on no evidence.
 
 ## P4 — Rules
 
 | File | Change |
 |---|---|
+| `app/rules/tier1.py` | New `NotShipped` (`t1-not-shipped`, R1.1) — `PROOF`, `CODE_NOT_PRESENT`, with R1.1's four anti-checks and its verdict table. **`INAPPLICABLE`, never `UNANSWERABLE`,** for a transitive component or an unrecognised build tool: `UNANSWERABLE` would route every finding in every non-Maven/Gradle repo to a human |
 | `app/rules/tier2.py` | New `PackageNotImported`, `TypeNotReferenced`, `MethodNotCalled` — all `STRONG`, all carrying the anti-check, all `UNANSWERABLE` when the input is absent rather than guessing |
-| `app/rules/registry.py` | `ACTIVE_RULES` = the three source rules + the four Tier 3 rules. Artifact rules move out, documented like `PENDING_EVIDENCE`: they return `UNANSWERABLE` with no artifact, and one `UNANSWERABLE` forces the whole finding to a human — leaving them registered would make the automation inert |
+| `app/rules/registry.py` | `ACTIVE_RULES` = `t1-not-shipped` + the three Tier 2 source rules + the four Tier 3 rules. Artifact rules move out, documented like `PENDING_EVIDENCE`: they return `UNANSWERABLE` with no artifact, and one `UNANSWERABLE` forces the whole finding to a human — leaving them registered would make the automation inert |
 | `app/evidence/pack.py` | `EvidencePack` built from `SourceScan` + `ScanRecord` instead of artifact bytes; `provenance` from the report↔index comparison |
 | `app/rules/engine.py` | No structural change. Tier 2 already sets `requires_second_confirmation`, which is what routes to the AI |
+
+Two invariants worth their own tests. A finding with no hard blocker and a fix available
+must reach the adjudicator, **not** `NEEDS_REVIEW` — that is what catches a stray
+artifact rule left in the registry, the failure mode that would make the automation
+silently inert. And `t1-not-shipped` answering `INAPPLICABLE` must leave routing unchanged:
+a repo with no recognised build file still gets the full Tier 2 plus adjudicator path.
 
 Tier 3 rules, hard blockers and the no-fix path are untouched.
 
