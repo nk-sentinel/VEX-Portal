@@ -105,11 +105,6 @@ export interface IdentityResponse {
 // Assessments (screens 2, 3, 4)
 // ---------------------------------------------------------------------------
 
-export interface ApplicationOut {
-  id: string;
-  name: string;
-}
-
 /** Which admission check failed, and what to do about it. */
 export interface AdmissionFailureOut {
   check: AdmissionCheckKind;

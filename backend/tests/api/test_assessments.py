@@ -1,5 +1,5 @@
 """Tests for `app/api/assessments.py` — POST/GET /api/assessments,
-GET /api/assessments/{id}, GET /api/applications.
+GET /api/assessments/{id}.
 
 The happy-path test rounds-trips against the three live fakes (IQ, JFrog,
 Bitbucket — and, for the ambiguous/KEV findings, the fact that Bedrock is
@@ -55,9 +55,10 @@ COORDINATES = "libs-release-local/com/example/payments-api/1.0.0/payments-api-1.
 
 
 class _StubIq:
-    """A minimal, Protocol-conforming `IqClient` for admission/entitlement
-    failure paths — only `applications_for_user`/`report` are ever reached
-    before those paths refuse the request."""
+    """A minimal, Protocol-conforming `IqClient` for admission failure
+    paths — only `report` is reached before those paths refuse the
+    request. `applications_for_user` stays Protocol-conforming but is no
+    longer called by any route (intake takes a typed application id)."""
 
     def __init__(
         self,
@@ -343,43 +344,6 @@ async def test_admission_failure_is_persisted_and_visible_on_my_assessments(tmp_
 
 
 @pytest.mark.asyncio
-async def test_requesting_an_application_not_in_the_callers_iq_entitlement_is_refused(
-    tmp_path: Path,
-) -> None:
-    async with _client(
-        tmp_path,
-        iq=_StubIq(applications=[Application(id="some-other-app", name="Other")]),
-    ) as (client, factory):
-        await _seed_user(factory)
-        _login(client)
-
-        response = client.post("/api/assessments", json=_RAISE_BODY)
-
-        assert response.status_code == 403
-        assert "waiver" not in response.text.lower()
-
-
-@pytest.mark.asyncio
-async def test_applications_endpoint_lists_only_what_iq_returns(tmp_path: Path) -> None:
-    async with _client(
-        tmp_path,
-        iq=_StubIq(
-            applications=[Application(id="app-1", name="One"), Application(id="app-2", name="Two")]
-        ),
-    ) as (client, factory):
-        await _seed_user(factory)
-        _login(client)
-
-        response = client.get("/api/applications")
-
-        assert response.status_code == 200
-        assert {a["id"] for a in response.json()} == {"app-1", "app-2"}
-
-
-# --- Ownership / RBAC ---------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_a_requester_sees_only_their_own_assessments(tmp_path: Path) -> None:
     artifact, mismatched_report = _artifact_and_report(matching=False)
     async with _client(
@@ -412,7 +376,6 @@ async def test_raise_assessment_requires_the_requester_capability(tmp_path: Path
 
         assert client.post("/api/assessments", json=_RAISE_BODY).status_code == 403
         assert client.get("/api/assessments").status_code == 403
-        assert client.get("/api/applications").status_code == 403
 
 
 @pytest.mark.asyncio

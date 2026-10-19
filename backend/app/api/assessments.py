@@ -28,7 +28,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapters.errors import AdapterError
 from app.adapters.protocols import Adjudicator, ArtifactStore, IqClient, RawReport, SourceRepository
 from app.api.deps import (
     get_adjudicator_dep,
@@ -58,7 +57,6 @@ from app.rules.engine import RuleEngine, RuleVerdict, Tier3Signals
 from app.rules.registry import ACTIVE_RULES
 from app.schemas.assessments import (
     AdmissionFailureOut,
-    ApplicationOut,
     AssessmentDetail,
     AssessmentSummary,
     FindingOut,
@@ -104,27 +102,6 @@ def is_automated_decision(finding: Finding) -> bool:
     """Whether ``finding`` was decided by the automated pipeline rather than
     a human reviewer/approver — see :data:`AUTOMATED_ACTOR_PREFIX`."""
     return finding.decided_by is not None and finding.decided_by.startswith(AUTOMATED_ACTOR_PREFIX)
-
-
-def _iq_user_token(session: SessionData) -> str:
-    """The token passed to ``IqClient.applications_for_user`` to scope the
-    application list to the caller's own Nexus IQ entitlement.
-
-    **No data source exists for this today — flagged in the task report.**
-    Neither the LOCAL nor the LDAP auth provider (``app/auth/{local,ldap}.py``)
-    issues or stores a per-user Nexus IQ token; the portal session carries
-    only a username and portal roles, nothing IQ-specific. Using the portal
-    username as a placeholder keeps this call site honest about "there is no
-    real per-user IQ credential yet" rather than silently reusing the
-    service account's own token, which would defeat the entitlement scoping
-    this Protocol method exists for (``docs/design.md``, RBAC) — a requester
-    would then see every application the *service* account can read, not
-    their own. Against the fakes this is moot (``fakes/iq``'s
-    ``/api/v2/applications`` route ignores the bearer token entirely), so it
-    behaves correctly today, but a real Nexus IQ deployment needs a genuine
-    per-user token/identity exchange before this scoping is real.
-    """
-    return session.username
 
 
 def _outcome_counts(findings: Sequence[Finding]) -> OutcomeCounts:
@@ -454,26 +431,18 @@ async def raise_assessment(
 ) -> AssessmentDetail:
     """[2] New Assessment's submit action.
 
-    Checks the caller's own Nexus IQ entitlement first (`GET /api/applications`'s
-    own list) — the New Assessment form only ever lets a requester pick from
-    that list, so a request naming an application outside it is refused
-    before admission ever runs, distinctly from an admission-check failure.
-    Then runs admission, then (on success) the full determination pipeline —
-    see this module's docstring for why that all happens in one request.
-    """
-    try:
-        applications = await iq.applications_for_user(_iq_user_token(session))
-    except AdapterError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Nexus IQ is unreachable: {exc}",
-        ) from exc
-    if not any(application.id == body.application_id for application in applications):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="you do not have access to this application in Nexus IQ",
-        )
+    ``application_id`` is taken verbatim from the requester — the portal no
+    longer pre-checks it against the caller's own Nexus IQ entitlement. The
+    entitlement design needed a per-user IQ token that no auth provider here
+    issues (see ``docs/decisions/intake-entitlement.md``), and the check it
+    stood in for was authorising against the *service* account's reach, not
+    the user's. Admission is now the first gate: an application id the
+    service credential cannot resolve a report for fails the report check
+    with a message the requester can act on.
 
+    Runs admission, then (on success) the full determination pipeline — see
+    this module's docstring for why that all happens in one request.
+    """
     assessment = Assessment(
         application_id=body.application_id,
         report_id=body.report_id,
@@ -596,27 +565,6 @@ async def get_assessment(
         )
 
     return await _assessment_detail(db, assessment)
-
-
-@router.get("/api/applications", response_model=list[ApplicationOut])
-async def list_applications(
-    session: SessionData = Depends(requires(Capability.RAISE_ASSESSMENT)),
-    iq: IqClient = Depends(get_iq_client_dep),
-) -> list[ApplicationOut]:
-    """[2] New Assessment's application select — from IQ, scoped to the
-    caller's token. See ``_iq_user_token``'s docstring for the (currently
-    placeholder) scoping token.
-    """
-    try:
-        applications = await iq.applications_for_user(_iq_user_token(session))
-    except AdapterError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Nexus IQ is unreachable: {exc}",
-        ) from exc
-    return [
-        ApplicationOut(id=application.id, name=application.name) for application in applications
-    ]
 
 
 __all__ = [

@@ -104,18 +104,8 @@ class AssessmentDetail(BaseModel):
     findings: list[FindingOut]
 
 
-class ApplicationOut(BaseModel):
-    """One row in [2] New Assessment's application select — scoped to the
-    caller's own Nexus IQ entitlement (``IqClient.applications_for_user``).
-    """
-
-    id: str
-    name: str
-
-
 __all__ = [
     "AdmissionFailureOut",
-    "ApplicationOut",
     "AssessmentDetail",
     "AssessmentSummary",
     "FindingOut",

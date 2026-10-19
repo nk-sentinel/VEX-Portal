@@ -178,7 +178,7 @@ describe('Dashboard', () => {
     expect(html).toContain('t1-class-absent');
   });
 
-  it('the application filter is populated from outcome-mix, not a GET /api/applications call', async () => {
+  it('the application filter is populated from outcome-mix, with no application-list call', async () => {
     const fixture = await create();
     flushAll();
     await settle(fixture);

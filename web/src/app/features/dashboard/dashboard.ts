@@ -68,7 +68,7 @@ function initialPanel<T>(): Panel<T> {
  * by week. Rendered honestly as one stacked bar for the whole window
  * rather than inventing weekly buckets the API cannot back.
  *
- * **The application filter has no `GET /api/applications` to populate it
+ * **The application filter has no application-list endpoint to populate it
  * from** (that route is `Capability.RAISE_ASSESSMENT` — requester-only, the
  * same finding Task 3's report made for the Review Queue). Its option list
  * is instead accumulated from whatever `application_id`s the Outcome Mix

@@ -3,7 +3,6 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 
-import type { ApplicationOut } from '../../core/api/models';
 import { NewAssessment } from './new-assessment';
 
 async function settle(fixture: ComponentFixture<NewAssessment>): Promise<void> {
@@ -11,11 +10,6 @@ async function settle(fixture: ComponentFixture<NewAssessment>): Promise<void> {
   await fixture.whenStable();
   fixture.detectChanges();
 }
-
-const APPS: ApplicationOut[] = [
-  { id: 'payments-api', name: 'payments-api' },
-  { id: 'ledger-svc', name: 'ledger-svc' },
-];
 
 describe('NewAssessment', () => {
   let httpMock: HttpTestingController;
@@ -57,21 +51,10 @@ describe('NewAssessment', () => {
     c['requesterNote'].set('upgrade blocked until Q4');
   }
 
-  it('loading state: shows a skeleton before applications resolve', () => {
-    setUp();
-    const fixture = TestBed.createComponent(NewAssessment);
-    fixtures.push(fixture);
-    fixture.detectChanges();
-    expect(fixture.componentInstance['loadState']()).toBe('loading');
-    httpMock.expectOne('/api/applications').flush(APPS);
-  });
-
-  it('default state: renders the form once applications resolve, submit disabled until required fields are filled', async () => {
+  it('submit stays disabled until every required field is filled', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
 
-    expect(fixture.componentInstance['loadState']()).toBe('ready');
     expect(fixture.componentInstance['canSubmit']()).toBeFalse();
 
     fillRequiredFields(fixture);
@@ -79,23 +62,14 @@ describe('NewAssessment', () => {
     expect(fixture.componentInstance['canSubmit']()).toBeTrue();
   });
 
-  it('empty state: no accessible applications explains the IQ entitlement requirement', async () => {
+  it('the application id is typed, not chosen from an entitlement list', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush([]);
     await settle(fixture);
 
-    expect(fixture.componentInstance['loadState']()).toBe('empty');
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text.toLowerCase()).toContain('nexus iq');
-  });
-
-  it('error state: an unreachable IQ shows the server message with a retry, not a fabricated one', async () => {
-    const fixture = await create();
-    httpMock.expectOne('/api/applications').flush({ detail: 'Nexus IQ is unreachable: boom' }, { status: 503, statusText: 'Service Unavailable' });
-    await settle(fixture);
-
-    expect(fixture.componentInstance['loadState']()).toBe('error');
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Nexus IQ is unreachable: boom');
+    const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input[placeholder="payments-api"]');
+    expect(input).not.toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('select')).toBeNull();
+    httpMock.verify();
   });
 
   it(
@@ -103,7 +77,6 @@ describe('NewAssessment', () => {
       'with an actionable message',
     async () => {
       const fixture = await create();
-      httpMock.expectOne('/api/applications').flush(APPS);
       await settle(fixture);
       fillRequiredFields(fixture);
 
@@ -127,7 +100,6 @@ describe('NewAssessment', () => {
 
   it('an artifact-check failure implies the report check already passed (checks are sequential and fail-fast)', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
     fillRequiredFields(fixture);
 
@@ -148,7 +120,6 @@ describe('NewAssessment', () => {
       'Submit until the artifact value actually changes',
     async () => {
       const fixture = await create();
-      httpMock.expectOne('/api/applications').flush(APPS);
       await settle(fixture);
       fillRequiredFields(fixture);
 
@@ -175,7 +146,6 @@ describe('NewAssessment', () => {
 
   it('"Use a different artifact" clears the artifact field and the block, but does not itself re-enable Submit', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
     fillRequiredFields(fixture);
 
@@ -197,7 +167,6 @@ describe('NewAssessment', () => {
 
   it('a successful submit navigates straight to the Assessment Result screen', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
     fillRequiredFields(fixture);
 
@@ -213,7 +182,6 @@ describe('NewAssessment', () => {
 
   it('extracts the report id from a pasted report URL', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
     fillRequiredFields(fixture);
     fixture.componentInstance['reportRef'].set('https://iq.example.com/assets/index.html#/applicationReport/payments-api/38ef4d1f');
@@ -227,7 +195,6 @@ describe('NewAssessment', () => {
 
   it('distinguishes "Nexus IQ is unreachable" from a collection failure after admission succeeded', async () => {
     const fixture = await create();
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
     fillRequiredFields(fixture);
 
@@ -241,7 +208,6 @@ describe('NewAssessment', () => {
 
   it('prefills from query params ("Fix and resubmit" from My Assessments)', async () => {
     const fixture = await create({ applicationId: 'ledger-svc', reportRef: 'abc123', note: 'previous note' });
-    httpMock.expectOne('/api/applications').flush(APPS);
     await settle(fixture);
 
     expect(fixture.componentInstance['applicationId']()).toBe('ledger-svc');

@@ -5,10 +5,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { AssessmentsApiService } from '../../core/api';
-import type { AdmissionCheckKind, ApplicationOut } from '../../core/api/models';
+import type { AdmissionCheckKind } from '../../core/api/models';
 import { ADMISSION_CHECK_LABEL, checkOrder, extractReportId } from './assessments.model';
 
-type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type ArtifactType = 'binary' | 'image';
 type CheckStatus = 'pending' | 'pass' | 'fail';
 
@@ -75,10 +74,6 @@ export class NewAssessment {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly loadState = signal<LoadState>('loading');
-  protected readonly loadErrorMessage = signal<string | null>(null);
-  protected readonly applications = signal<ApplicationOut[]>([]);
-
   protected readonly applicationId = signal('');
   protected readonly reportRef = signal('');
   protected readonly artifactType = signal<ArtifactType>('image');
@@ -123,7 +118,6 @@ export class NewAssessment {
   protected readonly ADMISSION_CHECK_LABEL = ADMISSION_CHECK_LABEL;
 
   constructor() {
-    void this.loadApplications();
     this.applyPrefill();
   }
 
@@ -148,22 +142,6 @@ export class NewAssessment {
     if (note) this.requesterNote.set(note);
     const reportRef = params.get('reportRef');
     if (reportRef) this.reportRef.set(reportRef);
-  }
-
-  private async loadApplications(): Promise<void> {
-    this.loadState.set('loading');
-    try {
-      const applications = await firstValueFrom(this.api.listApplications());
-      this.applications.set(applications);
-      this.loadState.set(applications.length === 0 ? 'empty' : 'ready');
-    } catch (error) {
-      this.loadErrorMessage.set(NewAssessment.messageFor(error));
-      this.loadState.set('error');
-    }
-  }
-
-  protected retryLoad(): void {
-    void this.loadApplications();
   }
 
   protected setArtifactType(type: ArtifactType): void {
@@ -238,6 +216,6 @@ export class NewAssessment {
       if (typeof error.error?.detail === 'string') return error.error.detail;
       if (error.status === 503) return 'Nexus IQ is unreachable.';
     }
-    return 'Could not load your applications.';
+    return 'Could not raise the assessment.';
   }
 }

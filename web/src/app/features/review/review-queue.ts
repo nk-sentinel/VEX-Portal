@@ -114,7 +114,7 @@ export class ReviewQueue {
     return this.rows().filter((row) => ids.has(row.id));
   });
 
-  /** No `GET /api/applications` access for a reviewer/approver (403 — requester-only, see the task report) — derive the filter's option list from what is actually in the queue instead. */
+  /** There is no application-list endpoint at all (intake takes a typed application id) — derive the filter's option list from what is actually in the queue instead. */
   protected readonly applicationOptions = computed(() => {
     const apps = new Set(this.rows().map((row) => row.application_id));
     return Array.from(apps).sort();
