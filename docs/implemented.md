@@ -94,9 +94,10 @@ Everything above is as-built and still true. These decisions change it:
 
 | Decision | Effect on the above |
 |---|---|
-| **Source-only evidence** — the JFrog artifact flow is paused | Tier 1 rules and `t2-not-referenced` stop being registered; admission's artifact and provenance checks are replaced by scan-record, report↔index agreement and source-resolvable checks |
-| **AI adjudication is the normal path** | No finding clears deterministically; every clear needs the adjudicator plus its refute pass |
-| **Configurable AI provider** | `ai_*` settings replace the Bedrock-only block; a second `Adjudicator` implementation beside `BedrockAdjudicator` |
+| **Source replaces the artifact** — report URL + ELK lookup only | Admission's artifact and provenance checks become scan-record, report↔index agreement and source-resolvable. New `app/source/` mirrors `app/artifact/` |
+| **Script first, AI for the rest** | Three new Tier 2 source rules (package not imported, type not referenced, method not called) replace the artifact rules in `ACTIVE_RULES`. Tier 2 already requires the AI refute pass, so script-proposes/AI-confirms needs no engine change |
+| **Adjudicator prompt rebuilt** | All five fields it sends today are artifact-derived; left as-is the model gets an empty package and abstains on everything |
+| **Bedrock stays** | No second provider. `ai_max_tokens`, `ai_timeout_seconds` and `ai_enabled` become config instead of constants |
 | **Scheduled review** | New `schedule_config` table, `Assessment.origin`, an in-process scheduler, and an admin screen for the cron expression and application-glob scope |
 
 Requirements: `docs/requirements/elk-driven-intake.md`. Order of work:

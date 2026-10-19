@@ -1,267 +1,226 @@
-# ELK-driven, source-only review — requirements
+# Source-based exploitability review — requirements
 
-Stated 2026-10-19. Supersedes the first version of this file, which set out three options
-for the artifact-vs-source question. **Option 2 was chosen: source-only.** This version
-records the decisions and specifies what they require. Implementation order:
+Reset 2026-10-19. Replaces the artifact-based intake. Implementation order:
 `docs/implementation/source-only-review.md`.
 
-## Decisions taken
+## What changes
 
-| # | Decision | Consequence |
+| | Before | Now |
 |---|---|---|
-| D1 | **Pause the JFrog artifact flow.** Evidence comes from source, not the built binary | Tier 1 proof is unreachable; no finding auto-clears deterministically |
-| D2 | **AI adjudication is accepted as the normal path**, not the exception | Every proposed clear goes through the adjudicator plus its refute pass |
-| D3 | **The AI provider is configurable** — Claude Enterprise intended at work | New `ai_*` settings block; a second `Adjudicator` implementation beside Bedrock |
-| D4 | **Scheduled review is configurable**: a cron expression, plus "all applications" or a glob-matched selection (`app1_test`, `app2*`) | New config table, an in-process scheduler, and an answer to "who is the requester" |
+| Inputs | report URL + JFrog artifact coordinates | **report URL only** |
+| SCM + SBOM | IQ `source_control` + artifact `git.properties` | **ELK `sbom_data` lookup** |
+| Evidence from | compiled bytecode | **source at the scanned commit** |
+| Resolution | rules, then AI on Tier 2 | **script first, AI for the rest** |
+| Vuln data | IQ vuln lookup | unchanged — **no internet at work**, IQ is the only source |
+| AI | Bedrock | unchanged — Bedrock |
+| Intake | on demand | on demand **+ cron** |
 
-D1 is the load-bearing one. It does not merely move where inputs come from — it changes
-what the portal is allowed to decide on its own. D2 is what makes that workable.
-
-## The flow
+## Flow
 
 ```
-  ┌─ MANUAL ──────────────────┐        ┌─ SCHEDULED (D4) ───────────────┐
-  │ user logs in              │        │ cron fires                     │
-  │ pastes IQ report URL      │        │ query sbom_data since watermark│
-  └───────────┬───────────────┘        │ filter app ids by glob         │
-              │                        └───────────┬────────────────────┘
-              ▼                                    │
-      parse URL SERVER-SIDE                        │
-      → (application_id, report_id)                │
-              │                                    │
-              └──────────────┬─────────────────────┘
-                             ▼
-        ╔══ ADMISSION ═══════════════════════════════════╗
-        ║ 1. report retrievable        iq.report()       ║
-        ║ 2. scan record found         elk.sbom_for()    ║
-        ║ 3. report ↔ index agree      component sets    ║  ← the hard stop,
-        ║ 4. source resolvable         repo + commit     ║    kept in a new form
-        ╚════════════════════════┬═══════════════════════╝
-                                 ▼
-        ╔══ COLLECT ═════════════════════════════════════╗
-        ║ per CVE:  iq.vulnerability()  CVSS/EPSS/KEV    ║
-        ║           iq.remediation()    fix availability ║
-        ║ per repo: bitbucket at commit — symbol search  ║
-        ║           + file reads for the implicated types║
-        ╚════════════════════════┬═══════════════════════╝
-                                 ▼
-        ╔══ DECIDE ══════════════════════════════════════╗
-        ║ Tier 3 rules only → block / escalate, never    ║
-        ║                     clear                      ║
-        ║ no hard blocker   → ADJUDICATOR + refute pass  ║
-        ╚════════════════════════┬═══════════════════════╝
-                                 ▼
-            NOT_AFFECTED · AFFECTED · NEEDS_REVIEW · RISK_ACCEPTANCE_REQUIRED
-                                 │
-                       IQ determination, 7-day expiry
+report URL ──▶ app_id + report_id ──▶ iq.report() ──▶ scan_id
+                                                        │
+                                   elk.sbom_for_scan(scan_id)
+                                                        │
+                                      repo_url + commit + SBOM
+                                                        │
+                                   bitbucket archive at commit
+                                                        ▼
+                      ┌──────────── per CVE ────────────────────────┐
+                      │                                             │
+     iq.vulnerability(cve, purl)                    SCRIPT PASS      │
+     iq.remediation(app, purl)            grep the source tree:      │
+       → CVSS/EPSS/KEV, rootCauses          · is the package imported?
+       → fix available, direct/transitive   · is the implicated type used?
+       → affected range                     · is the vulnerable method called?
+                      │                     · any reflection / DI escape hatch?
+                      │                                             │
+                      └──────────────────┬──────────────────────────┘
+                                         ▼
+                        hard blocker? ───── yes ──▶ HUMAN
+                        no fix?       ───── yes ──▶ RISK_ACCEPTANCE_REQUIRED
+                        script settled it? ─ yes ──▶ AI confirms (refute pass)
+                        script unsure?  ──────────▶ AI decides, then refute pass
+                                         │
+                                         ▼
+                             agree → NOT_AFFECTED / AFFECTED
+                             disagree or abstain → HUMAN
 ```
 
-## Step-by-step requirements
+## R1 — Script pass (the first-line resolver)
 
-### R1 — Server-side report URL parsing
+Deterministic, offline, over the source tree fetched once at the assessed commit. No
+network per CVE.
 
-The URL is parsed in the browser today (`web/.../assessments.model.ts::extractReportId`,
-last path segment only) and the backend receives `report_id` alone. The application id in
-the same URL is discarded, which is why intake currently has a separate typed field.
+| Check | Input | Resolves to |
+|---|---|---|
+| Package imported | `purl` → package/namespace; `is_transitive` from `iq.remediation()` | **Direct** dependency with no first-party import → strong non-use signal. **Transitive** → inconclusive, not a signal |
+| Implicated type referenced | `rootCauses[].listOfPaths` → type names | Not referenced anywhere in first-party source → `code_not_reachable` |
+| Vulnerable method called | the method name from the root cause, where IQ gives one | Not called → `code_not_reachable`, narrower and stronger than the type check |
+| Escape hatches present | reflection, `Class.forName`, `ServiceLoader`, DI annotations, SpEL, JNDI, dynamically built class names | Any hit → **the scan is inconclusive**; nothing above may be read as absence |
 
-Required: the backend accepts the report URL and derives both ids from it. The typed
-application id field then goes away again, and the scheduler — which has no browser — gets
-the same parsing path as the form.
+**Direct vs transitive is load-bearing.** "No first-party source imports this package" means
+nothing for a transitive dependency — the intermediate library is what uses it. A grep rule
+that ignores `is_transitive` will clear transitive findings on no evidence at all. It must
+branch on it.
 
-`https://iq.example.com/assets/index.html#/applicationReport/{application_id}/{report_id}`
+**The anti-check carries over unchanged.** An inconclusive scan is never evidence of
+absence. This is the same property `t2-not-referenced` enforces today on bytecode, and it
+must be enforced the same way on source.
 
-A URL that does not match is a request error naming what was expected, never a silent
-fallback to treating the whole string as a report id.
+Script evidence is **Tier 2 (STRONG)**, not Tier 1. Source inspection is defeasible —
+reflection and dependency injection reach code that no import statement shows. The engine
+already demands an independent second confirmation for Tier 2, and that confirmation is the
+AI refute pass. This is what "script + AI" means mechanically: the script proposes, the AI
+confirms or refutes, and disagreement goes to a human.
 
-### R2 — Resolving source coordinates from `sbom_data`
+Language scope: Java first, matching the existing sample and `rootCauses` format. The module
+is structured per-language so a second one is an addition, not a rewrite.
+
+## R2 — AI pass
+
+Handles what the script cannot settle: configuration-dependent CVEs, "only exploitable when
+called this way", transitive chains, anything needing reasoning across files.
+
+It is given: the script's findings and *why* they were inconclusive where they were, the
+source snippets at the call sites, the implicated types, direct-vs-transitive, the affected
+version range, and the repo + commit the evidence came from.
+
+It is **not** given CVSS, EPSS or KEV — unchanged, and deliberate: those are checked earlier
+and a hard-blocked finding never reaches the model.
+
+Unchanged from today: closed-enum output through a forced tool call, abstention routes to a
+human, and a refute pass runs on every proposed clear.
+
+**The prompt must be rebuilt.** All five evidence fields `_build_prompt` sends today are
+artifact-derived (`provenance_verdict`, `class_present`, `referenced`,
+`reference_scan_conclusive`, `escape_hatches`). Left as-is, the model receives an empty
+package under this flow and correctly abstains on everything — the automation would run and
+decide nothing.
+
+## R3 — No internet
+
+The work environment has no outbound internet. Everything about a vulnerability comes from
+**IQ's vuln lookup**, which carries KEV and EPSS offline. No NVD, no EPSS API, no OSV, no
+GitHub advisory calls — not as a fallback, not for enrichment.
+
+The only outbound destinations are Nexus IQ, ELK, Bitbucket DC and Bedrock. Worth a test
+that asserts it, since this is the kind of constraint a well-meaning enrichment patch
+violates quietly.
+
+## R4 — Fetching source
+
+One archive fetch per assessment, then everything offline:
 
 ```
-report URL ─▶ application_id + report_id ─▶ iq.report() ─▶ scan_id
-                                                             │
-                                          elk.sbom_for_scan(scan_id)
-                                                             │
-                                        repository_url + commit_sha + branch
+GET /rest/api/latest/projects/{key}/repos/{slug}/archive?at={commit}&format=zip
 ```
 
-Two things to know about this chain:
+Ref-exact, one request, and the analysis then mirrors the existing artifact pipeline — fetch
+bytes, walk the archive, scan offline. `app/artifact/`'s structure transfers directly, with
+source text parsing in place of constant pools.
 
-- **`scan_id` is currently `report_id`.** `app/adapters/iq/client.py:299` sets
-  `scan_id=report_id` — an assumption, not a confirmed IQ fact. If they differ at work, the
-  ELK lookup needs IQ's real scan identifier, which must then be found in the report body.
-  **Verify first.** If they are the same, no new index key is needed.
-- **`RawReport.commit_sha` and `.branch` are always `None`** — IQ's report body carries
-  neither (that adapter's own docstring says so). The commit can therefore only come from
-  ELK or from the requester. ELK is now the primary source; a requester-supplied commit
-  stays as an override.
+Why not code search: `search_symbol` cannot scope to a ref (`app/adapters/bitbucket/client.py`
+— it accepts one and documents that Bitbucket's search ignores it), the query DSL is
+unverified, and the fake implements a plain substring match. An unscoped index search over
+the default branch is the wrong evidence for a determination about a specific commit. Keep
+`search_symbol` for reviewer context; the archive is what the script pass reads.
 
-`ScanRecord` must gain `repository_url`, `commit_sha`, `branch` and an indexed timestamp
-(the scheduler's watermark, R6). The current query shape — `_search` with a
-`term` on `scan_id.keyword` — is a standard Elasticsearch shape, not a confirmed one.
-**Verify against the real index mapping before relying on it.**
+The fake needs an archive route. The existing raw-file endpoint already honours `at`, so
+per-file reads at a commit work today as a fallback.
 
-### R3 — Admission without an artifact
+## R5 — Admission
 
-Admission keeps four ordered, fail-fast checks, each with a message the requester can act
-on. Two are new; the provenance hard stop is preserved in a different form.
+Artifact and provenance checks are replaced. Four ordered, fail-fast checks, each with a
+message the requester can act on:
 
-| Check | What it does | Failure means |
+| Check | Fails when | Requester sees |
 |---|---|---|
-| 1. Report | `iq.report()` resolves | The report purged, or the ids are wrong — re-scan and resubmit |
-| 2. Scan record | `sbom_data` has a document for this scan | The scan has not been indexed yet, or the index is keyed differently |
-| 3. **Report ↔ index agreement** | The IQ report's component set and the ELK record's component set describe the same build | One of the two systems is describing a different build; nothing downstream can be trusted |
-| 4. Source resolvable | The repo exists in Bitbucket and the commit is readable at that ref | The commit was garbage-collected, the repo moved, or the mapping is wrong |
+| 1. Report | `iq.report()` cannot resolve it | Report purged or the URL is wrong — re-scan and resubmit |
+| 2. Scan record | `sbom_data` has no document for this scan | The scan is not indexed yet |
+| 3. **Report ↔ index agree** | The IQ report's component set and the ELK record's differ | The two systems describe different builds — nothing downstream is trustworthy |
+| 4. Source resolvable | The repo or commit cannot be read at that ref | Commit garbage-collected, repo moved, or the mapping is wrong |
 
-**Why check 3 matters.** Dropping the artifact looks like it removes provenance entirely.
-It does not have to. Both `RawReport.components` and `ScanRecord.components` carry
-`purl` + `sha1` for the same build, from two independently populated systems. Comparing
-them is the same class of integrity check the artifact fingerprint performed — "the thing
-I am about to reason about is the thing that was scanned" — and it is the only check
-standing between a determination and a silently mismatched build. It must be a hard stop,
-and "too few components to compare" must be refused the same way a confirmed mismatch is,
-exactly as `Verdict.INSUFFICIENT_DATA` is refused today.
+Check 3 is the hard stop, and it is what replaces the artifact fingerprint. Both
+`RawReport.components` and `ScanRecord.components` carry `purl` + `sha1` for the same build
+from two independently populated systems; comparing them catches a mismatched build. Too
+few components to compare is refused exactly like a confirmed mismatch, as
+`Verdict.INSUFFICIENT_DATA` is today.
 
-What is genuinely lost: the commit proves which *source* was built; nothing now proves the
-scanned *binary* was built from it. That gap is accepted under D1 and must be stated on
-the assessment detail screen rather than left implicit.
+What is genuinely gone: nothing proves the scanned *binary* was built from the assessed
+source. Accepted, and stated on the assessment detail screen rather than left implicit.
 
-### R4 — Evidence and the rule registry under source-only
+## R6 — ELK lookup
 
-The artifact rules cannot be left registered. `t1-class-absent`, `t1-component-absent` and
-`t2-not-referenced` all read artifact-derived fields, and all three return `UNANSWERABLE`
-when those fields are absent. One `UNANSWERABLE` rule forces *the whole finding* to human
-review (`app/rules/engine.py`, priority order point 2) — so leaving them registered with
-no artifact routes **every finding** to a human and the automation does nothing at all.
+`ScanRecord` gains `repository_url`, `commit_sha`, `branch` and an indexed timestamp.
 
-They must be unregistered under source-only, by the same mechanism and for the same stated
-reason as `PENDING_EVIDENCE` already uses: the rule classes and their tests stay, the
-evidence source is gone, so the rule does not run.
+Two things to verify at work before this is relied on:
 
-| | Artifact flow (built) | Source-only (D1) |
-|---|---|---|
-| Tier 1 rules | `t1-class-absent`, `t1-component-absent` | none registered |
-| Tier 2 rules | `t2-not-referenced` | none registered |
-| Tier 3 rules | `t3-kev`, `t3-epss`, `t3-cvss-vector`, `t3-no-fix` | unchanged |
-| Can clear without AI | yes, on Tier 1 proof | **no** |
-| Can clear without a human | yes | yes — adjudicator + refute pass |
+- **`scan_id` is currently `report_id`** (`app/adapters/iq/client.py:299`) — an assumption.
+  If they differ, the lookup needs IQ's real scan identifier.
+- **The query shape** (`_search` with a `term` on `scan_id.keyword`) is standard
+  Elasticsearch, not confirmed against the real mapping.
 
-**Source evidence is not promoted to a registered Tier 2 rule.** It is fed to the
-adjudicator instead. Two reasons:
+Also: `RawReport.commit_sha` and `.branch` are always `None` — IQ's report body carries
+neither. ELK is the only source for the commit.
 
-1. Bitbucket DC code search is **not scoped to a ref** — `search_symbol` accepts a `ref`
-   and cannot honour it (`app/adapters/bitbucket/client.py`), and the client filters
-   project/repo client-side because the query DSL is unverified. A "not referenced in
-   source" claim built on an unscoped substring search over the default branch is
-   materially weaker than the constant-pool analysis it would replace. Registering it at
-   `STRONG` would overclaim, and `STRONG` is the tier that is permitted to clear.
-2. The pipeline already does the right thing without it. With no Tier 1/2 rule satisfied
-   and no hard blocker, `determine()` consults the adjudicator, which can propose
-   `NOT_AFFECTED` at `STRONG` *and already requires the refute pass to confirm it*. The
-   path exists; it needs evidence, not a new rule.
+ELK is currently the one adapter with no fake and no real-HTTP test coverage
+(`httpx.MockTransport` only). It is about to gate admission, so it needs a fifth fake.
 
-`file(repo, path, ref)` **does** honour a ref, so reading the implicated types at the exact
-commit is possible and is the stronger source signal. Prefer it over search where the
-class-to-path mapping can be guessed, and treat search as the fallback.
+## R7 — Scheduled review
 
-### R5 — The adjudicator prompt must be rebuilt
+Admin-set, stored in the database because it is an audited decision, not an infrastructure
+fact.
 
-This is the step most easily missed. `_build_prompt` (`app/adapters/llm/client.py`) sends
-`provenance_verdict`, `class_present`, `referenced`, `reference_scan_conclusive` and
-`escape_hatches` — all five artifact-derived. Under D1 every one of them is absent, so the
-model receives a near-empty evidence object and should abstain, which routes everything to
-human review. The automation would appear to run and decide nothing.
-
-The prompt must carry source evidence instead: the implicated types from
-`rootCauses[].listOfPaths`, which of them appear in the repository at the assessed commit,
-the matching file paths and snippets, the dependency's declaration site (direct vs
-transitive, which `iq.remediation()` already returns), and the repo/commit the evidence was
-read at. It stays blind to CVSS, EPSS and KEV — that is deliberate and does not change.
-
-Abstention stays first-class. If source lookup produced nothing for a CVE, the honest input
-is "no source evidence", and `Confidence.INSUFFICIENT` routing to a human is the correct
-outcome — not a clear.
-
-### R6 — Scheduled review (D4)
-
-**Configuration**, admin-set and audited. Behaviour tunables live in the database, not the
-environment (`app/config.py`'s own doctrine), and this is a decision the team makes and
-must be able to show an auditor.
-
-| Field | Type | Notes |
-|---|---|---|
-| `cron_expression` | text | Standard 5-field cron. Needs a pinned parser — `croniter`. Validated on save; an invalid expression is rejected at the API, never stored |
-| `scope_mode` | enum | `all_applications` \| `selected` |
-| `patterns_json` | JSON list | Glob patterns matched against the IQ application id — `app1_test`, `app2*`. Ignored when `scope_mode` is `all_applications`. JSON list, not an array column (SQLite portability) |
-| `enabled` | bool | Off by default. A schedule that starts running the moment it is saved gives no chance to check the scope first |
-| `max_per_run` | int | Cap on assessments raised per tick. A bare `*` on first run would otherwise raise hundreds, each costing N IQ calls plus two adjudicator calls per finding |
-| `last_run_at` / `next_run_at` | timestamp | Persisted, so a restart neither double-fires nor skips a window |
-| `watermark` | timestamp | The newest indexed scan already considered. The tick queries `sbom_data` for records after it |
-| `updated_by` / `updated_at` | text / timestamp | Who changed the schedule, for the audit trail |
-
-Matching is `fnmatch` against the application id, **case-sensitive** — IQ application ids
-are case-sensitive and a case-insensitive match would quietly widen the scope. The admin
-screen should show which application ids currently match before the schedule is saved; a
-glob whose blast radius is invisible until it fires is the wrong shape for something that
-raises determinations.
-
-**Scheduler.** An in-process `asyncio` task on the FastAPI lifespan, not a second
-container: SQLite allows one writer and the deployment is single-replica. One tick at a
-time, never overlapping; a tick that is still running when the next is due is skipped and
-recorded, not queued.
-
-**Three things the schedule collides with**, all needing an explicit answer:
-
-1. **`docs/design.md` says "Intake is on-demand only."** Cron-started *review* is not
-   auto-renewal of determinations (CLAUDE.md rule 4 stands untouched), so it is compatible
-   in substance — but that sentence has to be rewritten rather than quietly contradicted.
-2. **Who is the requester?** `Assessment.requester` drives My Assessments and is what
-   separation of duties is keyed on (`assert_may_commit_own_determination`). An auto-raised
-   assessment has no human requester. **Decision: a synthetic `system:scheduler`
-   requester, plus a new `Assessment.origin` column (`manual` \| `scheduled`) surfaced in
-   the queue and on the detail screen.** Separation of duties then does not constrain who
-   approves an auto-raised assessment — correctly, because its purpose is that the person
-   who asked for a clear is not the person who grants it, and here nobody asked. That is
-   only acceptable if it is *visible*, which is what `origin` is for. Attributing the
-   assessment to the admin who created the schedule was rejected: it would bar one
-   arbitrary person from approving and give the appearance of a control without the
-   substance.
-3. **Duplicate work.** A tick must skip any (application_id, report_id) that already has a
-   live assessment. Not a unique constraint — a reassessment after the 7-day expiry is a
-   legitimate second row — so the check is "skip if an unexpired assessment exists".
-
-### R7 — AI provider configuration (D3)
-
-The `Adjudicator` Protocol already isolates this; `BedrockAdjudicator` is one
-implementation of it. A second implementation against the Anthropic API sits beside it,
-and `app/adapters/factory.py` selects one.
-
-| Setting | Purpose |
+| Field | Notes |
 |---|---|
-| `ai_provider` | `bedrock` \| `anthropic` \| `fake` |
-| `ai_model_id` | Replaces `bedrock_model_id`, which stays as a deprecated alias |
-| `ai_base_url` | The endpoint, for a gateway or proxy |
-| `ai_api_key` | `SecretStr`. Unused by the Bedrock path, which uses the IAM role |
-| `ai_max_tokens`, `ai_timeout_seconds` | Already hardcoded at 1024 / 30s |
-| `aws_region`, `bedrock_endpoint_url` | Unchanged, Bedrock path only |
+| `cron_expression` | 5-field cron, validated on save. Needs `croniter`, pinned |
+| `scope_mode` | `all_applications` \| `selected` |
+| `patterns_json` | Globs matched against the IQ application id — `app1_test`, `app2*`. JSON list, not an array column |
+| `enabled` | Off by default |
+| `max_per_run` | Cap per tick. A bare `*` on first run would otherwise start hundreds of reviews at once |
+| `last_run_at` / `next_run_at` / `watermark` | Persisted, so a restart neither double-fires nor skips |
+| `updated_by` / `updated_at` | Audit trail |
 
-Credentials and endpoints stay in the environment, never the database — a token in the
-database appears in backups and in any settings dump.
+Matching is `fnmatch` on the application id, case-sensitive (IQ ids are). The admin screen
+shows which application ids currently match **before** the schedule is saved.
 
-**One thing to confirm at work.** "Claude Enterprise" is a seat-based plan on claude.ai and
-does not itself expose a completions API. Programmatic access comes from the Anthropic API
-(an API key), or from Bedrock/Vertex. Whichever of those the work environment actually
-grants is what `ai_provider` selects — which is the point of making it a setting rather
-than a code path. Worth confirming which one the enterprise agreement covers before the
-second adapter is written, since it determines whether anything needs writing at all.
+A tick: find due schedules → `elk.scans_since(watermark)` → filter by glob → skip any
+(app, report) that already has an unexpired assessment → raise up to `max_per_run` → advance
+the watermark. One tick at a time; a still-running tick skips the next window and records
+that it did. In-process on the FastAPI lifespan — SQLite has one writer and the deployment
+is single-replica.
 
-## Still unverified
+Two small decisions, settled rather than left open:
 
-Carried forward, none of it resolvable on this host:
+- **Requester:** auto-raised assessments get a synthetic `system:scheduler` requester and a
+  new `Assessment.origin` column (`manual` | `scheduled`), shown in the queue. Separation of
+  duties does not constrain who approves them — there is no human requester to exclude —
+  and `origin` is what makes that visible instead of implicit.
+- **`docs/design.md` says "Intake is on-demand only."** That sentence gets rewritten. Cron
+  starts *reviews*; it does not renew determinations, and the 7-day expiry rule is untouched.
 
-- Whether IQ's vuln lookup returns reachability at all. `Tier3Signals.reachable_with_call_path`
-  has no source anywhere — not on `RawReport`, `PolicyViolation` or `VulnDetail`, and not in
-  the fake's shape. One real response settles it. Until then the hard blocker reads `None`,
-  which deliberately does not block.
-- The real `sbom_data` mapping: field names, whether SCM data is present per scan, whether
-  the scan identifier matches IQ's report id, and what the indexing timestamp is called.
-- Bitbucket DC's code-search response shape and query DSL.
-- Whether the enterprise AI agreement provides an API-key path, a Bedrock path, or neither.
+## R8 — AI configuration
+
+Bedrock, as today. No second provider. What becomes configurable rather than hardcoded:
+
+| Setting | Today |
+|---|---|
+| `ai_model_id` | `bedrock_model_id`, already config |
+| `ai_max_tokens` | hardcoded 1024 |
+| `ai_timeout_seconds` | hardcoded 30.0 |
+| `ai_enabled` | implicit — no way to run script-only |
+
+`ai_enabled=false` runs the script pass alone and routes everything it cannot settle to a
+human. Useful for a first rollout, and for measuring how much the script actually resolves
+before the model is in the loop.
+
+## Open, needs the real environment
+
+- Does IQ's vuln lookup return call-path reachability? `Tier3Signals.reachable_with_call_path`
+  has no source anywhere; until confirmed it reads `None`, which does not block.
+- The real `sbom_data` mapping: field names, whether SCM is present per scan, the scan
+  identifier, the timestamp field.
+- Whether IQ's `rootCauses` gives a method name or only a class path — the method-level
+  check in R1 depends on it.
+- Bitbucket DC's archive endpoint path on the installed version.

@@ -4,9 +4,10 @@ Written for someone deciding whether to adopt, fund or audit this, not for someo
 it. Vocabulary: `docs/naming.md`. Architecture: `docs/design.md`. As-built inventory:
 `docs/implemented.md`.
 
-Describes the product including the decisions of 2026-10-19 (source-only evidence,
-AI adjudication as the normal path, scheduled review). Sections marked **planned** are
-specified but not yet built — `docs/implementation/source-only-review.md` has the order.
+Describes the product including the reset of 2026-10-19: evidence comes from source at
+the scanned commit, a deterministic script pass resolves what it can and the AI handles the
+rest, and reviews can be scheduled. Sections marked **planned** are specified but not yet
+built — `docs/implementation/source-only-review.md` has the order.
 
 ## The problem
 
@@ -73,19 +74,26 @@ matrix is in `docs/implemented.md`.
        │                         (purged report, unindexed scan,
        │                          mismatched build, missing commit)
        ▼
-  COLLECT     Nexus IQ: vulnerability + remediation per CVE
-              ELK:      the scan's SBOM, repo and commit
-              Bitbucket: the implicated types at that commit
+  COLLECT     ELK:       the scan's SBOM, repo and commit
+              Bitbucket: the source tree at that exact commit
+              Nexus IQ:  vulnerability + remediation per CVE
        │
        ▼
-  DECIDE      hard blocker?  ─── yes ──▶  NEEDS_REVIEW   (never asked of the AI)
-              no fix?        ─── yes ──▶  RISK_ACCEPTANCE_REQUIRED
-              otherwise      ──────────▶  adjudicator, then an independent
-                                          refute pass on any proposed clear
+  SCRIPT      deterministic, offline, over the source:
+              · is the vulnerable package imported at all?
+              · is the implicated type referenced?
+              · is the vulnerable method called?
+              · anything that makes the answer untrustworthy?
        │
        ▼
-  OUTCOME     cleared → recorded in Nexus IQ, 7 days
-              anything else → a human, with the full evidence trail
+  DECIDE      hard blocker?      ─ yes ──▶  a human  (never asked of the AI)
+              no fix?            ─ yes ──▶  RISK_ACCEPTANCE_REQUIRED
+              script settled it? ─ yes ──▶  AI confirms or refutes
+              script unsure?     ───────▶  AI decides, then a refute pass
+       │
+       ▼
+  OUTCOME     agreement → recorded in Nexus IQ, 7 days
+              disagreement, or the AI abstains → a human, with the trail
 ```
 
 Admission is a gate, not a formality. It refuses a request whose report has purged, whose
@@ -94,28 +102,40 @@ the scan report and the SBOM index describe different builds. Reasoning about th
 build produces a confident answer about software that was never scanned, which is worse
 than no answer.
 
-## What the automation is allowed to decide alone
+## How much is script, how much is AI
 
-This is the core control, and the 2026-10-19 decision changed it.
+Cheap deterministic analysis goes first. Most findings do not need a model to settle: if
+nothing in the application's own source imports the vulnerable package, or the implicated
+type is never referenced, or the vulnerable method is never called, that is answerable by
+reading the code. The script pass does that, offline, over the source at the exact commit
+that was scanned.
 
-| | Before (artifact evidence) | Now (source evidence) |
+The AI takes what is left — configuration-dependent vulnerabilities, "only exploitable when
+called a particular way", transitive chains, anything needing reasoning across several
+files.
+
+| Layer | Settles | Cost |
 |---|---|---|
-| Deterministic clear, no AI | yes — binary inspection could prove a class absent | **no** |
-| AI clear, confirmed by a refute pass | yes | yes |
-| AI alone, unconfirmed | never | never |
-| Severity / EPSS / known-exploited alone | never | never |
+| **Script** | Imports, type references, method call sites, and whether the answer is trustworthy at all | Near zero. One source fetch per assessment, no network per finding |
+| **AI** | Everything the script leaves open, and confirms or refutes everything it closes | Two model calls per finding |
+| **Human** | Hard blockers, abstentions, and any disagreement between the two AI passes | A person's time — spent only where it is actually needed |
 
-Evidence came from the built binary, where "this class does not ship" is provable. Evidence
-now comes from source at the scanned commit, which is strong but defeasible — reflection,
-service loading and dependency injection all reach code that source inspection does not
-show. So **every clear now goes through the AI adjudicator and an independent second pass
-that tries to refute it.** Disagreement between the two routes to a human.
+Source evidence is strong but defeasible: reflection, service loading and dependency
+injection all reach code no import statement shows. So the script **proposes** and the AI
+**confirms** — a second independent pass tries to refute every proposed clear, and
+disagreement goes to a human. Neither layer clears a finding by itself.
 
 The adjudicator is deliberately constrained. It is handed a fixed evidence package and
 asked to classify it through a closed enumeration — never asked an open question, never
 able to go looking for more. It is not shown severity, exploit-prediction or
 known-exploited data, so it cannot be talked into a clear by a low severity score; those
 signals are checked separately and earlier, and a blocked finding never reaches it.
+
+**No internet.** The work environment has no outbound internet access, so everything known
+about a vulnerability comes from Nexus IQ's own lookup, which carries known-exploited and
+exploit-prediction data offline. There is no public advisory feed in the loop, by
+constraint and by design — an air-gapped assessment is reproducible, and one that silently
+depends on a public API is not.
 
 ## Scheduled review (planned)
 
@@ -153,8 +173,13 @@ Two things worth knowing before enabling it:
   identifies the source; under source-only evidence there is no artifact to fingerprint.
   Report-to-index agreement is checked instead, which catches a mismatched build but not a
   tampered one.
-- **Source analysis is weaker than binary analysis.** It is why every clear now requires
-  the adjudicator and a refute pass.
+- **Source analysis is weaker than binary analysis.** Reading source cannot see what
+  reflection or dependency injection will reach at runtime. It is why the script's answer is
+  always confirmed by the adjudicator rather than acted on directly, and why anything that
+  makes the source read untrustworthy escalates instead of clearing.
+- **Transitive dependencies are harder.** "Nothing in our code imports this" means little
+  when the vulnerable package is used by another library rather than by the application, so
+  those findings lean more on the AI and on human review.
 - **Reachability from Nexus IQ is unconfirmed.** Whether IQ's vulnerability lookup returns
   call-path reachability is not yet established; until it is, that hard blocker reads
   "never checked" and does not block.
