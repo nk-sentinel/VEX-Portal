@@ -87,3 +87,21 @@ Notes:
   rejected credential → 401
 - Application-level entitlement is **no longer checked** — see
   `docs/decisions/intake-entitlement.md`
+
+## Decided 2026-10-19, not yet built
+
+Everything above is as-built and still true. These decisions change it:
+
+| Decision | Effect on the above |
+|---|---|
+| **Source-only evidence** — the JFrog artifact flow is paused | Tier 1 rules and `t2-not-referenced` stop being registered; admission's artifact and provenance checks are replaced by scan-record, report↔index agreement and source-resolvable checks |
+| **AI adjudication is the normal path** | No finding clears deterministically; every clear needs the adjudicator plus its refute pass |
+| **Configurable AI provider** | `ai_*` settings replace the Bedrock-only block; a second `Adjudicator` implementation beside `BedrockAdjudicator` |
+| **Scheduled review** | New `schedule_config` table, `Assessment.origin`, an in-process scheduler, and an admin screen for the cron expression and application-glob scope |
+
+Requirements: `docs/requirements/elk-driven-intake.md`. Order of work:
+`docs/implementation/source-only-review.md`. Product-level view: `docs/product.md`.
+
+The artifact code is paused, not deleted — `app/artifact/*`, the provenance fingerprint and
+the three unregistered rules keep their tests, so reinstating the artifact is a registry
+edit rather than a rebuild.
