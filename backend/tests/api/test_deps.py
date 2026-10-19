@@ -53,7 +53,7 @@ def _client_as(*roles: Role) -> TestClient:
     return client
 
 
-@pytest.mark.parametrize("role", [Role.REVIEWER, Role.APPROVER, Role.AUDITOR])
+@pytest.mark.parametrize("role", [Role.REVIEWER, Role.AUDITOR])
 def test_view_queue_admits_exactly_its_roles(role):
     assert _client_as(role).get("/queue").status_code == 200
 
@@ -90,11 +90,11 @@ def test_an_invalid_session_cookie_is_401_not_403():
 def test_manage_rules_is_admin_only():
     assert _client_as(Role.ADMIN).post("/rules").status_code == 200
     assert _client_as(Role.REVIEWER).post("/rules").status_code == 403
-    assert _client_as(Role.APPROVER).post("/rules").status_code == 403
+    assert _client_as(Role.AUDITOR).post("/rules").status_code == 403
 
 
 def test_holding_the_capability_alongside_unrelated_roles_still_admits():
-    response = _client_as(Role.REQUESTER, Role.APPROVER).get("/queue")
+    response = _client_as(Role.REQUESTER, Role.REVIEWER).get("/queue")
     assert response.status_code == 200
 
 

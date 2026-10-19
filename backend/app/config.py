@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     #: shape is known.
     ldap_bind_dn_template: str = ""
     ldap_group_reviewer: str = ""
+    #: Kept after the reviewer/approver merge, and now granting
+    #: ``Role.REVIEWER`` like ``ldap_group_reviewer`` does. Two AD groups
+    #: already exist at work; dropping this setting would silently remove
+    #: every approver's access on the deploy that merged the roles, which is
+    #: a worse outcome than one redundant-looking setting.
     ldap_group_approver: str = ""
     ldap_group_auditor: str = ""
     ldap_group_risk_manager: str = ""

@@ -54,8 +54,7 @@ Four deliberate properties, each of which costs something:
 | Role | What they do |
 |---|---|
 | **Requester** (app team) | Raises an assessment by pasting a Nexus IQ report URL |
-| **Reviewer** (AppSec) | Works the review queue; recommends an outcome |
-| **Approver** (AppSec lead) | Commits a determination. Cannot commit one they raised themselves |
+| **Reviewer** (AppSec) | Works the review queue and records the determination. Cannot decide one they raised themselves |
 | **Risk manager** | Owns the risk-acceptance queue where no fix exists |
 | **Auditor** | Read-only across the queue, the evidence and the dashboard |
 | **Admin** | Rule toggles, thresholds, the review schedule — and every other capability |
@@ -66,11 +65,11 @@ matrix is in `docs/implemented.md`.
 
 Two things about the shape of this:
 
-- **Reviewer and approver are both AppSec seats, not app-team seats.** The app team raises
-  the request; the security team decides it. A reviewer works the queue and recommends an
-  outcome; an approver — a senior or lead on the same team — is the one who commits it. The
-  split exists so that the person who studies a case and the person who accepts
-  responsibility for clearing it are not automatically the same person.
+- **Review is an AppSec seat, not an app-team seat.** The app team raises the request; the
+  security team decides it. Reviewer and approver used to be two seats and are now one — a
+  second pair of eyes inside AppSec was ceremony for a team this size, and the automation
+  already provides the independent second opinion (the refute pass) on anything it clears.
+  What has not changed is that the app team never decides its own findings.
 - **Admin has full access, but is not exempt from separation of duties.** An admin who
   raised an assessment still cannot approve it. What admin access does remove is the
   separation between configuring the thresholds and approving against them — that is a

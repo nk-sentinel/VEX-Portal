@@ -123,7 +123,7 @@ async def test_user_roles_round_trip_through_persistence(session):
     user = User(
         username="alice",
         password_hash="argon2-hash-placeholder",
-        roles_json=[Role.REVIEWER.value, Role.APPROVER.value],
+        roles_json=[Role.REVIEWER.value, Role.AUDITOR.value],
     )
     session.add(user)
     await session.commit()
@@ -132,7 +132,7 @@ async def test_user_roles_round_trip_through_persistence(session):
     loaded = (await session.execute(select(User).where(User.username == "alice"))).scalar_one()
 
     assert frozenset(Role(value) for value in loaded.roles_json) == frozenset(
-        {Role.REVIEWER, Role.APPROVER}
+        {Role.REVIEWER, Role.AUDITOR}
     )
 
 

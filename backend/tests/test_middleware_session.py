@@ -47,12 +47,12 @@ def _tamper(cookie: str) -> str:
 
 def test_a_valid_cookie_round_trips_username_and_roles():
     settings = _settings()
-    user = AuthenticatedUser(username="alice", roles=frozenset({Role.REVIEWER, Role.APPROVER}))
+    user = AuthenticatedUser(username="alice", roles=frozenset({Role.REVIEWER, Role.AUDITOR}))
 
     cookie = create_session_cookie(user, settings=settings)
     result = read_session_cookie(cookie, settings=settings)
 
-    assert result == SessionData(username="alice", roles=frozenset({Role.REVIEWER, Role.APPROVER}))
+    assert result == SessionData(username="alice", roles=frozenset({Role.REVIEWER, Role.AUDITOR}))
 
 
 def test_missing_cookie_is_not_a_session():

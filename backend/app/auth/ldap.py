@@ -112,7 +112,9 @@ class LdapAuthProvider:
             for group, role in (
                 (settings.ldap_group_requester, Role.REQUESTER),
                 (settings.ldap_group_reviewer, Role.REVIEWER),
-                (settings.ldap_group_approver, Role.APPROVER),
+                # Both groups grant the one merged AppSec role — see
+                # app/config.py's note on ldap_group_approver.
+                (settings.ldap_group_approver, Role.REVIEWER),
                 (settings.ldap_group_auditor, Role.AUDITOR),
                 (settings.ldap_group_risk_manager, Role.RISK_MANAGER),
                 (settings.ldap_group_admin, Role.ADMIN),

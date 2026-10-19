@@ -200,7 +200,34 @@ Two small decisions, settled rather than left open:
 - **`docs/design.md` says "Intake is on-demand only."** That sentence gets rewritten. Cron
   starts *reviews*; it does not renew determinations, and the 7-day expiry rule is untouched.
 
-## R8 — AI configuration
+## R8 — Roles and where a finding lands
+
+**Reviewer and approver are one seat.** The reviewer role now holds
+`COMMIT_DETERMINATION` as well as `RECOMMEND_DETERMINATION`. Separation of duties is
+untouched — it compares the actor against `Assessment.requester`, which is the app team, so
+merging the two AppSec seats removes no control. Already implemented.
+
+The three-way routing the requirement describes is the outcome model that already exists;
+no new states are needed, only the source-based evidence feeding it:
+
+| Case | Outcome | What the requester sees | Nexus IQ |
+|---|---|---|---|
+| **False positive** — script and AI agree it is not exploitable | `NOT_AFFECTED` | Not Affected, with the justification and evidence | Determination recorded, 7 days |
+| **True positive** — exploitable | `AFFECTED` | Affected. Nothing cleared, because it is real | Violation stays open |
+| **Looks like a false positive but needs a human** | `NEEDS_REVIEW` | In review, with what was collected | Nothing written until a reviewer decides |
+| **No fix exists** | `RISK_ACCEPTANCE_REQUIRED` | Hand-off to the risk manager | Violation stays open |
+
+What routes a finding into the third row, rather than the first: a hard blocker, any rule
+answering `UNANSWERABLE`, the adjudicator abstaining (`INSUFFICIENT`/`LOW` confidence), or
+the refute pass disagreeing with the primary verdict. Every one of those is an explicit
+"not confident enough to clear this", which is the only reason a human should be spending
+time on it.
+
+Nothing is written to Nexus IQ for an `AFFECTED` or `NEEDS_REVIEW` finding. A true positive
+is visibly *not* cleared in the portal, which is the point — the requester gets told their
+finding is real, not that it is pending.
+
+## R9 — AI configuration
 
 Bedrock, as today. No second provider. What becomes configurable rather than hardcoded:
 

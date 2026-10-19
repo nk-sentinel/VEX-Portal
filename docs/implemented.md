@@ -61,21 +61,27 @@ specs, ruff + mypy strict clean. Running at `vex.shadow-lab.org` against four fa
 
 ## RBAC
 
-Six roles, eight capabilities. Call sites check a **capability**, never a role, so a
+**Five** roles, eight capabilities. Call sites check a **capability**, never a role, so a
 permission change is a one-line mapping edit (`app/services/authorization.py`).
 
-| Capability | requester | reviewer | approver | auditor | risk_manager | admin |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|
-| `raise_assessment` | ● | | | | | ● |
-| `view_queue` | | ● | ● | ● | | ● |
-| `recommend_determination` | | ● | ● | | | ● |
-| `commit_determination` | | | ● | | | ● |
-| `view_dashboard` | | | | ● | | ● |
-| `view_risk_acceptance` | | | | ● | ● | ● |
-| `manage_risk_acceptance` | | | | | ● | ● |
-| `manage_rules` | | | | | | ● |
+| Capability | requester | reviewer | auditor | risk_manager | admin |
+|---|:--:|:--:|:--:|:--:|:--:|
+| `raise_assessment` | ● | | | | ● |
+| `view_queue` | | ● | ● | | ● |
+| `recommend_determination` | | ● | | | ● |
+| `commit_determination` | | ● | | | ● |
+| `view_dashboard` | | | ● | | ● |
+| `view_risk_acceptance` | | | ● | ● | ● |
+| `manage_risk_acceptance` | | | | ● | ● |
+| `manage_rules` | | | | | ● |
 
 Notes:
+- **Reviewer and approver are merged.** One AppSec seat reviews a finding and commits the
+  determination for it. The two capabilities stay distinct so the audit trail still
+  separates recommending from committing, and so splitting the roles again is a mapping edit
+- `"approver"` still resolves — `Role._missing_` maps the retired value to `reviewer`,
+  because it lives in stored `user.roles_json` rows and in signed session cookies that
+  outlive the deploy. `ldap_group_approver` likewise stays configured and grants `reviewer`
 - **Admin holds every capability.** Granted through `FULL_ACCESS_ROLES`, folded into every
   row rather than listed per capability, so a capability added later cannot omit it
 - The trade that comes with it: an admin can set a rule's thresholds *and* commit

@@ -35,10 +35,13 @@ _ADMIN_GROUP = "cn=vex-admins,ou=groups,dc=vex,dc=local"
 #: Stands in for a real AD group with no configured mapping.
 _UNMAPPED_GROUP = "cn=some-other-ad-group,ou=groups,dc=vex,dc=local"
 
+#: One group per Role, for the "every role is reachable over LDAP" check.
+#: _APPROVER_GROUP is deliberately absent: it is still a configured setting
+#: (see _settings below) but grants Role.REVIEWER, the merged AppSec seat —
+#: covered by its own test rather than by this map.
 _ALL_CONFIGURED_GROUPS = {
     Role.REQUESTER: _REQUESTER_GROUP,
     Role.REVIEWER: _REVIEWER_GROUP,
-    Role.APPROVER: _APPROVER_GROUP,
     Role.AUDITOR: _AUDITOR_GROUP,
     Role.RISK_MANAGER: _RISK_MANAGER_GROUP,
     Role.ADMIN: _ADMIN_GROUP,
@@ -76,7 +79,7 @@ def _mock_directory() -> Server:
             "objectClass": "person",
             "uid": "alice",
             "userPassword": "alice-password",
-            "memberOf": [_REVIEWER_GROUP, _APPROVER_GROUP],
+            "memberOf": [_REVIEWER_GROUP, _AUDITOR_GROUP],
         },
     )
     setup.strategy.add_entry(
@@ -103,8 +106,18 @@ def _mock_directory() -> Server:
             "objectClass": "person",
             "uid": "dana",
             "userPassword": "dana-password",
-            # Every configured group at once — the six-role coverage check.
+            # Every role-granting group at once — the coverage check below.
             "memberOf": list(_ALL_CONFIGURED_GROUPS.values()),
+        },
+    )
+    setup.strategy.add_entry(
+        f"uid=frank,{_BASE_DN}",
+        {
+            "objectClass": "person",
+            "uid": "frank",
+            "userPassword": "frank-password",
+            # The pre-merge approver group, and nothing else.
+            "memberOf": [_APPROVER_GROUP],
         },
     )
     setup.strategy.add_entry(
@@ -149,7 +162,7 @@ async def test_correct_password_authenticates_and_maps_multiple_groups():
 
     assert result is not None
     assert result.username == "alice"
-    assert result.roles == _roles({Role.REVIEWER, Role.APPROVER})
+    assert result.roles == _roles({Role.REVIEWER, Role.AUDITOR})
 
 
 @pytest.mark.asyncio
@@ -213,10 +226,24 @@ def test_every_role_has_a_configured_ldap_group_setting():
 
 
 @pytest.mark.asyncio
+async def test_the_pre_merge_approver_group_grants_the_merged_reviewer_role():
+    # REVIEWER and APPROVER merged into one seat. Both AD groups already
+    # exist at work, so ldap_group_approver stays configured and grants
+    # REVIEWER — otherwise the deploy that merged the roles would silently
+    # strip every approver's access.
+    provider = _provider(_mock_directory())
+
+    result = await provider.authenticate("frank", "frank-password")
+
+    assert result is not None
+    assert result.roles == frozenset({Role.REVIEWER})
+
+
+@pytest.mark.asyncio
 async def test_a_user_in_every_configured_group_holds_every_role():
     # Functional companion to the settings-coverage check above: proves the
-    # six settings are actually wired into the group->role mapping, not
-    # merely present on Settings.
+    # settings are actually wired into the group->role mapping, not merely
+    # present on Settings.
     provider = _provider(_mock_directory())
 
     result = await provider.authenticate("dana", "dana-password")

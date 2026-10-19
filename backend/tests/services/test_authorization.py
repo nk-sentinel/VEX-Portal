@@ -36,9 +36,9 @@ from app.services.authorization import (
 #: its logic.
 _EXPECTED: dict[Capability, set[Role]] = {
     Capability.RAISE_ASSESSMENT: {Role.REQUESTER, Role.ADMIN},
-    Capability.VIEW_QUEUE: {Role.REVIEWER, Role.APPROVER, Role.AUDITOR, Role.ADMIN},
-    Capability.RECOMMEND_DETERMINATION: {Role.REVIEWER, Role.APPROVER, Role.ADMIN},
-    Capability.COMMIT_DETERMINATION: {Role.APPROVER, Role.ADMIN},
+    Capability.VIEW_QUEUE: {Role.REVIEWER, Role.AUDITOR, Role.ADMIN},
+    Capability.RECOMMEND_DETERMINATION: {Role.REVIEWER, Role.ADMIN},
+    Capability.COMMIT_DETERMINATION: {Role.REVIEWER, Role.ADMIN},
     Capability.VIEW_DASHBOARD: {Role.AUDITOR, Role.ADMIN},
     Capability.VIEW_RISK_ACCEPTANCE: {Role.RISK_MANAGER, Role.AUDITOR, Role.ADMIN},
     Capability.MANAGE_RISK_ACCEPTANCE: {Role.RISK_MANAGER, Role.ADMIN},
@@ -112,14 +112,14 @@ def test_a_requester_cannot_commit_a_determination_on_their_own_assessment():
         assert_may_commit_own_determination(assessment=assessment, actor_username="j.doe")
 
 
-def test_this_holds_even_when_the_requester_also_holds_approver():
+def test_this_holds_even_when_the_requester_also_holds_reviewer():
     # The capability table alone would admit j.doe here: they hold
-    # APPROVER, which is all requires(Capability.COMMIT_DETERMINATION) ever
+    # REVIEWER, which is all requires(Capability.COMMIT_DETERMINATION) ever
     # checks. This is exactly the gap separation of duties exists to catch
     # — holding the role is necessary but never sufficient for THIS
     # assessment.
     assessment = _assessment("j.doe")
-    assert has_capability({Role.APPROVER}, Capability.COMMIT_DETERMINATION)
+    assert has_capability({Role.REVIEWER}, Capability.COMMIT_DETERMINATION)
 
     with pytest.raises(SeparationOfDutiesError, match="own assessment"):
         assert_may_commit_own_determination(assessment=assessment, actor_username="j.doe")

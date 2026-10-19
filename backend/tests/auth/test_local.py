@@ -136,10 +136,10 @@ async def test_authenticated_user_carries_no_hash_or_password(session):
 
 @pytest.mark.asyncio
 async def test_roles_round_trip_through_the_role_enum(session):
-    await _make_user(session, roles=("reviewer", "approver", "admin"))
+    await _make_user(session, roles=("reviewer", "risk_manager", "admin"))
     provider = LocalAuthProvider(session)
 
     result = await provider.authenticate("alice", _PASSWORD)
 
     assert result is not None
-    assert result.roles == frozenset({Role.REVIEWER, Role.APPROVER, Role.ADMIN})
+    assert result.roles == frozenset({Role.REVIEWER, Role.RISK_MANAGER, Role.ADMIN})

@@ -361,7 +361,7 @@ async def test_recommend_requires_the_recommend_capability(tmp_path: Path) -> No
 async def test_committing_not_affected_creates_the_iq_suppression(tmp_path: Path) -> None:
     stub_iq = _StubIq()
     async with _client(tmp_path, iq=stub_iq) as (client, factory):
-        await _seed_user(factory, username="approver", roles=(Role.APPROVER,))
+        await _seed_user(factory, username="approver", roles=(Role.REVIEWER,))
         assessment_id = await _seed_assessment(factory, requester="alice")
         finding_id = await _seed_finding(
             factory, assessment_id=assessment_id, rule_results=[_TIER1_CLEAR_RULE]
@@ -403,7 +403,7 @@ async def test_committing_affected_writes_an_audit_entry_and_calls_iq_nothing(
 ) -> None:
     stub_iq = _StubIq()
     async with _client(tmp_path, iq=stub_iq) as (client, factory):
-        await _seed_user(factory, username="approver", roles=(Role.APPROVER,))
+        await _seed_user(factory, username="approver", roles=(Role.REVIEWER,))
         assessment_id = await _seed_assessment(factory, requester="alice")
         finding_id = await _seed_finding(factory, assessment_id=assessment_id)
 
@@ -483,7 +483,7 @@ async def test_risk_acceptance_required_creates_nothing_in_iq_and_leaves_the_vio
 async def test_a_tier2_clear_without_a_second_confirmation_is_refused(tmp_path: Path) -> None:
     stub_iq = _StubIq()
     async with _client(tmp_path, iq=stub_iq) as (client, factory):
-        await _seed_user(factory, username="approver", roles=(Role.APPROVER,))
+        await _seed_user(factory, username="approver", roles=(Role.REVIEWER,))
         assessment_id = await _seed_assessment(factory, requester="alice")
         # Only Tier 2 (STRONG) evidence on the trace — no Tier 1 proof — so
         # the achieved tier this finding can commit at is STRONG.
@@ -547,7 +547,7 @@ async def test_a_requester_cannot_commit_their_own_assessment_even_holding_appro
     """
     stub_iq = _StubIq()
     async with _client(tmp_path, iq=stub_iq) as (client, factory):
-        await _seed_user(factory, username="alice", roles=(Role.REQUESTER, Role.APPROVER))
+        await _seed_user(factory, username="alice", roles=(Role.REQUESTER, Role.REVIEWER))
         assessment_id = await _seed_assessment(factory, requester="alice")
         finding_id = await _seed_finding(
             factory, assessment_id=assessment_id, rule_results=[_TIER1_CLEAR_RULE]
@@ -569,8 +569,11 @@ async def test_a_requester_cannot_commit_their_own_assessment_even_holding_appro
 
 @pytest.mark.asyncio
 async def test_decide_requires_the_commit_capability(tmp_path: Path) -> None:
+    # An auditor is the sharp case now that reviewer and approver are one
+    # seat: AUDITOR holds VIEW_QUEUE, so it can read this very finding, and
+    # not COMMIT_DETERMINATION, so it must not be able to decide it.
     async with _client(tmp_path) as (client, factory):
-        await _seed_user(factory, username="rev", roles=(Role.REVIEWER,))
+        await _seed_user(factory, username="rev", roles=(Role.AUDITOR,))
         assessment_id = await _seed_assessment(factory, requester="alice")
         finding_id = await _seed_finding(factory, assessment_id=assessment_id)
 
@@ -586,7 +589,7 @@ async def test_deciding_completes_the_assessment_once_every_finding_is_resolved(
     tmp_path: Path,
 ) -> None:
     async with _client(tmp_path) as (client, factory):
-        await _seed_user(factory, username="approver", roles=(Role.APPROVER,))
+        await _seed_user(factory, username="approver", roles=(Role.REVIEWER,))
         assessment_id = await _seed_assessment(factory, requester="alice")
         finding_id = await _seed_finding(factory, assessment_id=assessment_id)
 

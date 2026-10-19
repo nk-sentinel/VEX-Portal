@@ -183,14 +183,21 @@ that user may read, so app-level entitlement is inherited rather than reimplemen
 | Role | Capability | Source |
 |---|---|---|
 | **Requester** (app team) | Raise assessments for apps they can read in IQ | IQ entitlement via user token |
-| **Reviewer** (AppSec) | Review queue, evidence, recommend determination | AD group |
-| **Approver** (AppSec) | Commit determination; creates the IQ waiver | AD group |
+| **Reviewer** (AppSec) | Review queue, evidence, and committing the determination — one merged seat, see below | AD group |
 | **Auditor / Management** | Read-only dashboard: volumes, outcomes, SLA, agreement rates | AD group |
 | **Risk Manager** | View of `RISK_ACCEPTANCE_REQUIRED` cases and their packages | AD group |
-| **Admin** | Rule versions, thresholds, adapter config | AD group |
+| **Admin** | Rule versions, thresholds, adapter config — plus every other capability | AD group |
 
-**Separation of duties:** requester ≠ approver, enforced at the state machine. Reviewer
-recommends; approver commits. Every transition is written to an append-only audit log.
+**Reviewer and approver are one role** (2026-10-19). A separate approver seat only earned
+its keep while two people were expected to touch each case; for a team this size it meant
+one person waiting on another to confirm what the evidence already said. The reviewer seat
+now holds both `RECOMMEND_DETERMINATION` and `COMMIT_DETERMINATION`.
+
+**Separation of duties:** requester ≠ whoever commits, enforced in the service layer
+(`assert_may_commit_own_determination`) rather than only at a route. The merge costs
+nothing here: the check always compared the actor against `Assessment.requester` — the app
+team member who wants the finding cleared — never reviewer against approver. The pairing
+that matters is intact. Every transition is written to an append-only audit log.
 
 ---
 

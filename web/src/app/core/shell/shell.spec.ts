@@ -55,13 +55,13 @@ describe('Shell — nav visibility follows the session\'s roles (a courtesy; the
     expect(labels).toEqual(['Review Queue', 'Dashboard', 'Risk Acceptance']);
   });
 
-  it('an admin sees Dashboard (VIEW_DASHBOARD is auditor+admin) and Rules & Thresholds, nothing requester/reviewer-only', async () => {
+  it('an admin sees every nav item, because admin holds every capability', async () => {
     await signInAs('admin');
     const fixture = TestBed.createComponent(Shell);
     fixture.detectChanges();
 
     const labels = fixture.componentInstance['visibleNavItems']().map((i: { label: string }) => i.label);
-    expect(labels).toEqual(['Dashboard', 'Rules & Thresholds']);
+    expect(labels).toEqual(NAV_ITEMS.map((i) => i.label));
   });
 
   it('a session with no roles sees an empty rail, not every item (fail closed, not fail open)', async () => {
@@ -86,13 +86,13 @@ describe('Shell — nav visibility follows the session\'s roles (a courtesy; the
   });
 
   it('the persona indicator shows the username and every role held, not just the landing-page role', async () => {
-    await signInAs('reviewer', 'approver');
+    await signInAs('reviewer', 'auditor');
     const fixture = TestBed.createComponent(Shell);
     fixture.detectChanges();
 
     const text = (fixture.nativeElement as HTMLElement).querySelector('.persona')?.textContent ?? '';
     expect(text).toContain('test-user');
     expect(text).toContain('Reviewer');
-    expect(text).toContain('Approver');
+    expect(text).toContain('Auditor');
   });
 });

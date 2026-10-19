@@ -21,10 +21,20 @@
  * OpenAPI document).
  */
 
-/** Mirrors `backend/app/repos/models.py`'s `Role` enum, six values. */
-export type Role = 'requester' | 'reviewer' | 'approver' | 'auditor' | 'risk_manager' | 'admin';
+/**
+ * Mirrors `backend/app/repos/models.py`'s `Role` enum, five values.
+ *
+ * `'approver'` was merged into `'reviewer'` — one AppSec seat now reviews a
+ * finding and commits the determination. The server still accepts the
+ * retired value (`Role._missing_` maps it to `reviewer`, because stored
+ * rows and signed session cookies outlive the code change), so a session
+ * minted before the merge keeps working; this mirror deliberately does not
+ * list it, since `hasCapability` already treats an unknown role as granting
+ * nothing and the server is what decides.
+ */
+export type Role = 'requester' | 'reviewer' | 'auditor' | 'risk_manager' | 'admin';
 
-export const ALL_ROLES: readonly Role[] = ['requester', 'reviewer', 'approver', 'auditor', 'risk_manager', 'admin'];
+export const ALL_ROLES: readonly Role[] = ['requester', 'reviewer', 'auditor', 'risk_manager', 'admin'];
 
 /** Mirrors `backend/app/services/authorization.py`'s `Capability` enum. */
 export type Capability =
@@ -37,15 +47,22 @@ export type Capability =
   | 'manage_risk_acceptance'
   | 'manage_rules';
 
-/** Mirrors `backend/app/services/authorization.py`'s `CAPABILITY_ROLES`. */
+/**
+ * Mirrors `backend/app/services/authorization.py`'s `CAPABILITY_ROLES`.
+ *
+ * `'admin'` appears in every row: the server grants it every capability
+ * through `FULL_ACCESS_ROLES`, folded into each entry there rather than
+ * listed per capability. It is written out longhand here so this stays a
+ * flat mirror of the resolved table.
+ */
 export const CAPABILITY_ROLES: Readonly<Record<Capability, readonly Role[]>> = {
-  raise_assessment: ['requester'],
-  view_queue: ['reviewer', 'approver', 'auditor'],
-  recommend_determination: ['reviewer', 'approver'],
-  commit_determination: ['approver'],
+  raise_assessment: ['requester', 'admin'],
+  view_queue: ['reviewer', 'auditor', 'admin'],
+  recommend_determination: ['reviewer', 'admin'],
+  commit_determination: ['reviewer', 'admin'],
   view_dashboard: ['auditor', 'admin'],
-  view_risk_acceptance: ['risk_manager', 'auditor'],
-  manage_risk_acceptance: ['risk_manager'],
+  view_risk_acceptance: ['risk_manager', 'auditor', 'admin'],
+  manage_risk_acceptance: ['risk_manager', 'admin'],
   manage_rules: ['admin'],
 };
 
@@ -74,13 +91,12 @@ export function hasCapability(roles: readonly string[], capability: Capability):
 const LANDING_ROUTE_BY_ROLE: Readonly<Record<Role, string>> = {
   requester: '/assessments',
   reviewer: '/review',
-  approver: '/review',
   auditor: '/dashboard',
   risk_manager: '/risk-acceptance',
   admin: '/admin/rules',
 };
 
-const LANDING_PRIORITY: readonly Role[] = ['requester', 'reviewer', 'approver', 'auditor', 'risk_manager', 'admin'];
+const LANDING_PRIORITY: readonly Role[] = ['requester', 'reviewer', 'auditor', 'risk_manager', 'admin'];
 
 /** The route a signed-in session should land on, given its roles. */
 export function landingRouteFor(roles: readonly string[]): string {

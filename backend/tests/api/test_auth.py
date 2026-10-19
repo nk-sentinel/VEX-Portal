@@ -83,7 +83,7 @@ async def test_login_with_unknown_username_gives_the_identical_response_as_wrong
 @pytest.mark.asyncio
 async def test_me_returns_the_identity_and_roles_the_login_established(db_client):
     client, factory = db_client
-    await _seed_user(factory, roles=(Role.REVIEWER, Role.APPROVER))
+    await _seed_user(factory, roles=(Role.REVIEWER, Role.AUDITOR))
     client.post("/api/auth/login", json={"username": "alice", "password": _PASSWORD})
 
     response = client.get("/api/auth/me")
@@ -91,7 +91,7 @@ async def test_me_returns_the_identity_and_roles_the_login_established(db_client
     assert response.status_code == 200
     body = response.json()
     assert body["username"] == "alice"
-    assert set(body["roles"]) == {"reviewer", "approver"}
+    assert set(body["roles"]) == {"reviewer", "auditor"}
 
 
 @pytest.mark.asyncio

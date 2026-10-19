@@ -69,21 +69,55 @@ _NAMING_CONVENTION = {
 }
 
 
+#: Role values that no longer exist, mapped to the one that replaced them.
+#: Read by :meth:`Role._missing_`, so a stored or in-flight value keeps
+#: resolving after a role is merged away.
+_LEGACY_ROLE_ALIASES: dict[str, str] = {
+    # REVIEWER and APPROVER merged: one AppSec person now reviews a finding
+    # and commits the determination. A separate approver seat only made
+    # sense while two people were expected to touch each case.
+    "approver": "reviewer",
+}
+
+
 class Role(StrEnum):
     """A capability-granting role a user may hold.
 
-    Six roles, matching the RBAC table in ``docs/design/ui-spec.md``.
-    ``app/services/authorization.py`` maps these onto capabilities — the
-    call site checks a capability, never a role directly, so a role change
-    there is a mapping edit, not a code change.
+    Five roles. ``app/services/authorization.py`` maps these onto
+    capabilities — the call site checks a capability, never a role directly,
+    so a role change there is a mapping edit, not a code change.
+
+    **Reviewer and approver are one role.** The reviewer seat carries both
+    ``RECOMMEND_DETERMINATION`` and ``COMMIT_DETERMINATION``: the same
+    AppSec person who studies a finding records the determination for it.
+    Separation of duties is unaffected and still enforced — it compares the
+    actor against ``Assessment.requester`` (the app team), which was always
+    the pairing that mattered, never reviewer-against-approver.
     """
 
     REQUESTER = "requester"
     REVIEWER = "reviewer"
-    APPROVER = "approver"
     AUDITOR = "auditor"
     RISK_MANAGER = "risk_manager"
     ADMIN = "admin"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Role | None:
+        """Resolve a retired role value to its replacement.
+
+        ``Role`` values are persisted in ``user.roles_json`` and carried in
+        signed session cookies, so a merged-away value outlives the code
+        change in both places. Without this, every existing session held by
+        a former approver raises ``ValueError`` on its next request, and
+        every stored user row with ``"approver"`` in it fails to load — a
+        data migration fixes the rows but cannot reach a cookie already in
+        a browser.
+        """
+        if isinstance(value, str):
+            replacement = _LEGACY_ROLE_ALIASES.get(value)
+            if replacement is not None:
+                return cls(replacement)
+        return None
 
 
 class AssessmentState(StrEnum):

@@ -23,6 +23,12 @@ an admin who raised an assessment cannot commit it — but the configure-then-
 approve path is open to anyone holding ADMIN, and the audit log is what
 makes it visible after the fact rather than preventing it.
 
+**Separation of duties survives the reviewer/approver merge.** It compares
+the actor against ``Assessment.requester`` — the app team member who asked
+for the assessment — not reviewer against approver. Merging the two AppSec
+seats therefore removes no control: the pairing that matters is "whoever
+wants the finding cleared is not whoever clears it", and that still holds.
+
 **Separation of duties is enforced here, in the service layer, and tested
 here — not at the route.** A route-only check is decoration: it protects
 exactly the one call site it sits in front of, and is bypassed the moment a
@@ -77,9 +83,13 @@ FULL_ACCESS_ROLES: frozenset[Role] = frozenset({Role.ADMIN})
 #: below is the resolved table every caller uses.
 _GRANTS: dict[Capability, frozenset[Role]] = {
     Capability.RAISE_ASSESSMENT: frozenset({Role.REQUESTER}),
-    Capability.VIEW_QUEUE: frozenset({Role.REVIEWER, Role.APPROVER, Role.AUDITOR}),
-    Capability.RECOMMEND_DETERMINATION: frozenset({Role.REVIEWER, Role.APPROVER}),
-    Capability.COMMIT_DETERMINATION: frozenset({Role.APPROVER}),
+    Capability.VIEW_QUEUE: frozenset({Role.REVIEWER, Role.AUDITOR}),
+    Capability.RECOMMEND_DETERMINATION: frozenset({Role.REVIEWER}),
+    # Merged with RECOMMEND_DETERMINATION's roster: one AppSec seat both
+    # reviews and commits (see Role's own docstring). The two capabilities
+    # stay distinct because the audit trail distinguishes recommending from
+    # committing, and because splitting them again is then a mapping edit.
+    Capability.COMMIT_DETERMINATION: frozenset({Role.REVIEWER}),
     Capability.VIEW_DASHBOARD: frozenset({Role.AUDITOR}),
     Capability.VIEW_RISK_ACCEPTANCE: frozenset({Role.RISK_MANAGER, Role.AUDITOR}),
     Capability.MANAGE_RISK_ACCEPTANCE: frozenset({Role.RISK_MANAGER}),
